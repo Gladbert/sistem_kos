@@ -1,7 +1,7 @@
 from datetime import datetime, date
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
-from app import db
+from extensions import db
 
 
 class User(UserMixin, db.Model):
@@ -47,8 +47,7 @@ class Room(db.Model):
 
     @property
     def booking_aktif(self):
-        aktif = Booking.query.filter_by(room_id=self.id, status="aktif").first()
-        return aktif
+        return Booking.query.filter_by(room_id=self.id, status="aktif").first()
 
 
 class Booking(db.Model):

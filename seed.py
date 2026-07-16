@@ -1,4 +1,5 @@
-from app import create_app, db
+from app import create_app
+from extensions import db
 from models import User, Room, Booking, Payment, Expense, Vendor, MaintenanceRequest, Notification
 from datetime import date, timedelta
 import random

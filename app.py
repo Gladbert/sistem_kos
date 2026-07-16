@@ -1,11 +1,5 @@
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager
-from flask_wtf.csrf import CSRFProtect
-
-db = SQLAlchemy()
-login_manager = LoginManager()
-csrf = CSRFProtect()
+from extensions import db, login_manager, csrf
 
 
 def create_app():

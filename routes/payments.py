@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
-from app import db
+from extensions import db
 from models import Payment, Booking, Notification
 
 payments_bp = Blueprint("payments", __name__, url_prefix="/payments")

@@ -1,7 +1,7 @@
 from datetime import date
-from flask import Blueprint, render_template, redirect, flash
+from flask import Blueprint, render_template, redirect, flash, url_for
 from flask_login import login_required, current_user
-from app import db
+from extensions import db
 from models import User, Room, Booking, Payment, Expense, Notification, MaintenanceRequest
 
 dashboard_bp = Blueprint("dashboard", __name__, url_prefix="/dashboard")
@@ -30,9 +30,22 @@ def admin():
         Booking.status == "aktif"
     ).distinct().count()
 
-    penghuni = User.query.join(Booking).filter(
+    penghuni_raw = User.query.join(Booking).filter(
         Booking.status == "aktif", User.role == "client"
     ).all()
+
+    penghuni = []
+    for u in penghuni_raw:
+        b = Booking.query.filter_by(user_id=u.id, status="aktif").first()
+        penghuni.append({
+            "id": u.id,
+            "nama_lengkap": u.nama_lengkap,
+            "username": u.username,
+            "no_telepon": u.no_telepon,
+            "is_active": u.is_active,
+            "nomor_kamar": b.room.nomor_kamar if b else "-",
+            "kamar_id": b.room_id if b else None,
+        })
 
     pemasukan_bulan_ini = db.session.query(db.func.sum(Payment.jumlah)).filter(
         Payment.status == "lunas",

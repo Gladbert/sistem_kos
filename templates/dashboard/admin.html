@@ -324,17 +324,17 @@
                                     <i class="bi bi-person-circle me-2 text-muted"></i>{{ h.nama_lengkap }}
                                 </td>
                                 <td>
-                                    {% if h.kamar %}
+                                    {% if h.nomor_kamar and h.nomor_kamar != '-' %}
                                     <span class="badge bg-primary-subtle text-primary-emphasis">
-                                        <i class="bi bi-door-open me-1"></i>{{ h.kamar.nomor_kamar }}
+                                        <i class="bi bi-door-open me-1"></i>{{ h.nomor_kamar }}
                                     </span>
                                     {% else %}
                                     <span class="text-muted">-</span>
                                     {% endif %}
                                 </td>
                                 <td>
-                                    {% if h.nomor_telepon %}
-                                    <a href="tel:{{ h.nomor_telepon }}" class="text-decoration-none">{{ h.nomor_telepon }}</a>
+                                    {% if h.no_telepon %}
+                                    <a href="tel:{{ h.no_telepon }}" class="text-decoration-none">{{ h.no_telepon }}</a>
                                     {% else %}
                                     <span class="text-muted">-</span>
                                     {% endif %}

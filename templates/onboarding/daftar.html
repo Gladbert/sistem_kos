@@ -48,6 +48,7 @@
                 <div class="card-body">
                     <h5 class="card-title mb-3">Form Pendaftaran</h5>
                     <form method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="mb-3">
                             <label class="form-label">Nama Lengkap</label>
                             <input type="text" class="form-control" value="{{ current_user.nama_lengkap }}" disabled>

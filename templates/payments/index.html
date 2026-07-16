@@ -83,6 +83,7 @@
                             <i class="bi bi-pencil"></i>
                         </a>
                         <form method="POST" action="{{ url_for('payments.hapus', id=p.id) }}" class="d-inline" onsubmit="return confirm('Yakin hapus pembayaran Rp{{ '{:,.0f}'.format(p.jumlah) }}?')">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn btn-sm btn-outline-danger btn-icon" title="Hapus">
                                 <i class="bi bi-trash"></i>
                             </button>
