@@ -193,7 +193,6 @@ class ActivityLog(db.Model):
     tindakan = db.Column(db.String(100), nullable=False)
     deskripsi = db.Column(db.Text)
     model = db.Column(db.String(50))
-    model_id = db.Column(db.Integer)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     user = db.relationship("User", backref="activity_logs")

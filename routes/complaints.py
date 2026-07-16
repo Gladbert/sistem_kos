@@ -1,14 +1,10 @@
 from flask import Blueprint, render_template, request, redirect, flash, url_for
 from flask_login import login_required, current_user
 from extensions import db
-from models import Complaint, ActivityLog
+from models import Complaint
+from helpers import log_activity
 
 complaint_bp = Blueprint("complaints", __name__, url_prefix="/komplain")
-
-
-def log(user_id, tindakan, deskripsi):
-    db.session.add(ActivityLog(user_id=user_id, tindakan=tindakan, deskripsi=deskripsi, model="Complaint"))
-    db.session.commit()
 
 
 @complaint_bp.route("/")
@@ -31,7 +27,7 @@ def create():
             kategori=request.form.get("kategori", "umum")
         )
         db.session.add(c)
-        log(current_user.id, "Buat komplain", f"Judul: {request.form['judul']}")
+        log_activity(current_user.id, "Buat komplain", f"Judul: {request.form['judul']}", "Complaint")
         db.session.commit()
         flash("Komplain terkirim.", "success")
         return redirect(url_for("complaints.index"))
@@ -48,7 +44,7 @@ def respond(id):
     c.tanggapan = request.form["tanggapan"]
     c.status = request.form.get("status", "ditindaklanjuti")
     c.ditanggapi_oleh = current_user.id
-    log(current_user.id, "Tanggapi komplain", f"Judul: {c.judul}, Status: {c.status}")
+    log_activity(current_user.id, "Tanggapi komplain", f"Judul: {c.judul}, Status: {c.status}", "Complaint")
     db.session.commit()
     flash("Tanggapan dikirim.", "success")
     return redirect(url_for("complaints.index"))

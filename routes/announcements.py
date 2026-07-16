@@ -1,14 +1,10 @@
 from flask import Blueprint, render_template, request, redirect, flash, url_for
 from flask_login import login_required, current_user
 from extensions import db
-from models import Announcement, ActivityLog
+from models import Announcement
+from helpers import log_activity
 
 announcement_bp = Blueprint("announcements", __name__, url_prefix="/pengumuman")
-
-
-def log(user_id, tindakan, deskripsi):
-    db.session.add(ActivityLog(user_id=user_id, tindakan=tindakan, deskripsi=deskripsi, model="Announcement"))
-    db.session.commit()
 
 
 @announcement_bp.route("/")
@@ -35,7 +31,7 @@ def create():
             created_by=current_user.id
         )
         db.session.add(a)
-        log(current_user.id, "Buat pengumuman", f"Judul: {request.form['judul']}")
+        log_activity(current_user.id, "Buat pengumuman", f"Judul: {request.form['judul']}", "Announcement")
         db.session.commit()
         flash("Pengumuman berhasil dibuat.", "success")
         return redirect(url_for("announcements.index"))
@@ -54,7 +50,7 @@ def edit(id):
         a.isi = request.form["isi"]
         a.prioritas = request.form.get("prioritas", "normal")
         a.ditampilkan = request.form.get("ditampilkan") == "on"
-        log(current_user.id, "Edit pengumuman", f"Judul: {a.judul}")
+        log_activity(current_user.id, "Edit pengumuman", f"Judul: {a.judul}", "Announcement")
         db.session.commit()
         flash("Pengumuman diperbarui.", "success")
         return redirect(url_for("announcements.index"))
@@ -68,7 +64,7 @@ def delete(id):
         flash("Akses ditolak.", "danger")
         return redirect(url_for("announcements.index"))
     a = Announcement.query.get_or_404(id)
-    log(current_user.id, "Hapus pengumuman", f"Judul: {a.judul}")
+    log_activity(current_user.id, "Hapus pengumuman", f"Judul: {a.judul}", "Announcement")
     db.session.delete(a)
     db.session.commit()
     flash("Pengumuman dihapus.", "success")

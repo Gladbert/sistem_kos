@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from extensions import db
-from models import Room, Booking
+from models import Room, Booking, MaintenanceRequest
 
 rooms_bp = Blueprint("rooms", __name__, url_prefix="/rooms")
 
@@ -128,6 +128,5 @@ def hapus(id):
 def detail(id):
     room = Room.query.get_or_404(id)
     booking = room.booking_aktif
-    from models import MaintenanceRequest
     maintenance = MaintenanceRequest.query.filter_by(room_id=id).order_by(MaintenanceRequest.created_at.desc()).all()
     return render_template("rooms/detail.html", room=room, booking=booking, maintenance=maintenance)

@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from calendar import monthrange
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from extensions import db
@@ -56,35 +57,42 @@ def daftar(room_id):
             flash("Format tanggal salah.", "danger")
             return render_template("onboarding/daftar.html", room=room)
 
-        from dateutil.relativedelta import relativedelta
-        try:
-            tgl_keluar = tgl_masuk + relativedelta(months=durasi)
-        except ImportError:
-            tgl_keluar = date(tgl_masuk.year + (tgl_masuk.month + durasi - 1) // 12,
-                             (tgl_masuk.month + durasi - 1) % 12 + 1, tgl_masuk.day)
+        bulan_target = tgl_masuk.month + durasi
+        tahun_target = tgl_masuk.year + (bulan_target - 1) // 12
+        bulan_target = ((bulan_target - 1) % 12) + 1
+        max_day = monthrange(tahun_target, bulan_target)[1]
+        tgl_keluar = date(tahun_target, bulan_target, min(tgl_masuk.day, max_day))
 
         booking = Booking(
             user_id=current_user.id,
             room_id=room.id,
             tanggal_masuk=tgl_masuk,
             tanggal_keluar=tgl_keluar,
-            status="aktif",
+            status="pending",
             deposit=room.harga_per_bulan,
             catatan=deposit_catatan,
         )
-        room.status = "terisi"
         db.session.add(booking)
         db.session.commit()
 
         notif = Notification(
             user_id=current_user.id,
-            pesan=f"Selamat! Kamar {room.nomor_kamar} berhasil dipesan. Check-in: {tgl_masuk.strftime('%d/%m/%Y')}.",
+            pesan=f"Permintaan sewa kamar {room.nomor_kamar} telah dikirim. Menunggu persetujuan pengelola.",
             jenis="umum",
         )
         db.session.add(notif)
+
+        # Notify admin
+        admins = User.query.filter(User.role.in_(["admin", "management"])).all()
+        for a in admins:
+            db.session.add(Notification(
+                user_id=a.id,
+                pesan=f"Permintaan booking baru dari {current_user.nama_lengkap} untuk kamar {room.nomor_kamar}.",
+                jenis="umum",
+            ))
         db.session.commit()
 
-        flash(f"Selamat! Kamar {room.nomor_kamar} berhasil dipesan.", "success")
+        flash(f"Permintaan sewa kamar {room.nomor_kamar} telah dikirim. Menunggu persetujuan pengelola.", "success")
         return redirect(url_for("dashboard.client"))
 
     return render_template("onboarding/daftar.html", room=room)
