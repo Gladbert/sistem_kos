@@ -425,6 +425,52 @@ resp = c.get('/dashboard/client', follow_redirects=True)
 check('10.5 Client dashboard loads', resp.status_code == 200)
 check('10.6 Notif badge present', b'Notifikasi' in resp.data)
 
+# ====================== 11. WA AUTOMATION ======================
+print("\n=== 11. WA AUTOMATION ===")
+c.get('/auth/logout', follow_redirects=True)
+c.post('/auth/login', data={'username': 'admin', 'password': 'admin123'}, follow_redirects=True)
+
+# Payment receipt
+with app.app_context():
+    from models import Payment, Booking
+    bok = Booking.query.filter_by(status='aktif').first()
+    pay = Payment(booking_id=bok.id, jumlah=1500000, tanggal_bayar=date.today(), bulan_dibayar_untuk='2026-08', metode_bayar='transfer', status='lunas')
+    db.session.add(pay)
+    db.session.commit()
+    pid = pay.id
+resp = c.get(f'/payments/resi/{pid}', follow_redirects=False)
+check('11.1 Payment receipt redirects WA', resp.status_code in (302, 303))
+
+# Maintenance notif penghuni
+with app.app_context():
+    from models import MaintenanceRequest
+    mr = MaintenanceRequest(room_id=1, vendor_id=1, deskripsi='Test client notif', prioritas='tinggi', status='selesai', biaya=100000)
+    db.session.add(mr)
+    db.session.commit()
+    mr_id = mr.id
+resp = c.get(f'/maintenance/notif-penghuni/{mr_id}', follow_redirects=False)
+check('11.2 Maintenance notif redirects WA', resp.status_code in (302, 303))
+
+# Edge: no vendor assigned
+with app.app_context():
+    mr2 = MaintenanceRequest(room_id=1, vendor_id=None, deskripsi='No vendor test', prioritas='normal', status='selesai')
+    db.session.add(mr2)
+    db.session.commit()
+    mr2_id = mr2.id
+resp = c.get(f'/maintenance/notif-penghuni/{mr2_id}', follow_redirects=False)
+check('11.3 Notif without vendor redirects WA', resp.status_code in (302, 303))
+
+# Edge: receipt with unpaid balance
+with app.app_context():
+    from models import Booking
+    bok = Booking.query.filter_by(status='aktif').first()
+    p2 = Payment(booking_id=bok.id, jumlah=500000, tanggal_bayar=date.today(), bulan_dibayar_untuk='2026-09', metode_bayar='transfer', status='lunas')
+    db.session.add(p2)
+    db.session.commit()
+    p2_id = p2.id
+resp = c.get(f'/payments/resi/{p2_id}', follow_redirects=False)
+check('11.4 Receipt with partial balance redirects WA', resp.status_code in (302, 303))
+
 # ====================== SUMMARY ======================
 print(f"\n{'='*60}")
 print(f"RESULTS: {len(passed)} passed, {len(failed)} failed, {len(passed)+len(failed)} total")

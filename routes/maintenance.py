@@ -232,3 +232,37 @@ def vendor_hubungi(mr_id):
 
     wa_url = f"https://wa.me/{mr.vendor.no_telepon}?text={urllib.parse.quote(pesan)}"
     return redirect(wa_url)
+
+
+@maintenance_bp.route("/notif-penghuni/<int:mr_id>")
+@login_required
+def notif_penghuni(mr_id):
+    if current_user.role not in ("admin", "management"):
+        flash("Akses ditolak.", "danger")
+        return redirect(url_for("dashboard.index"))
+
+    mr = MaintenanceRequest.query.get_or_404(mr_id)
+    booking = mr.room.booking_aktif
+    if not booking or not booking.client.no_telepon:
+        flash("Tidak ada penghuni aktif di kamar ini.", "warning")
+        return redirect(url_for("maintenance.index"))
+
+    import urllib.parse
+    pesan = f"Halo {booking.client.nama_lengkap}!"
+    pesan += f"\n\nMaintenance untuk kamar {mr.room.nomor_kamar} telah selesai."
+    pesan += f"\nDeskripsi: {mr.deskripsi}"
+    if mr.biaya and mr.biaya > 0:
+        pesan += f"\nBiaya: Rp{mr.biaya:,.0f}"
+    pesan += f"\n\nTerima kasih."
+
+    notif = Notification(
+        user_id=booking.client.id,
+        pesan=f"Notifikasi maintenance selesai dikirim ke {booking.client.nama_lengkap} (Kamar {mr.room.nomor_kamar})",
+        jenis="maintenance",
+        wa_sent=True,
+    )
+    db.session.add(notif)
+    db.session.commit()
+
+    wa_url = f"https://wa.me/{booking.client.no_telepon}?text={urllib.parse.quote(pesan)}"
+    return redirect(wa_url)

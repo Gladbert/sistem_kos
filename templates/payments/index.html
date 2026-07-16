@@ -79,6 +79,11 @@
                         <a href="{{ url_for('payments.notifikasi_wa', booking_id=p.booking_id) }}" class="btn btn-sm btn-outline-success btn-icon" target="_blank" title="Kirim WA">
                             <i class="bi bi-whatsapp"></i>
                         </a>
+                        {% if p.status == 'lunas' and p.booking.client.no_telepon %}
+                        <a href="{{ url_for('payments.kirim_resi', payment_id=p.id) }}" class="btn btn-sm btn-outline-info btn-icon" target="_blank" title="Kirim Resi">
+                            <i class="bi bi-receipt"></i>
+                        </a>
+                        {% endif %}
                         <a href="{{ url_for('payments.edit', id=p.id) }}" class="btn btn-sm btn-outline-primary btn-icon" title="Edit">
                             <i class="bi bi-pencil"></i>
                         </a>

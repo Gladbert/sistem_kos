@@ -80,6 +80,11 @@
                             <i class="bi bi-whatsapp"></i>
                         </a>
                         {% endif %}
+                        {% if mr.status == 'selesai' and mr.room.booking_aktif and mr.room.booking_aktif.client.no_telepon %}
+                        <a href="{{ url_for('maintenance.notif_penghuni', mr_id=mr.id) }}" class="btn btn-sm btn-outline-info btn-icon" title="Beri Tahu Penghuni" target="_blank">
+                            <i class="bi bi-bell"></i>
+                        </a>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}

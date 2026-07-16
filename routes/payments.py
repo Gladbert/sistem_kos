@@ -127,6 +127,50 @@ def hapus(id):
     return redirect(url_for("payments.index"))
 
 
+@payments_bp.route("/resi/<int:payment_id>")
+@login_required
+def kirim_resi(payment_id):
+    if current_user.role not in ("admin", "management"):
+        flash("Akses ditolak.", "danger")
+        return redirect(url_for("dashboard.index"))
+
+    payment = Payment.query.get_or_404(payment_id)
+    booking = payment.booking
+    if not booking.client.no_telepon:
+        flash("Nomor telepon penghuni tidak tersedia.", "warning")
+        return redirect(url_for("payments.index"))
+
+    import urllib.parse
+    pesan = f"Halo {booking.client.nama_lengkap}!"
+    pesan += f"\n\nTerima kasih atas pembayaran kos Anda."
+    pesan += f"\n\n*── RESI PEMBAYARAN ──*"
+    pesan += f"\nKamar: {booking.room.nomor_kamar}"
+    pesan += f"\nJumlah: Rp{payment.jumlah:,.0f}"
+    pesan += f"\nBulan: {payment.bulan_dibayar_untuk}"
+    pesan += f"\nTanggal Bayar: {payment.tanggal_bayar.strftime('%d/%m/%Y')}"
+    pesan += f"\nMetode: {payment.metode_bayar.title()}"
+    pesan += f"\nStatus: LUNAS"
+    if payment.catatan:
+        pesan += f"\nCatatan: {payment.catatan}"
+    harga = booking.room.harga_per_bulan
+    if payment.jumlah < harga:
+        sisa = harga - payment.jumlah
+        pesan += f"\n\n*Sisa tagihan bulan ini: Rp{sisa:,.0f}*"
+    pesan += "\n\nTerima kasih telah membayar tepat waktu."
+
+    notif = Notification(
+        user_id=payment.booking.user_id,
+        pesan=f"Resi pembayaran Rp{payment.jumlah:,.0f} ({payment.bulan_dibayar_untuk}) dikirim via WA.",
+        jenis="pembayaran",
+        wa_sent=True,
+    )
+    db.session.add(notif)
+    db.session.commit()
+
+    wa_url = f"https://wa.me/{booking.client.no_telepon}?text={urllib.parse.quote(pesan)}"
+    return redirect(wa_url)
+
+
 @payments_bp.route("/notifikasi/<int:booking_id>")
 @login_required
 def notifikasi_wa(booking_id):
