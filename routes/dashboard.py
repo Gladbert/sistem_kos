@@ -106,6 +106,8 @@ def admin():
 
     komplain_baru = Complaint.query.filter_by(status="diajukan").count()
 
+    booking_audit = Booking.query.filter_by(status="aktif").order_by(Booking.tanggal_masuk.desc()).limit(5).all()
+
     return render_template("dashboard/admin.html",
         total_kamar=total_kamar, kamar_terisi=kamar_terisi,
         kamar_tersedia=kamar_tersedia, total_penghuni=total_penghuni,
@@ -123,7 +125,8 @@ def admin():
         collection_rate=collection_rate,
         occupancy_rate=occupancy_rate,
         tipe_kamar=tipe_kamar,
-        pemasukan_6bulan=pemasukan_6bulan)
+        pemasukan_6bulan=pemasukan_6bulan,
+        booking_audit=booking_audit)
 
 
 @dashboard_bp.route("/client")

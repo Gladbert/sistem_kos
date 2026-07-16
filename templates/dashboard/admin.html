@@ -127,6 +127,43 @@
     <div class="col-lg-4">
         <div class="card border-0 h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-clipboard-check me-2 text-primary"></i>Audit Kamar</span>
+                <a href="{{ url_for('inventory.index') }}" class="btn btn-sm btn-outline-primary">Inventaris</a>
+            </div>
+            <div class="card-body p-0">
+                {% if booking_audit %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead><tr><th>Kamar</th><th>Penghuni</th><th>Audit</th><th>Aksi</th></tr></thead>
+                        <tbody>
+                            {% for b in booking_audit %}
+                            <tr>
+                                <td class="fw-medium">{{ b.room.nomor_kamar }}</td>
+                                <td>{{ b.client.nama_lengkap }}</td>
+                                <td>
+                                    {% set has_in = b.audits|selectattr('tipe','equalto','check_in')|first %}
+                                    {% set has_out = b.audits|selectattr('tipe','equalto','check_out')|first %}
+                                    {% if not has_in %}<span class="badge badge-warning">Blm Check-in</span>
+                                    {% elif not has_out %}<span class="badge badge-info">Blm Check-out</span>
+                                    {% else %}<span class="badge badge-success">Lengkap</span>{% endif %}
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('audit.detail', booking_id=b.id) }}" class="btn btn-sm btn-outline-secondary btn-icon" title="Detail Audit">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}<div class="empty-state"><i class="bi bi-clipboard-check"></i><h5>Semua audit lengkap</h5></div>{% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card border-0 h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-credit-card me-2 text-primary"></i>Pembayaran Terbaru</span>
                 <a href="{{ url_for('payments.index') }}" class="btn btn-sm btn-outline-primary">Lihat Semua</a>
             </div>

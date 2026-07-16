@@ -210,3 +210,30 @@ class RoomItem(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     room = db.relationship("Room", backref="items")
+
+
+class RoomAudit(db.Model):
+    __tablename__ = "room_audits"
+
+    id = db.Column(db.Integer, primary_key=True)
+    booking_id = db.Column(db.Integer, db.ForeignKey("bookings.id"), nullable=False)
+    tipe = db.Column(db.String(20), nullable=False)  # check_in / check_out
+    catatan = db.Column(db.Text)
+    created_by = db.Column(db.Integer, db.ForeignKey("users.id"))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    booking = db.relationship("Booking", backref="audits")
+    auditor = db.relationship("User", backref="audits_created")
+
+
+class AuditItemResult(db.Model):
+    __tablename__ = "audit_item_results"
+
+    id = db.Column(db.Integer, primary_key=True)
+    audit_id = db.Column(db.Integer, db.ForeignKey("room_audits.id"), nullable=False)
+    item_id = db.Column(db.Integer, db.ForeignKey("room_items.id"), nullable=False)
+    kondisi = db.Column(db.String(20), nullable=False)  # baik / rusak
+    catatan = db.Column(db.Text)
+
+    audit = db.relationship("RoomAudit", backref="items")
+    item = db.relationship("RoomItem", backref="audit_results")

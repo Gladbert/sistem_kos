@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Audit Kamar {{ booking.room.nomor_kamar }} - Sistem Kos{% endblock %}
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center">
+    <div>
+        <h1>Audit Kamar {{ booking.room.nomor_kamar }}</h1>
+        <p>{{ booking.client.nama_lengkap }}</p>
+    </div>
+    <div class="d-flex gap-2">
+        {% if current_user.role in ('admin', 'management') %}
+            {% if check_in %}
+            <a href="{{ url_for('audit.edit', audit_id=check_in.id) }}" class="btn btn-outline-primary">
+                <i class="bi bi-pencil me-1"></i>Edit Check-in
+            </a>
+            {% endif %}
+            {% if check_out %}
+            <a href="{{ url_for('audit.edit', audit_id=check_out.id) }}" class="btn btn-outline-primary">
+                <i class="bi bi-pencil me-1"></i>Edit Check-out
+            </a>
+            {% endif %}
+            {% if not check_out %}
+            <a href="{{ url_for('audit.check_out', booking_id=booking.id) }}" class="btn btn-primary">
+                <i class="bi bi-door-open me-1"></i>Audit Check-out
+            </a>
+            {% endif %}
+        {% else %}
+            {% if check_in and current_user.id == booking.user_id %}
+            <a href="{{ url_for('audit.check_in', booking_id=booking.id) }}" class="btn btn-outline-primary">
+                <i class="bi bi-pencil me-1"></i>Edit Audit
+            </a>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+
+<div class="d-flex gap-3 mb-3">
+    <span class="badge {% if check_in %}badge-success{% else %}badge-secondary{% endif %} fs-6 px-3 py-2">
+        <i class="bi bi-box-arrow-in-right me-1"></i>Check-in: {{ check_in.created_at.strftime('%d/%m/%Y %H:%M') if check_in else 'Belum' }}
+    </span>
+    <span class="badge {% if check_out %}badge-info{% else %}badge-secondary{% endif %} fs-6 px-3 py-2">
+        <i class="bi bi-box-arrow-right me-1"></i>Check-out: {{ check_out.created_at.strftime('%d/%m/%Y %H:%M') if check_out else 'Belum' }}
+    </span>
+</div>
+
+{% if items %}
+<div class="card border-0">
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Barang</th>
+                    <th>Jumlah</th>
+                    <th class="text-center">Check-in</th>
+                    <th class="text-center">Check-out</th>
+                    <th>Catatan</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                {% set ci = check_in.items|selectattr('item_id','equalto',item.id)|first if check_in else None %}
+                {% set co = check_out.items|selectattr('item_id','equalto',item.id)|first if check_out else None %}
+                <tr>
+                    <td class="fw-medium">{{ item.nama }}</td>
+                    <td>{{ item.jumlah }}x</td>
+                    <td class="text-center">
+                        {% if ci %}
+                            {% if ci.kondisi == 'baik' %}
+                            <span class="badge badge-success">Baik</span>
+                            {% else %}
+                            <span class="badge badge-danger">Rusak</span>
+                            {% endif %}
+                        {% else %}
+                        <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        {% if co %}
+                            {% if co.kondisi == 'baik' %}
+                            <span class="badge badge-success">Baik</span>
+                            {% else %}
+                            <span class="badge badge-danger">Rusak</span>
+                            {% endif %}
+                        {% else %}
+                        <span class="text-muted">-</span>
+                        {% endif %}
+                        {% if ci and co and ci.kondisi != co.kondisi %}
+                        <i class="bi bi-arrow-up text-warning ms-1" title="Kondisi berubah"></i>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <small>
+                            {% if ci and ci.catatan %}Masuk: {{ ci.catatan }}{% endif %}
+                            {% if co and co.catatan %}{% if ci and ci.catatan %}<br>{% endif %}Keluar: {{ co.catatan }}{% endif %}
+                        </small>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if check_out and check_out.catatan %}
+<div class="card border-0 mt-3">
+    <div class="card-body">
+        <h6>Catatan Check-out</h6>
+        <p class="mb-0">{{ check_out.catatan }}</p>
+    </div>
+</div>
+{% endif %}
+
+{% else %}
+<div class="empty-state">
+    <i class="bi bi-box"></i>
+    <h5>Belum ada inventaris</h5>
+    <p class="text-muted">Admin belum menambahkan barang untuk kamar ini.</p>
+</div>
+{% endif %}
+{% endblock %}

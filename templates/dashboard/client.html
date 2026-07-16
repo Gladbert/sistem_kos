@@ -59,6 +59,39 @@
     <div class="col-12">
         <div class="card border-0">
             <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-clipboard-check me-2 text-primary"></i>Audit Kamar</span>
+                <a href="{{ url_for('audit.detail', booking_id=booking_aktif.id) }}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-eye me-1"></i>Lihat Detail
+                </a>
+            </div>
+            <div class="card-body">
+                {% set audit_in = booking_aktif.audits|selectattr('tipe','equalto','check_in')|first %}
+                {% set audit_out = booking_aktif.audits|selectattr('tipe','equalto','check_out')|first %}
+                <div class="d-flex align-items-center gap-3">
+                    <div>
+                        {% if audit_in %}
+                        <span class="badge badge-success fs-6 px-3 py-2"><i class="bi bi-check-circle me-1"></i>Check-in Selesai</span>
+                        {% else %}
+                        <a href="{{ url_for('audit.check_in', booking_id=booking_aktif.id) }}" class="btn btn-primary btn-sm">
+                            <i class="bi bi-clipboard me-1"></i>Audit Check-in
+                        </a>
+                        {% endif %}
+                    </div>
+                    <div>
+                        {% if audit_out %}
+                        <span class="badge badge-info fs-6 px-3 py-2"><i class="bi bi-check-circle me-1"></i>Check-out Selesai</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="card border-0">
+            <div class="card-header d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-credit-card me-2 text-primary"></i>Riwayat Pembayaran</span>
             </div>
             <div class="card-body p-0">

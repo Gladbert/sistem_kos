@@ -10,6 +10,7 @@ from .announcements import announcement_bp
 from .complaints import complaint_bp
 from .activity_log import activity_bp
 from .inventory import inventory_bp
+from .audit import audit_bp
 
 
 def register_routes(app):
@@ -25,3 +26,4 @@ def register_routes(app):
     app.register_blueprint(complaint_bp)
     app.register_blueprint(activity_bp)
     app.register_blueprint(inventory_bp)
+    app.register_blueprint(audit_bp)

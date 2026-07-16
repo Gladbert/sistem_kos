@@ -471,6 +471,69 @@ with app.app_context():
 resp = c.get(f'/payments/resi/{p2_id}', follow_redirects=False)
 check('11.4 Receipt with partial balance redirects WA', resp.status_code in (302, 303))
 
+# ====================== 12. AUDIT ======================
+print("\n=== 12. AUDIT ===")
+
+# Setup: add room items for room with active booking
+with app.app_context():
+    from models import RoomItem, Room, Booking, RoomAudit, AuditItemResult
+    test_booking = Booking.query.filter_by(status='aktif').first()
+    test_room = test_booking.room
+    RoomItem.query.filter_by(room_id=test_room.id).delete()
+    for nama in ['AC', 'Kasur', 'Meja', 'Lemari']:
+        db.session.add(RoomItem(room_id=test_room.id, nama=nama, jumlah=1, kondisi='baik'))
+    db.session.commit()
+
+# Client check-in audit
+c.get('/auth/logout', follow_redirects=True)
+c.post('/auth/login', data={'username': 'budi', 'password': 'client123'}, follow_redirects=True)
+with app.app_context():
+    from models import Booking
+    bok = Booking.query.filter_by(status='aktif').first()
+    bok_id = bok.id
+resp = c.get(f'/audit/check-in/{bok_id}', follow_redirects=True)
+check('12.1 Check-in form loads', resp.status_code == 200 and b'AC' in resp.data)
+
+resp = c.post(f'/audit/check-in/{bok_id}', data={
+    'kondisi_1': 'baik', 'kondisi_2': 'baik', 'kondisi_3': 'rusak', 'kondisi_4': 'baik',
+    'catatan_3': 'Meja goyang',
+}, follow_redirects=True)
+check('12.2 Check-in audit saved', b'berhasil' in resp.data)
+
+# View audit detail (as client)
+resp = c.get(f'/audit/{bok_id}', follow_redirects=True)
+check('12.3 Audit detail loads', resp.status_code == 200 and b'Check-in' in resp.data)
+
+# Management check-out audit
+c.get('/auth/logout', follow_redirects=True)
+c.post('/auth/login', data={'username': 'admin', 'password': 'admin123'}, follow_redirects=True)
+
+resp = c.get(f'/audit/check-out/{bok_id}', follow_redirects=True)
+check('12.4 Check-out form loads', resp.status_code == 200 and b'AC' in resp.data)
+
+resp = c.post(f'/audit/check-out/{bok_id}', data={
+    'kondisi_1': 'baik', 'kondisi_2': 'rusak', 'kondisi_3': 'rusak', 'kondisi_4': 'baik',
+    'catatan_2': 'Kasur penyok', 'catatan': 'Overall room OK, kasur perlu ganti',
+}, follow_redirects=True)
+check('12.5 Check-out audit saved', b'berhasil' in resp.data)
+
+# View audit comparison
+resp = c.get(f'/audit/{bok_id}', follow_redirects=True)
+check('12.6 Audit detail with comparison', resp.status_code == 200 and b'Check-out' in resp.data)
+
+# Management edit audit
+with app.app_context():
+    from models import RoomAudit
+    cin = RoomAudit.query.filter_by(booking_id=bok_id, tipe='check_in').first()
+    resp_edit = c.get(f'/audit/edit/{cin.id}', follow_redirects=True)
+    check('12.7 Edit audit form loads', resp_edit.status_code == 200)
+
+    resp_edit2 = c.post(f'/audit/edit/{cin.id}', data={
+        'kondisi_1': 'rusak', 'catatan_1': 'AC bocor',
+        'kondisi_2': 'baik', 'kondisi_3': 'baik', 'kondisi_4': 'baik',
+    }, follow_redirects=True)
+    check('12.8 Edit audit saved', resp_edit2.status_code == 200)
+
 # ====================== SUMMARY ======================
 print(f"\n{'='*60}")
 print(f"RESULTS: {len(passed)} passed, {len(failed)} failed, {len(passed)+len(failed)} total")
