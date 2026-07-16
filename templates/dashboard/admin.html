@@ -1,0 +1,357 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Admin - Sistem Manajemen Kos{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center">
+    <div>
+        <h1>Dashboard</h1>
+        <p>Ringkasan operasional kos</p>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card card border-0 h-100">
+            <div class="d-flex align-items-center gap-3">
+                <div class="stat-icon" style="background:var(--primary-light);color:var(--primary)">
+                    <i class="bi bi-door-open fs-4"></i>
+                </div>
+                <div>
+                    <div class="stat-value">{{ total_kamar }}</div>
+                    <div class="stat-label">Total Kamar</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card card border-0 h-100">
+            <div class="d-flex align-items-center gap-3">
+                <div class="stat-icon" style="background:#dcfce7;color:#166534">
+                    <i class="bi bi-person-fill fs-4"></i>
+                </div>
+                <div>
+                    <div class="stat-value">{{ kamar_terisi }}</div>
+                    <div class="stat-label">Kamar Terisi</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card card border-0 h-100">
+            <div class="d-flex align-items-center gap-3">
+                <div class="stat-icon" style="background:#fef3c7;color:#92400e">
+                    <i class="bi bi-door-closed fs-4"></i>
+                </div>
+                <div>
+                    <div class="stat-value">{{ kamar_tersedia }}</div>
+                    <div class="stat-label">Kamar Tersedia</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card card border-0 h-100">
+            <div class="d-flex align-items-center gap-3">
+                <div class="stat-icon" style="background:#dbeafe;color:#1e40af">
+                    <i class="bi bi-people-fill fs-4"></i>
+                </div>
+                <div>
+                    <div class="stat-value">{{ total_penghuni }}</div>
+                    <div class="stat-label">Total Penghuni</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="stat-card card border-0 h-100">
+            <div class="d-flex align-items-center gap-3">
+                <div class="stat-icon" style="background:#dcfce7;color:#166534">
+                    <i class="bi bi-graph-up-arrow fs-4"></i>
+                </div>
+                <div>
+                    <div class="stat-value">
+                        {% if pemasukan_bulan_ini is not none %}
+                        Rp{{ "{:,.0f}".format(pemasukan_bulan_ini) }}
+                        {% else %}
+                        Rp0
+                        {% endif %}
+                    </div>
+                    <div class="stat-label">Pemasukan Bulan Ini</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card card border-0 h-100">
+            <div class="d-flex align-items-center gap-3">
+                <div class="stat-icon" style="background:#fee2e2;color:#991b1b">
+                    <i class="bi bi-graph-down-arrow fs-4"></i>
+                </div>
+                <div>
+                    <div class="stat-value">
+                        {% if pengeluaran_bulan_ini is not none %}
+                        Rp{{ "{:,.0f}".format(pengeluaran_bulan_ini) }}
+                        {% else %}
+                        Rp0
+                        {% endif %}
+                    </div>
+                    <div class="stat-label">Pengeluaran Bulan Ini</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card card border-0 h-100">
+            <div class="d-flex align-items-center gap-3">
+                <div class="stat-icon" style="background:#fef3c7;color:#92400e">
+                    <i class="bi bi-clock-history fs-4"></i>
+                </div>
+                <div>
+                    <div class="stat-value">{{ tagihan_belum_dibayar }}</div>
+                    <div class="stat-label">Tagihan Belum Dibayar</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-lg-4 col-xl-4">
+        <div class="card border-0 h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-credit-card me-2 text-primary"></i>Pembayaran Terbaru</span>
+                <a href="{{ url_for('payments.index') }}" class="btn btn-sm btn-outline-primary">Lihat Semua</a>
+            </div>
+            <div class="card-body p-0">
+                {% if pembayaran_terbaru %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Penghuni</th>
+                                <th>Jumlah</th>
+                                <th>Tanggal</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in pembayaran_terbaru %}
+                            <tr>
+                                <td class="fw-medium">{{ p.booking.client.nama_lengkap }}</td>
+                                <td>Rp{{ "{:,.0f}".format(p.jumlah) }}</td>
+                                <td>
+                                    {% if p.tanggal_bayar %}
+                                    <span class="text-nowrap">{{ p.tanggal_bayar.strftime('%d/%m/%Y') }}</span>
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% set status = p.status|lower %}
+                                    {% if status == 'lunas' or status == 'dikonfirmasi' or status == 'confirmed' %}
+                                    <span class="badge badge-success">Lunas</span>
+                                    {% elif status == 'pending' %}
+                                    <span class="badge badge-warning">Pending</span>
+                                    {% elif status == 'expired' or status == 'kadaluarsa' %}
+                                    <span class="badge badge-danger">Kadaluarsa</span>
+                                    {% else %}
+                                    <span class="badge badge-secondary">{{ p.status }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-inbox"></i>
+                    <h5>Belum ada pembayaran</h5>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4 col-xl-4">
+        <div class="card border-0 h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-cart3 me-2 text-danger"></i>Pengeluaran Terbaru</span>
+                <a href="{{ url_for('accounting.index') }}" class="btn btn-sm btn-outline-primary">Lihat Semua</a>
+            </div>
+            <div class="card-body p-0">
+                {% if pengeluaran_terbaru %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Kategori</th>
+                                <th>Jumlah</th>
+                                <th>Tanggal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for e in pengeluaran_terbaru %}
+                            <tr>
+                                <td class="fw-medium">{{ e.kategori }}</td>
+                                <td class="text-danger">Rp{{ "{:,.0f}".format(e.jumlah) }}</td>
+                                <td>
+                                    {% if e.tanggal %}
+                                    <span class="text-nowrap">{{ e.tanggal.strftime('%d/%m/%Y') }}</span>
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% if e.deskripsi %}
+                            <tr class="border-0">
+                                <td colspan="3" class="pt-0 text-muted" style="font-size:.75rem">
+                                    <i class="bi bi-chat-quote me-1"></i>{{ e.deskripsi }}
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-inbox"></i>
+                    <h5>Belum ada pengeluaran</h5>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4 col-xl-4">
+        <div class="card border-0 h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-tools me-2 text-warning"></i>Permintaan Maintenance</span>
+                <a href="{{ url_for('maintenance.index') }}" class="btn btn-sm btn-outline-primary">Lihat Semua</a>
+            </div>
+            <div class="card-body p-0">
+                {% if permintaan_maintenance %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Kamar</th>
+                                <th>Deskripsi</th>
+                                <th>Prioritas</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for m in permintaan_maintenance %}
+                            <tr>
+                                <td class="fw-medium">
+                                    <i class="bi bi-door-open me-1 text-muted"></i>{{ m.room.nomor_kamar }}
+                                </td>
+                                <td style="max-width:160px">
+                                    <span class="d-inline-block text-truncate" style="max-width:100%">
+                                        {{ m.deskripsi }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% set prioritas = m.prioritas|lower %}
+                                    {% if prioritas == 'tinggi' or prioritas == 'high' or prioritas == 'urgent' %}
+                                    <span class="badge badge-danger">Tinggi</span>
+                                    {% elif prioritas == 'sedang' or prioritas == 'medium' %}
+                                    <span class="badge badge-warning">Sedang</span>
+                                    {% elif prioritas == 'rendah' or prioritas == 'low' %}
+                                    <span class="badge badge-info">Rendah</span>
+                                    {% else %}
+                                    <span class="badge badge-secondary">{{ m.prioritas }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% set status = m.status|lower %}
+                                    {% if status == 'dibuka' or status == 'open' or status == 'diajukan' %}
+                                    <span class="badge badge-info">Dibuka</span>
+                                    {% elif status == 'dikerjakan' or status == 'in_progress' or status == 'proses' %}
+                                    <span class="badge badge-warning">Dikerjakan</span>
+                                    {% elif status == 'selesai' or status == 'done' or status == 'completed' %}
+                                    <span class="badge badge-success">Selesai</span>
+                                    {% elif status == 'ditolak' or status == 'rejected' %}
+                                    <span class="badge badge-danger">Ditolak</span>
+                                    {% else %}
+                                    <span class="badge badge-secondary">{{ m.status }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-check2-all"></i>
+                    <h5>Tidak ada permintaan maintenance</h5>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-12">
+        <div class="card border-0">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-people me-2 text-primary"></i>Penghuni Aktif</span>
+                <a href="{{ url_for('clients.index') }}" class="btn btn-sm btn-outline-primary">Kelola Penghuni</a>
+            </div>
+            <div class="card-body p-0">
+                {% if penghuni %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Nama</th>
+                                <th>Kamar</th>
+                                <th>No. Telepon</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for h in penghuni %}
+                            <tr>
+                                <td class="fw-medium">
+                                    <i class="bi bi-person-circle me-2 text-muted"></i>{{ h.nama_lengkap }}
+                                </td>
+                                <td>
+                                    {% if h.kamar %}
+                                    <span class="badge bg-primary-subtle text-primary-emphasis">
+                                        <i class="bi bi-door-open me-1"></i>{{ h.kamar.nomor_kamar }}
+                                    </span>
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if h.nomor_telepon %}
+                                    <a href="tel:{{ h.nomor_telepon }}" class="text-decoration-none">{{ h.nomor_telepon }}</a>
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-person-plus"></i>
+                    <h5>Belum ada penghuni</h5>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

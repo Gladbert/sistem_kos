@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Kamar Tersedia - Sistem Kos{% endblock %}
+
+{% block content %}
+<div class="page-header text-center py-4">
+    <h1>Kamar Tersedia</h1>
+    <p class="text-muted mb-0">Pilih kamar yang sesuai dengan kebutuhan Anda</p>
+</div>
+
+<form method="GET" action="{{ url_for('rooms.public') }}">
+    <div class="filter-bar">
+        <select name="lantai" class="form-select">
+            <option value="">Semua Lantai</option>
+            {% for l in rooms|map(attribute='lantai')|unique|list|sort %}
+            <option value="{{ l }}" {% if request.args.get('lantai')|string == l|string %}selected{% endif %}>Lantai {{ l }}</option>
+            {% endfor %}
+        </select>
+        <select name="tipe" class="form-select">
+            <option value="">Semua Tipe</option>
+            <option value="Reguler" {% if request.args.get('tipe') == 'Reguler' %}selected{% endif %}>Reguler</option>
+            <option value="Deluxe" {% if request.args.get('tipe') == 'Deluxe' %}selected{% endif %}>Deluxe</option>
+            <option value="VIP" {% if request.args.get('tipe') == 'VIP' %}selected{% endif %}>VIP</option>
+        </select>
+        <div class="input-group" style="min-width:200px">
+            <input type="text" name="search" class="form-control" placeholder="Cari kamar..." value="{{ request.args.get('search', '') }}">
+            <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i></button>
+        </div>
+    </div>
+</form>
+
+{% if rooms %}
+<div class="row g-4">
+    {% for room in rooms %}
+    <div class="col-sm-6 col-lg-4">
+        <div class="room-card card">
+            <div class="room-header">
+                <div class="fw-medium mb-1">Kamar {{ room.nomor_kamar }}</div>
+                <div class="room-price">Rp{{ "{:,.0f}".format(room.harga_per_bulan) }}</div>
+                <div class="small opacity-75">/ bulan</div>
+            </div>
+            <div class="room-body">
+                <ul>
+                    <li><i class="bi bi-layers"></i>Lantai {{ room.lantai }}</li>
+                    <li><i class="bi bi-tag"></i>{{ room.tipe }}</li>
+                    {% if room.ukuran %}
+                    <li><i class="bi bi-arrows-angle-expand"></i>{{ room.ukuran }}</li>
+                    {% endif %}
+                </ul>
+                {% if room.fasilitas %}
+                <hr class="my-2">
+                <p class="small text-muted mb-1"><i class="bi bi-check-circle me-1 text-success"></i>Fasilitas:</p>
+                <p class="small mb-0">{{ room.fasilitas }}</p>
+                {% endif %}
+                {% if room.deskripsi %}
+                <hr class="my-2">
+                <p class="small text-muted mb-0">{{ room.deskripsi }}</p>
+                {% endif %}
+                <a href="{{ url_for('onboarding.daftar', room_id=room.id) }}" class="btn btn-primary w-100 mt-3">
+                    <i class="bi bi-person-plus me-1"></i>Daftar
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <i class="bi bi-door-closed"></i>
+    <h5>Tidak ada kamar tersedia</h5>
+    <p class="text-muted">Saat ini belum ada kamar yang tersedia. Silakan cek kembali nanti.</p>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}{% if vendor %}Edit Vendor{% else %}Tambah Vendor{% endif %} - Sistem Kos{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{% if vendor %}Edit Vendor{% else %}Tambah Vendor Baru{% endif %}</h1>
+    <p>{% if vendor %}Ubah data vendor{% else %}Masukkan data vendor baru{% endif %}</p>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card border-0">
+            <div class="card-body p-4">
+                <form method="POST" action="">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Nama <span class="text-danger">*</span></label>
+                            <input type="text" name="nama" class="form-control" value="{{ vendor.nama if vendor else '' }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">No. Telepon</label>
+                            <input type="text" name="no_telepon" class="form-control" value="{{ vendor.no_telepon if vendor else '' }}" placeholder="08xxxxxxxxxx">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Kategori</label>
+                            <select name="kategori" class="form-select">
+                                <option value="listrik" {% if vendor and vendor.kategori == 'listrik' %}selected{% endif %}>Listrik</option>
+                                <option value="air" {% if vendor and vendor.kategori == 'air' %}selected{% endif %}>Air</option>
+                                <option value="kebersihan" {% if vendor and vendor.kategori == 'kebersihan' %}selected{% endif %}>Kebersihan</option>
+                                <option value="maintenance" {% if vendor and vendor.kategori == 'maintenance' %}selected{% endif %}>Maintenance</option>
+                                <option value="lainnya" {% if not vendor or vendor.kategori == 'lainnya' %}selected{% endif %}>Lainnya</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Alamat</label>
+                            <textarea name="alamat" class="form-control" placeholder="Alamat vendor">{{ vendor.alamat if vendor else '' }}</textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Catatan</label>
+                            <textarea name="catatan" class="form-control" placeholder="Catatan tambahan tentang vendor">{{ vendor.catatan if vendor else '' }}</textarea>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save me-1"></i>Simpan
+                        </button>
+                        <a href="{{ url_for('maintenance.vendor_index') }}" class="btn btn-outline-secondary">Batal</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

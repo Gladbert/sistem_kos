@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Pembayaran - Sistem Kos{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center">
+    <div>
+        <h1>Pembayaran</h1>
+        <p>Daftar pembayaran kos</p>
+    </div>
+    {% if current_user.role in ('admin', 'management') %}
+    <a href="{{ url_for('payments.tambah') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-1"></i>Catat Pembayaran
+    </a>
+    {% endif %}
+</div>
+
+{% if current_user.role in ('admin', 'management') %}
+<form method="GET" action="{{ url_for('payments.index') }}">
+    <div class="filter-bar">
+        <select name="booking_id" class="form-select">
+            <option value="">Semua Penghuni</option>
+            {% for b in bookings %}
+            <option value="{{ b.id }}" {% if request.args.get('booking_id')|string == b.id|string %}selected{% endif %}>
+                {{ b.client.nama_lengkap }} - Kamar {{ b.room.nomor_kamar }}
+            </option>
+            {% endfor %}
+        </select>
+        <select name="status" class="form-select">
+            <option value="">Semua Status</option>
+            <option value="lunas" {% if request.args.get('status') == 'lunas' %}selected{% endif %}>Lunas</option>
+            <option value="tertunda" {% if request.args.get('status') == 'tertunda' %}selected{% endif %}>Tertunda</option>
+        </select>
+        <button class="btn btn-primary" type="submit"><i class="bi bi-funnel me-1"></i>Filter</button>
+        {% if request.args.get('booking_id') or request.args.get('status') %}
+        <a href="{{ url_for('payments.index') }}" class="btn btn-outline-secondary"><i class="bi bi-x-lg"></i></a>
+        {% endif %}
+    </div>
+</form>
+{% endif %}
+
+{% if payments %}
+<div class="card border-0">
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Penghuni</th>
+                    <th>Kamar</th>
+                    <th>Jumlah</th>
+                    <th>Bulan</th>
+                    <th>Tanggal Bayar</th>
+                    <th>Metode</th>
+                    <th>Status</th>
+                    {% if current_user.role in ('admin', 'management') %}
+                    <th class="text-end">Aksi</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in payments %}
+                <tr>
+                    <td class="fw-medium">{{ p.booking.client.nama_lengkap }}</td>
+                    <td>{{ p.booking.room.nomor_kamar }}</td>
+                    <td>Rp{{ "{:,.0f}".format(p.jumlah) }}</td>
+                    <td>{{ p.bulan_dibayar_untuk }}</td>
+                    <td>{{ p.tanggal_bayar.strftime('%d/%m/%Y') if p.tanggal_bayar else '-' }}</td>
+                    <td>{{ p.metode_bayar|title }}</td>
+                    <td>
+                        {% if p.status == 'lunas' %}
+                        <span class="badge badge-success">Lunas</span>
+                        {% elif p.status == 'tertunda' %}
+                        <span class="badge badge-warning">Tertunda</span>
+                        {% else %}
+                        <span class="badge badge-secondary">{{ p.status }}</span>
+                        {% endif %}
+                    </td>
+                    {% if current_user.role in ('admin', 'management') %}
+                    <td class="text-end">
+                        <a href="{{ url_for('payments.notifikasi_wa', booking_id=p.booking_id) }}" class="btn btn-sm btn-outline-success btn-icon" target="_blank" title="Kirim WA">
+                            <i class="bi bi-whatsapp"></i>
+                        </a>
+                        <a href="{{ url_for('payments.edit', id=p.id) }}" class="btn btn-sm btn-outline-primary btn-icon" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <form method="POST" action="{{ url_for('payments.hapus', id=p.id) }}" class="d-inline" onsubmit="return confirm('Yakin hapus pembayaran Rp{{ '{:,.0f}'.format(p.jumlah) }}?')">
+                            <button type="submit" class="btn btn-sm btn-outline-danger btn-icon" title="Hapus">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="empty-state">
+    <i class="bi bi-credit-card"></i>
+    <h5>Belum ada pembayaran</h5>
+    <p class="text-muted">Pembayaran akan muncul setelah dicatat.</p>
+    {% if current_user.role in ('admin', 'management') %}
+    <a href="{{ url_for('payments.tambah') }}" class="btn btn-primary mt-2">
+        <i class="bi bi-plus-lg me-1"></i>Catat Pembayaran
+    </a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

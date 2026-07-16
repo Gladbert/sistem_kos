@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}{% if mr %}Edit Maintenance{% else %}Ajukan Maintenance{% endif %} - Sistem Kos{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{% if mr %}Edit Permintaan Maintenance{% else %}Ajukan Permintaan Maintenance{% endif %}</h1>
+    <p>{% if mr %}Ubah data permintaan maintenance{% else %}Isi detail permintaan maintenance baru{% endif %}</p>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card border-0">
+            <div class="card-body p-4">
+                <form method="POST" action="">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Kamar</label>
+                            <select name="room_id" class="form-select" required>
+                                <option value="">Pilih Kamar</option>
+                                {% for r in rooms %}
+                                <option value="{{ r.id }}" {% if mr and mr.room_id == r.id %}selected{% endif %}>
+                                    {{ r.nomor_kamar }} ({{ r.tipe }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Vendor</label>
+                            <select name="vendor_id" class="form-select">
+                                <option value="">-- Pilih Vendor --</option>
+                                {% for v in vendors %}
+                                <option value="{{ v.id }}" {% if mr and mr.vendor_id == v.id %}selected{% endif %}>
+                                    {{ v.nama }} ({{ v.kategori }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Prioritas</label>
+                            <select name="prioritas" class="form-select">
+                                <option value="rendah" {% if mr and mr.prioritas == 'rendah' %}selected{% endif %}>Rendah</option>
+                                <option value="normal" {% if not mr or mr.prioritas == 'normal' %}selected{% endif %}>Normal</option>
+                                <option value="tinggi" {% if mr and mr.prioritas == 'tinggi' %}selected{% endif %}>Tinggi</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Status</label>
+                            <select name="status" class="form-select">
+                                <option value="diajukan" {% if mr and mr.status == 'diajukan' %}selected{% endif %}>Diajukan</option>
+                                <option value="diproses" {% if mr and mr.status == 'diproses' %}selected{% endif %}>Diproses</option>
+                                <option value="selesai" {% if mr and mr.status == 'selesai' %}selected{% endif %}>Selesai</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Biaya (Rp)</label>
+                            <input type="number" name="biaya" class="form-control" value="{{ mr.biaya if mr and mr.biaya else '' }}" min="0" step="0.01">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Deskripsi <span class="text-danger">*</span></label>
+                            <textarea name="deskripsi" class="form-control" required placeholder="Jelaskan masalah atau pekerjaan yang perlu dilakukan">{{ mr.deskripsi if mr else '' }}</textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Catatan</label>
+                            <textarea name="catatan" class="form-control" placeholder="Catatan tambahan">{{ mr.catatan if mr else '' }}</textarea>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save me-1"></i>Simpan
+                        </button>
+                        <a href="{{ url_for('maintenance.index') }}" class="btn btn-outline-secondary">Batal</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

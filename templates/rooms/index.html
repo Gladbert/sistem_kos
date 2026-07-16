@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Kelola Kamar - Sistem Kos{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center">
+    <div>
+        <h1>Kelola Kamar</h1>
+        <p>Daftar semua kamar kos</p>
+    </div>
+    <a href="{{ url_for('rooms.add') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-1"></i>Tambah Kamar
+    </a>
+</div>
+
+<form method="GET" action="{{ url_for('rooms.index') }}">
+    <div class="filter-bar">
+        <select name="lantai" class="form-select">
+            <option value="">Semua Lantai</option>
+            {% for l in rooms|map(attribute='lantai')|unique|list|sort %}
+            <option value="{{ l }}" {% if request.args.get('lantai')|string == l|string %}selected{% endif %}>Lantai {{ l }}</option>
+            {% endfor %}
+        </select>
+        <select name="status" class="form-select">
+            <option value="">Semua Status</option>
+            <option value="tersedia" {% if request.args.get('status') == 'tersedia' %}selected{% endif %}>Tersedia</option>
+            <option value="terisi" {% if request.args.get('status') == 'terisi' %}selected{% endif %}>Terisi</option>
+            <option value="diperbaiki" {% if request.args.get('status') == 'diperbaiki' %}selected{% endif %}>Diperbaiki</option>
+        </select>
+        <div class="input-group" style="min-width:200px">
+            <input type="text" name="search" class="form-control" placeholder="Cari kamar..." value="{{ request.args.get('search', '') }}">
+            <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i></button>
+        </div>
+    </div>
+</form>
+
+{% if rooms %}
+<div class="card border-0">
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>No. Kamar</th>
+                    <th>Lantai</th>
+                    <th>Tipe</th>
+                    <th>Harga/Bulan</th>
+                    <th>Status</th>
+                    <th>Penghuni</th>
+                    <th class="text-end">Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for room in rooms %}
+                <tr>
+                    <td class="fw-medium">{{ room.nomor_kamar }}</td>
+                    <td>Lantai {{ room.lantai }}</td>
+                    <td>{{ room.tipe }}</td>
+                    <td>Rp{{ "{:,.0f}".format(room.harga_per_bulan) }}</td>
+                    <td>
+                        {% set s = room.status|lower %}
+                        {% if s == 'tersedia' %}
+                        <span class="badge badge-success">Tersedia</span>
+                        {% elif s == 'terisi' %}
+                        <span class="badge badge-info">Terisi</span>
+                        {% elif s == 'diperbaiki' %}
+                        <span class="badge badge-warning">Diperbaiki</span>
+                        {% else %}
+                        <span class="badge badge-secondary">{{ room.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if room.booking_aktif %}
+                        <a href="{{ url_for('clients.detail', id=room.booking_aktif.client.id) }}" class="text-decoration-none">
+                            <i class="bi bi-person-circle me-1 text-muted"></i>{{ room.booking_aktif.client.nama_lengkap }}
+                        </a>
+                        {% else %}
+                        <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        <a href="{{ url_for('rooms.detail', id=room.id) }}" class="btn btn-sm btn-outline-secondary btn-icon" title="Detail">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                        <a href="{{ url_for('rooms.edit', id=room.id) }}" class="btn btn-sm btn-outline-primary btn-icon" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <form method="POST" action="{{ url_for('rooms.delete', id=room.id) }}" class="d-inline" onsubmit="return confirm('Yakin hapus kamar {{ room.nomor_kamar }}?')">
+                            <button type="submit" class="btn btn-sm btn-outline-danger btn-icon" title="Hapus">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="empty-state">
+    <i class="bi bi-door-open"></i>
+    <h5>Belum ada kamar</h5>
+    <p class="text-muted">Tambahkan kamar baru untuk mulai mengelola kos.</p>
+    <a href="{{ url_for('rooms.add') }}" class="btn btn-primary mt-2">
+        <i class="bi bi-plus-lg me-1"></i>Tambah Kamar
+    </a>
+</div>
+{% endif %}
+{% endblock %}

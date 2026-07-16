@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+{% block title %}Keuangan - Sistem Kos{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center">
+    <div>
+        <h1>Keuangan</h1>
+        <p>Ringkasan pemasukan & pengeluaran bulan {{ selected_bulan }} {{ tahun }}</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="{{ url_for('accounting.tambah_pengeluaran') }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i>Catat Pengeluaran
+        </a>
+        <a href="{{ url_for('accounting.laporan', tahun=tahun) }}" class="btn btn-outline-primary">
+            <i class="bi bi-file-text me-1"></i>Laporan Tahunan
+        </a>
+    </div>
+</div>
+
+<form method="GET" action="{{ url_for('accounting.index') }}">
+    <div class="filter-bar">
+        <select name="tahun" class="form-select">
+            {% for y in range(2023, 2031) %}
+            <option value="{{ y }}" {% if tahun == y %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+        </select>
+        <select name="bulan" class="form-select">
+            {% for b in range(1, 13) %}
+            <option value="{{ b }}" {% if bulan == b %}selected{% endif %}>{{ bulan_names[b-1] }}</option>
+            {% endfor %}
+        </select>
+        <button class="btn btn-primary" type="submit"><i class="bi bi-funnel me-1"></i>Tampilkan</button>
+    </div>
+</form>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="stat-card bg-white border-start border-4 border-success">
+            <div class="d-flex align-items-center gap-3">
+                <div class="stat-icon bg-success bg-opacity-10 text-success">
+                    <i class="bi bi-arrow-down-circle"></i>
+                </div>
+                <div>
+                    <div class="stat-value text-success">Rp{{ "{:,.0f}".format(pemasukan) }}</div>
+                    <div class="stat-label">Pemasukan</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card bg-white border-start border-4 border-danger">
+            <div class="d-flex align-items-center gap-3">
+                <div class="stat-icon bg-danger bg-opacity-10 text-danger">
+                    <i class="bi bi-arrow-up-circle"></i>
+                </div>
+                <div>
+                    <div class="stat-value text-danger">Rp{{ "{:,.0f}".format(pengeluaran) }}</div>
+                    <div class="stat-label">Pengeluaran</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card bg-white border-start border-4 {% if laba_rugi >= 0 %}border-info{% else %}border-danger{% endif %}">
+            <div class="d-flex align-items-center gap-3">
+                <div class="stat-icon {% if laba_rugi >= 0 %}bg-info bg-opacity-10 text-info{% else %}bg-danger bg-opacity-10 text-danger{% endif %}">
+                    <i class="bi bi-{% if laba_rugi >= 0 %}graph-up{% else %}graph-down{% endif %}"></i>
+                </div>
+                <div>
+                    <div class="stat-value {% if laba_rugi >= 0 %}text-info{% else %}text-danger{% endif %}">Rp{{ "{:,.0f}".format(laba_rugi) }}</div>
+                    <div class="stat-label">Laba / Rugi</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 mb-4">
+    <div class="card-header">Grafik Tahunan {{ tahun }}</div>
+    <div class="card-body">
+        <canvas id="chartKeuangan" height="100"></canvas>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card border-0 h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                Daftar Pemasukan
+                <span class="badge badge-success">{{ daftar_pemasukan|length }}</span>
+            </div>
+            {% if daftar_pemasukan %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Tanggal</th>
+                            <th>Penghuni</th>
+                            <th>Kamar</th>
+                            <th class="text-end">Jumlah</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in daftar_pemasukan %}
+                        <tr>
+                            <td>{{ p.tanggal_bayar.strftime('%d/%m/%Y') }}</td>
+                            <td class="fw-medium">{{ p.booking.client.nama_lengkap }}</td>
+                            <td>{{ p.booking.room.nomor_kamar }}</td>
+                            <td class="text-end text-success fw-medium">Rp{{ "{:,.0f}".format(p.jumlah) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="card-body">
+                <div class="empty-state">
+                    <i class="bi bi-cash-stack"></i>
+                    <h5>Belum ada pemasukan</h5>
+                    <p class="text-muted">Tidak ada pembayaran lunas bulan ini.</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card border-0 h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                Daftar Pengeluaran
+                <span class="badge badge-warning">{{ daftar_pengeluaran|length }}</span>
+            </div>
+            {% if daftar_pengeluaran %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Tanggal</th>
+                            <th>Kategori</th>
+                            <th>Deskripsi</th>
+                            <th class="text-end">Jumlah</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for e in daftar_pengeluaran %}
+                        <tr>
+                            <td>{{ e.tanggal.strftime('%d/%m/%Y') }}</td>
+                            <td><span class="badge badge-secondary">{{ e.kategori }}</span></td>
+                            <td>{{ e.deskripsi|truncate(30) if e.deskripsi else '-' }}</td>
+                            <td class="text-end text-danger fw-medium">Rp{{ "{:,.0f}".format(e.jumlah) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="card-body">
+                <div class="empty-state">
+                    <i class="bi bi-cart"></i>
+                    <h5>Belum ada pengeluaran</h5>
+                    <p class="text-muted">Tidak ada pengeluaran bulan ini.</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var ctx = document.getElementById('chartKeuangan').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: {{ bulan_names|tojson }},
+            datasets: [{
+                label: 'Pemasukan',
+                data: {{ pemasukan_chart|tojson }},
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16,185,129,0.1)',
+                fill: true,
+                tension: 0.3,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }, {
+                label: 'Pengeluaran',
+                data: {{ pengeluaran_chart|tojson }},
+                borderColor: '#ef4444',
+                backgroundColor: 'rgba(239,68,68,0.1)',
+                fill: true,
+                tension: 0.3,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'top' }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function (v) { return 'Rp' + v.toLocaleString('id-ID'); }
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

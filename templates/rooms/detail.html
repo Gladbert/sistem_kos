@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Detail Kamar - Sistem Kos{% endblock %}
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="page-header d-flex flex-wrap justify-content-between align-items-center">
+        <div>
+            <a href="{{ url_for('rooms.index') }}" class="btn btn-outline-secondary btn-sm mb-2">
+                <i class="bi bi-arrow-left me-1"></i>Kembali
+            </a>
+            <h1>Kamar {{ room.nomor_kamar }}</h1>
+        </div>
+        <a href="{{ url_for('rooms.edit', id=room.id) }}" class="btn btn-primary">
+            <i class="bi bi-pencil me-1"></i>Edit Kamar
+        </a>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-md-6">
+            <div class="card border-0 h-100">
+                <div class="card-header">Informasi Kamar</div>
+                <div class="card-body">
+                    <table class="table table-borderless">
+                        <tr><td class="text-muted" style="width:120px">Nomor Kamar</td><td class="fw-medium">{{ room.nomor_kamar }}</td></tr>
+                        <tr><td class="text-muted">Lantai</td><td class="fw-medium">{{ room.lantai }}</td></tr>
+                        <tr><td class="text-muted">Tipe</td><td><span class="badge bg-primary">{{ room.tipe }}</span></td></tr>
+                        <tr><td class="text-muted">Harga</td><td class="fw-medium fs-5 text-primary">Rp{{ "{:,.0f}".format(room.harga_per_bulan) }}/bln</td></tr>
+                        <tr><td class="text-muted">Ukuran</td><td class="fw-medium">{{ room.ukuran or '-' }}</td></tr>
+                        <tr><td class="text-muted">Status</td>
+                            <td>
+                                {% if room.status == 'tersedia' %}
+                                <span class="badge badge-success">Tersedia</span>
+                                {% elif room.status == 'terisi' %}
+                                <span class="badge badge-warning">Terisi</span>
+                                {% else %}
+                                <span class="badge badge-secondary">{{ room.status }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                    {% if room.fasilitas %}
+                    <h6 class="fw-semibold mt-3">Fasilitas</h6>
+                    <p>{{ room.fasilitas }}</p>
+                    {% endif %}
+                    {% if room.deskripsi %}
+                    <h6 class="fw-semibold mt-3">Deskripsi</h6>
+                    <p class="text-muted">{{ room.deskripsi }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card border-0 h-100">
+                <div class="card-header">Penghuni Saat Ini</div>
+                <div class="card-body">
+                    {% if booking %}
+                    <table class="table table-borderless">
+                        <tr><td class="text-muted" style="width:120px">Nama</td>
+                            <td class="fw-medium">
+                                <a href="{{ url_for('clients.detail', id=booking.client.id) }}" class="text-decoration-none">
+                                    <i class="bi bi-person-circle me-1"></i>{{ booking.client.nama_lengkap }}
+                                </a>
+                            </td>
+                        </tr>
+                        <tr><td class="text-muted">Check-in</td><td class="fw-medium">{{ booking.tanggal_masuk.strftime('%d/%m/%Y') }}</td></tr>
+                        {% if booking.tanggal_keluar %}
+                        <tr><td class="text-muted">Check-out</td><td class="fw-medium">{{ booking.tanggal_keluar.strftime('%d/%m/%Y') }}</td></tr>
+                        {% endif %}
+                        <tr><td class="text-muted">Deposit</td><td class="fw-medium">Rp{{ "{:,.0f}".format(booking.deposit) }}</td></tr>
+                    </table>
+                    {% else %}
+                    <div class="empty-state">
+                        <i class="bi bi-person-plus"></i>
+                        <h5>Kamar kosong</h5>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mt-2">
+        <div class="col-12">
+            <div class="card border-0">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-tools me-2 text-warning"></i>Riwayat Maintenance</span>
+                </div>
+                <div class="card-body p-0">
+                    {% if maintenance %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Tanggal</th>
+                                    <th>Deskripsi</th>
+                                    <th>Vendor</th>
+                                    <th>Status</th>
+                                    <th>Biaya</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for m in maintenance %}
+                                <tr>
+                                    <td>{{ m.tanggal_masuk.strftime('%d/%m/%Y') }}</td>
+                                    <td>{{ m.deskripsi }}</td>
+                                    <td>{{ m.vendor.nama if m.vendor else '-' }}</td>
+                                    <td>
+                                        {% if m.status == 'diajukan' %}<span class="badge badge-info">Diajukan</span>
+                                        {% elif m.status == 'diproses' %}<span class="badge badge-warning">Diproses</span>
+                                        {% elif m.status == 'selesai' %}<span class="badge badge-success">Selesai</span>
+                                        {% else %}<span class="badge badge-secondary">{{ m.status }}</span>{% endif %}
+                                    </td>
+                                    <td>{% if m.biaya > 0 %}Rp{{ "{:,.0f}".format(m.biaya) }}{% else %}-{% endif %}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="empty-state">
+                        <i class="bi bi-check2-all"></i>
+                        <h5>Tidak ada riwayat maintenance</h5>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "abctunnel": {
+      "api": "openai",
+      "options": {
+        "apiKey": "sk-88fa17800d3b0b64-qdn5pl-cfbf33e1",
+        "baseURL": "https://rlyn7ix.abc-tunnel.us/v1"
+      },
+      "models": {
+        "allfree": {
+          "name": "allfree",
+          "tool_call": true,
+          "limit": {
+            "context": 128000,
+            "output": 8192
+          }
+        }
+      }
+    }
+  }
+}

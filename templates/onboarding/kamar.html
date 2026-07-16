@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% block title %}Daftar Kamar - Sistem Kos{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1>Daftar Kamar</h1>
+        <p>Semua kamar kos yang tersedia saat ini</p>
+    </div>
+    <a href="{{ url_for('onboarding.index') }}" class="btn btn-outline-primary">
+        <i class="bi bi-house-heart me-1"></i>Beranda
+    </a>
+</div>
+
+<form method="GET" action="{{ url_for('onboarding.lihat_kamar') }}">
+    <div class="filter-bar">
+        <select name="tipe" class="form-select">
+            <option value="">Semua Tipe</option>
+            {% for t in rooms|map(attribute='tipe')|unique|list|sort %}
+            <option value="{{ t }}" {% if request.args.get('tipe') == t %}selected{% endif %}>{{ t }}</option>
+            {% endfor %}
+        </select>
+        <select name="lantai" class="form-select">
+            <option value="">Semua Lantai</option>
+            {% for l in rooms|map(attribute='lantai')|unique|list|sort %}
+            <option value="{{ l }}" {% if request.args.get('lantai')|string == l|string %}selected{% endif %}>Lantai {{ l }}</option>
+            {% endfor %}
+        </select>
+        <div class="input-group" style="min-width:180px">
+            <span class="input-group-text text-muted bg-white">Rp</span>
+            <input type="number" name="harga_min" class="form-control" placeholder="Min" value="{{ request.args.get('harga_min', '') }}" min="0" step="50000">
+            <span class="input-group-text text-muted bg-white border-start-0">-</span>
+            <input type="number" name="harga_max" class="form-control" placeholder="Max" value="{{ request.args.get('harga_max', '') }}" min="0" step="50000">
+        </div>
+        <div class="input-group" style="min-width:180px">
+            <input type="text" name="search" class="form-control" placeholder="Cari kamar..." value="{{ request.args.get('search', '') }}">
+            <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i></button>
+        </div>
+        <a href="{{ url_for('onboarding.lihat_kamar') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-x-circle me-1"></i>Reset
+        </a>
+    </div>
+</form>
+
+{% set tipe_filter = request.args.get('tipe', '') %}
+{% set lantai_filter = request.args.get('lantai', '') %}
+{% set harga_min = request.args.get('harga_min', '') %}
+{% set harga_max = request.args.get('harga_max', '') %}
+{% set search = request.args.get('search', '').lower() %}
+
+{% set filtered = rooms %}
+{% if tipe_filter %}
+    {% set filtered = filtered|selectattr('tipe', 'equalto', tipe_filter)|list %}
+{% endif %}
+{% if lantai_filter %}
+    {% set filtered = filtered|selectattr('lantai', 'equalto', lantai_filter|int)|list %}
+{% endif %}
+{% if harga_min %}
+    {% set filtered = filtered|selectattr('harga_per_bulan', 'ge', harga_min|float)|list %}
+{% endif %}
+{% if harga_max %}
+    {% set filtered = filtered|selectattr('harga_per_bulan', 'le', harga_max|float)|list %}
+{% endif %}
+{% if search %}
+    {% set ns = namespace(filtered=[]) %}
+    {% for r in filtered %}
+    {% if search in r.nomor_kamar.lower() or (r.fasilitas and search in r.fasilitas.lower()) %}
+    {% set ns.filtered = ns.filtered + [r] %}
+    {% endif %}
+    {% endfor %}
+    {% set filtered = ns.filtered %}
+{% endif %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <span class="text-muted small">{{ filtered|length }} kamar ditemukan</span>
+    <div class="btn-group btn-group-sm" role="group">
+        <button type="button" class="btn btn-outline-primary active" id="gridView" title="Grid">
+            <i class="bi bi-grid-3x3-gap"></i>
+        </button>
+        <button type="button" class="btn btn-outline-primary" id="listView" title="List">
+            <i class="bi bi-list-ul"></i>
+        </button>
+    </div>
+</div>
+
+{% if filtered %}
+<div class="row g-4" id="roomGrid">
+    {% for room in filtered %}
+    <div class="col-sm-6 col-lg-4 room-col">
+        <div class="room-card card">
+            <div class="room-header position-relative">
+                <div class="fw-medium mb-1">Kamar {{ room.nomor_kamar }}</div>
+                <div class="room-price">Rp{{ "{:,.0f}".format(room.harga_per_bulan) }}</div>
+                <div class="small opacity-75">/ bulan</div>
+                <span class="position-absolute top-0 end-0 m-2 badge {% if room.status == 'tersedia' %}badge-success{% else %}badge-danger{% endif %}">
+                    {% if room.status == 'tersedia' %}Tersedia{% else %}Terisi{% endif %}
+                </span>
+            </div>
+            <div class="room-body">
+                <ul>
+                    <li><i class="bi bi-tag"></i>{{ room.tipe }}</li>
+                    <li><i class="bi bi-layers"></i>Lantai {{ room.lantai }}</li>
+                    {% if room.fasilitas %}
+                    <li><i class="bi bi-check-circle text-success"></i>{{ room.fasilitas[:80] }}{% if room.fasilitas|length > 80 %}...{% endif %}</li>
+                    {% endif %}
+                </ul>
+                {% if room.deskripsi %}
+                <hr class="my-2">
+                <p class="small text-muted mb-0">{{ room.deskripsi[:120] }}{% if room.deskripsi|length > 120 %}...{% endif %}</p>
+                {% endif %}
+                <div class="d-flex gap-2 mt-3">
+                    <a href="{{ url_for('onboarding.detail_kamar', id=room.id) }}" class="btn btn-outline-primary flex-fill">
+                        <i class="bi bi-eye me-1"></i>Detail
+                    </a>
+                    {% if room.status == 'tersedia' %}
+                    <a href="{{ url_for('onboarding.daftar', room_id=room.id) }}" class="btn btn-primary flex-fill">
+                        <i class="bi bi-person-plus me-1"></i>Daftar
+                    </a>
+                    {% else %}
+                    <button class="btn btn-secondary flex-fill" disabled>
+                        <i class="bi bi-lock me-1"></i>Terisi
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="table-responsive d-none" id="roomList">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Kamar</th>
+                <th>Tipe</th>
+                <th>Lantai</th>
+                <th>Harga/bulan</th>
+                <th>Fasilitas</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for room in filtered %}
+            <tr>
+                <td><strong>{{ room.nomor_kamar }}</strong></td>
+                <td>{{ room.tipe }}</td>
+                <td>{{ room.lantai }}</td>
+                <td>Rp{{ "{:,.0f}".format(room.harga_per_bulan) }}</td>
+                <td class="small text-muted">{{ room.fasilitas[:50] }}{% if room.fasilitas and room.fasilitas|length > 50 %}...{% endif %}</td>
+                <td>
+                    <span class="badge {% if room.status == 'tersedia' %}badge-success{% else %}badge-danger{% endif %}">
+                        {{ room.status|title }}
+                    </span>
+                </td>
+                <td class="text-end">
+                    <a href="{{ url_for('onboarding.detail_kamar', id=room.id) }}" class="btn btn-sm btn-outline-primary me-1">
+                        <i class="bi bi-eye"></i>
+                    </a>
+                    {% if room.status == 'tersedia' %}
+                    <a href="{{ url_for('onboarding.daftar', room_id=room.id) }}" class="btn btn-sm btn-primary">
+                        <i class="bi bi-person-plus"></i>
+                    </a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state">
+    <i class="bi bi-search"></i>
+    <h5>Kamar tidak ditemukan</h5>
+    <p class="text-muted">Tidak ada kamar yang sesuai filter yang dipilih. Coba ubah kriteria pencarian.</p>
+    <a href="{{ url_for('onboarding.lihat_kamar') }}" class="btn btn-primary mt-2">
+        <i class="bi bi-arrow-counterclockwise me-1"></i>Reset Filter
+    </a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function() {
+    const grid = document.getElementById('roomGrid');
+    const list = document.getElementById('roomList');
+    const gridBtn = document.getElementById('gridView');
+    const listBtn = document.getElementById('listView');
+    const saved = localStorage.getItem('kamarView') || 'grid';
+
+    function setView(v) {
+        if (v === 'list') {
+            grid?.classList.add('d-none');
+            list?.classList.remove('d-none');
+            gridBtn?.classList.remove('active');
+            listBtn?.classList.add('active');
+        } else {
+            grid?.classList.remove('d-none');
+            list?.classList.add('d-none');
+            gridBtn?.classList.add('active');
+            listBtn?.classList.remove('active');
+        }
+        localStorage.setItem('kamarView', v);
+    }
+
+    gridBtn?.addEventListener('click', function() { setView('grid'); });
+    listBtn?.addEventListener('click', function() { setView('list'); });
+    setView(saved);
+})();
+</script>
+{% endblock %}

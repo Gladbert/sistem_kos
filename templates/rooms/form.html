@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}{% if room %}Edit Kamar{% else %}Tambah Kamar{% endif %} - Sistem Kos{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{% if room %}Edit Kamar{% else %}Tambah Kamar Baru{% endif %}</h1>
+    <p>{% if room %}Ubah data kamar{% else %}Masukkan data kamar baru{% endif %}</p>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card border-0">
+            <div class="card-body p-4">
+                <form method="POST" action="">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Nomor Kamar</label>
+                            <input type="text" name="nomor_kamar" class="form-control" value="{{ room.nomor_kamar if room else '' }}" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Lantai</label>
+                            <input type="number" name="lantai" class="form-control" value="{{ room.lantai if room else '' }}" min="1" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Tipe</label>
+                            <select name="tipe" class="form-select" required>
+                                <option value="">Pilih Tipe</option>
+                                <option value="Reguler" {% if room and room.tipe == 'Reguler' %}selected{% endif %}>Reguler</option>
+                                <option value="Deluxe" {% if room and room.tipe == 'Deluxe' %}selected{% endif %}>Deluxe</option>
+                                <option value="VIP" {% if room and room.tipe == 'VIP' %}selected{% endif %}>VIP</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Harga per Bulan (Rp)</label>
+                            <input type="number" name="harga_per_bulan" class="form-control" value="{{ room.harga_per_bulan if room else '' }}" min="0" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Ukuran</label>
+                            <input type="text" name="ukuran" class="form-control" value="{{ room.ukuran if room else '' }}" placeholder="Contoh: 4x5 m&sup2;">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Status</label>
+                            <select name="status" class="form-select">
+                                <option value="tersedia" {% if not room or room.status == 'tersedia' %}selected{% endif %}>Tersedia</option>
+                                <option value="terisi" {% if room and room.status == 'terisi' %}selected{% endif %}>Terisi</option>
+                                <option value="diperbaiki" {% if room and room.status == 'diperbaiki' %}selected{% endif %}>Diperbaiki</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Fasilitas</label>
+                            <textarea name="fasilitas" class="form-control" placeholder="AC, Kasur, Lemari, Kamar Mandi Dalam, dll">{{ room.fasilitas if room else '' }}</textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Deskripsi</label>
+                            <textarea name="deskripsi" class="form-control" placeholder="Informasi tambahan tentang kamar">{{ room.deskripsi if room else '' }}</textarea>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save me-1"></i>Simpan
+                        </button>
+                        <a href="{{ url_for('rooms.index') }}" class="btn btn-outline-secondary">Batal</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

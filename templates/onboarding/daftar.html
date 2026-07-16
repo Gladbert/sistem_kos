@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Daftar Sewa - Sistem Kos{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <div class="page-header">
+        <a href="{{ url_for('onboarding.index') }}" class="btn btn-outline-secondary btn-sm mb-2">
+            <i class="bi bi-arrow-left me-1"></i>Kembali
+        </a>
+        <h1>Daftar Sewa Kamar</h1>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-5">
+            <div class="card border-0">
+                <div class="card-body">
+                    <div class="text-center mb-3">
+                        <div class="room-header" style="background:var(--primary);color:white;padding:.75rem 1rem;border-radius:var(--radius-sm)">
+                            <h4 class="mb-0">Kamar {{ room.nomor_kamar }}</h4>
+                        </div>
+                    </div>
+                    <table class="table table-borderless">
+                        <tr>
+                            <td class="text-muted">Tipe</td>
+                            <td class="fw-medium">{{ room.tipe }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Lantai</td>
+                            <td class="fw-medium">{{ room.lantai }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Harga</td>
+                            <td class="fw-medium text-primary fs-5">Rp{{ "{:,.0f}".format(room.harga_per_bulan) }}/bln</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Deposit</td>
+                            <td class="fw-medium">Rp{{ "{:,.0f}".format(room.harga_per_bulan) }} (1 bulan)</td>
+                        </tr>
+                    </table>
+                    {% if room.fasilitas %}
+                    <h6 class="fw-semibold">Fasilitas</h6>
+                    <p class="text-muted small">{{ room.fasilitas }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-7">
+            <div class="card border-0">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">Form Pendaftaran</h5>
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label class="form-label">Nama Lengkap</label>
+                            <input type="text" class="form-control" value="{{ current_user.nama_lengkap }}" disabled>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Tanggal Masuk*</label>
+                            <input type="date" name="tanggal_masuk" class="form-control" required
+                                min="{{ date_today.isoformat() }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Durasi Sewa</label>
+                            <select name="durasi" class="form-select">
+                                <option value="1">1 Bulan</option>
+                                <option value="3">3 Bulan</option>
+                                <option value="6">6 Bulan</option>
+                                <option value="12" selected>12 Bulan</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Catatan (opsional)</label>
+                            <textarea name="deposit_catatan" class="form-control" rows="2"></textarea>
+                        </div>
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Deposit sebesar Rp{{ "{:,.0f}".format(room.harga_per_bulan) }} dibayarkan di awal.
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-check-lg me-1"></i>Konfirmasi Pemesanan
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

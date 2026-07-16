@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Maintenance - Sistem Kos{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center">
+    <div>
+        <h1>Maintenance</h1>
+        <p>Daftar permintaan maintenance</p>
+    </div>
+    <a href="{{ url_for('maintenance.tambah') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-1"></i>Ajukan
+    </a>
+</div>
+
+<form method="GET" action="{{ url_for('maintenance.index') }}">
+    <div class="filter-bar">
+        <select name="status" class="form-select" onchange="this.form.submit()">
+            <option value="">Semua Status</option>
+            <option value="diajukan" {% if request.args.get('status') == 'diajukan' %}selected{% endif %}>Diajukan</option>
+            <option value="diproses" {% if request.args.get('status') == 'diproses' %}selected{% endif %}>Diproses</option>
+            <option value="selesai" {% if request.args.get('status') == 'selesai' %}selected{% endif %}>Selesai</option>
+        </select>
+    </div>
+</form>
+
+{% if requests %}
+<div class="card border-0">
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Kamar</th>
+                    <th>Deskripsi</th>
+                    <th>Vendor</th>
+                    <th>Prioritas</th>
+                    <th>Tanggal Masuk</th>
+                    <th>Status</th>
+                    <th>Biaya</th>
+                    <th class="text-end">Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for mr in requests %}
+                <tr>
+                    <td class="fw-medium">{{ mr.room.nomor_kamar }}</td>
+                    <td>{{ mr.deskripsi|truncate(40) }}</td>
+                    <td>{{ mr.vendor.nama if mr.vendor else '-' }}</td>
+                    <td>
+                        {% set p = mr.prioritas|lower %}
+                        {% if p == 'tinggi' %}
+                        <span class="badge badge-danger">Tinggi</span>
+                        {% elif p == 'normal' %}
+                        <span class="badge badge-warning">Normal</span>
+                        {% elif p == 'rendah' %}
+                        <span class="badge badge-info">Rendah</span>
+                        {% else %}
+                        <span class="badge badge-secondary">{{ mr.prioritas }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ mr.tanggal_masuk.strftime('%d/%m/%Y') if mr.tanggal_masuk else '-' }}</td>
+                    <td>
+                        {% set s = mr.status|lower %}
+                        {% if s == 'diajukan' %}
+                        <span class="badge badge-info">Diajukan</span>
+                        {% elif s == 'diproses' %}
+                        <span class="badge badge-warning">Diproses</span>
+                        {% elif s == 'selesai' %}
+                        <span class="badge badge-success">Selesai</span>
+                        {% else %}
+                        <span class="badge badge-secondary">{{ mr.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{% if mr.biaya and mr.biaya > 0 %}Rp{{ "{:,.0f}".format(mr.biaya) }}{% else %}-{% endif %}</td>
+                    <td class="text-end">
+                        <a href="{{ url_for('maintenance.edit', id=mr.id) }}" class="btn btn-sm btn-outline-primary btn-icon" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        {% if mr.vendor and mr.vendor.no_telepon %}
+                        <a href="{{ url_for('maintenance.vendor_hubungi', mr_id=mr.id) }}" class="btn btn-sm btn-outline-success btn-icon" title="Hubungi Vendor" target="_blank">
+                            <i class="bi bi-whatsapp"></i>
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="empty-state">
+    <i class="bi bi-tools"></i>
+    <h5>Belum ada permintaan maintenance</h5>
+    <p class="text-muted">Ajukan permintaan maintenance baru untuk mulai.</p>
+    <a href="{{ url_for('maintenance.tambah') }}" class="btn btn-primary mt-2">
+        <i class="bi bi-plus-lg me-1"></i>Ajukan
+    </a>
+</div>
+{% endif %}
+{% endblock %}

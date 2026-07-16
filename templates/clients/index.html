@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Kelola Penghuni - Sistem Kos{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center">
+    <div>
+        <h1>Kelola Penghuni</h1>
+        <p>Daftar semua penghuni kos</p>
+    </div>
+</div>
+
+<form method="GET" action="{{ url_for('clients.index') }}">
+    <div class="filter-bar">
+        <div class="input-group" style="min-width:280px">
+            <input type="text" name="search" class="form-control" placeholder="Cari nama, username, email, atau telepon..." value="{{ request.args.get('search', '') }}">
+            <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i></button>
+            {% if request.args.get('search') %}
+            <a href="{{ url_for('clients.index') }}" class="btn btn-outline-secondary"><i class="bi bi-x-lg"></i></a>
+            {% endif %}
+        </div>
+    </div>
+</form>
+
+{% if clients %}
+<div class="card border-0">
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Nama</th>
+                    <th>Username</th>
+                    <th>No Telepon</th>
+                    <th>Status</th>
+                    <th>Kamar</th>
+                    <th class="text-end">Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for client in clients %}
+                <tr>
+                    <td class="fw-medium">{{ client.nama_lengkap }}</td>
+                    <td>{{ client.username }}</td>
+                    <td>
+                        {% if client.no_telepon %}
+                        <a href="tel:{{ client.no_telepon }}" class="text-decoration-none">{{ client.no_telepon }}</a>
+                        {% else %}
+                        <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if client.is_active %}
+                        <span class="badge badge-success">Aktif</span>
+                        {% else %}
+                        <span class="badge badge-danger">Tidak Aktif</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if client.id in aktif_ids %}
+                        <span class="badge badge-info">Menempati</span>
+                        {% else %}
+                        <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        <a href="{{ url_for('clients.detail', id=client.id) }}" class="btn btn-sm btn-outline-secondary btn-icon" title="Detail">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                        <a href="{{ url_for('clients.edit', id=client.id) }}" class="btn btn-sm btn-outline-primary btn-icon" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <form method="POST" action="{{ url_for('clients.nonaktifkan', id=client.id) }}" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-outline-{{ 'warning' if client.is_active else 'success' }} btn-icon" title="{{ 'Nonaktifkan' if client.is_active else 'Aktifkan' }}">
+                                <i class="bi bi-{{ 'pause-circle' if client.is_active else 'play-circle' }}"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="empty-state">
+    <i class="bi bi-people"></i>
+    <h5>{% if request.args.get('search') %}Penghuni tidak ditemukan{% else %}Belum ada penghuni{% endif %}</h5>
+    <p class="text-muted">{% if request.args.get('search') %}Coba gunakan kata kunci lain.{% else %}Penghuni akan muncul setelah mendaftar.{% endif %}</p>
+</div>
+{% endif %}
+{% endblock %}

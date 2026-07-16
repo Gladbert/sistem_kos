@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Vendor - Sistem Kos{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center">
+    <div>
+        <h1>Vendor</h1>
+        <p>Daftar vendor maintenance</p>
+    </div>
+    <a href="{{ url_for('maintenance.vendor_tambah') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-1"></i>Tambah Vendor
+    </a>
+</div>
+
+{% if vendors %}
+<div class="card border-0">
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Nama</th>
+                    <th>Kategori</th>
+                    <th>No. Telepon</th>
+                    <th>Alamat</th>
+                    <th class="text-end">Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in vendors %}
+                <tr>
+                    <td class="fw-medium">{{ v.nama }}</td>
+                    <td><span class="badge badge-secondary">{{ v.kategori }}</span></td>
+                    <td>{{ v.no_telepon if v.no_telepon else '-' }}</td>
+                    <td>{{ v.alamat|truncate(30) if v.alamat else '-' }}</td>
+                    <td class="text-end">
+                        <a href="{{ url_for('maintenance.vendor_edit', id=v.id) }}" class="btn btn-sm btn-outline-primary btn-icon" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <form method="POST" action="{{ url_for('maintenance.vendor_hapus', id=v.id) }}" class="d-inline" onsubmit="return confirm('Yakin hapus vendor {{ v.nama }}?')">
+                            <button type="submit" class="btn btn-sm btn-outline-danger btn-icon" title="Hapus">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                        {% if v.no_telepon %}
+                        <a href="{{ url_for('maintenance.vendor_wa', id=v.id) }}" class="btn btn-sm btn-outline-success btn-icon" title="Hubungi WA" target="_blank">
+                            <i class="bi bi-whatsapp"></i>
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="empty-state">
+    <i class="bi bi-truck"></i>
+    <h5>Belum ada vendor</h5>
+    <p class="text-muted">Tambahkan vendor untuk mulai mengelola maintenance.</p>
+    <a href="{{ url_for('maintenance.vendor_tambah') }}" class="btn btn-primary mt-2">
+        <i class="bi bi-plus-lg me-1"></i>Tambah Vendor
+    </a>
+</div>
+{% endif %}
+{% endblock %}

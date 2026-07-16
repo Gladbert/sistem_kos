@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}{% if expense %}Edit Pengeluaran{% else %}Catat Pengeluaran{% endif %} - Sistem Kos{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{% if expense %}Edit Pengeluaran{% else %}Catat Pengeluaran Baru{% endif %}</h1>
+    <p>{% if expense %}Ubah data pengeluaran{% else %}Masukkan data pengeluaran baru{% endif %}</p>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card border-0">
+            <div class="card-body p-4">
+                <form method="POST" action="">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Kategori</label>
+                            <select name="kategori" class="form-select" required>
+                                <option value="">Pilih Kategori</option>
+                                <option value="listrik" {% if expense and expense.kategori == 'listrik' %}selected{% endif %}>Listrik</option>
+                                <option value="air" {% if expense and expense.kategori == 'air' %}selected{% endif %}>Air</option>
+                                <option value="kebersihan" {% if expense and expense.kategori == 'kebersihan' %}selected{% endif %}>Kebersihan</option>
+                                <option value="maintenance" {% if expense and expense.kategori == 'maintenance' %}selected{% endif %}>Maintenance</option>
+                                <option value="gaji" {% if expense and expense.kategori == 'gaji' %}selected{% endif %}>Gaji</option>
+                                <option value="lainnya" {% if expense and expense.kategori == 'lainnya' %}selected{% endif %}>Lainnya</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Jumlah (Rp)</label>
+                            <input type="number" name="jumlah" class="form-control" value="{{ expense.jumlah if expense else '' }}" min="0" step="0.01" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Tanggal</label>
+                            <input type="date" name="tanggal" class="form-control" value="{{ expense.tanggal.strftime('%Y-%m-%d') if expense else '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Vendor</label>
+                            <select name="vendor_id" class="form-select">
+                                <option value="">-- Pilih Vendor --</option>
+                                {% for v in vendors %}
+                                <option value="{{ v.id }}" {% if expense and expense.vendor_id == v.id %}selected{% endif %}>
+                                    {{ v.nama }} ({{ v.kategori }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Deskripsi</label>
+                            <textarea name="deskripsi" class="form-control" placeholder="Keterangan pengeluaran">{{ expense.deskripsi if expense else '' }}</textarea>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save me-1"></i>Simpan
+                        </button>
+                        <a href="{{ url_for('accounting.index') }}" class="btn btn-outline-secondary">Batal</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

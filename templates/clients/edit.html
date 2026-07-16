@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Edit Penghuni - Sistem Kos{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Edit Penghuni</h1>
+    <p>{{ client.nama_lengkap }}</p>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card border-0">
+            <div class="card-body p-4">
+                <form method="POST" action="">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Nama Lengkap</label>
+                            <input type="text" name="nama_lengkap" class="form-control" value="{{ client.nama_lengkap }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Email</label>
+                            <input type="email" name="email" class="form-control" value="{{ client.email }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">No Telepon</label>
+                            <input type="text" name="no_telepon" class="form-control" value="{{ client.no_telepon or '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Password <small class="text-muted">(kosongkan jika tidak diubah)</small></label>
+                            <input type="password" name="password" class="form-control" placeholder="Min. 6 karakter">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Konfirmasi Password</label>
+                            <input type="password" name="confirm_password" class="form-control">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Alamat</label>
+                            <textarea name="alamat" class="form-control">{{ client.alamat or '' }}</textarea>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save me-1"></i>Simpan
+                        </button>
+                        <a href="{{ url_for('clients.detail', id=client.id) }}" class="btn btn-outline-secondary">Batal</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

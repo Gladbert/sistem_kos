@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Sistem Kos{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Dashboard Saya</h1>
+    <p>Selamat datang, {{ current_user.nama_lengkap }}</p>
+</div>
+
+{% if booking %}
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-door-open fs-1 text-primary mb-2 d-block"></i>
+                <h5 class="card-title">Kamar {{ booking.room.nomor_kamar }}</h5>
+                <p class="text-muted mb-0">{{ booking.room.tipe }}</p>
+                <p class="text-muted">Lantai {{ booking.room.lantai }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-calendar-check fs-1 text-success mb-2 d-block"></i>
+                <h5 class="card-title">{{ booking.tanggal_masuk.strftime('%d/%m/%Y') }}</h5>
+                <p class="text-muted mb-0">Check-in</p>
+                {% if booking.tanggal_keluar %}
+                <p class="text-muted">Sampai {{ booking.tanggal_keluar.strftime('%d/%m/%Y') }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-{% if booking.tagihan_bulan_ini %}exclamation-circle text-warning{% else %}check-circle text-success{% endif %} fs-1 mb-2 d-block"></i>
+                <h5 class="card-title">{% if booking.tagihan_bulan_ini %}Belum Lunas{% else %}Lancar{% endif %}</h5>
+                <p class="text-muted mb-0">Status Pembayaran</p>
+                <p class="text-muted">Per {{ date_today.strftime('%d/%m/%Y') }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="card border-0">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-credit-card me-2 text-primary"></i>Riwayat Pembayaran</span>
+            </div>
+            <div class="card-body p-0">
+                {% if pembayaran %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Tanggal</th>
+                                <th>Bulan</th>
+                                <th>Jumlah</th>
+                                <th>Metode</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in pembayaran %}
+                            <tr>
+                                <td>{{ p.tanggal_bayar.strftime('%d/%m/%Y') }}</td>
+                                <td>{{ p.bulan_dibayar_untuk }}</td>
+                                <td>Rp{{ "{:,.0f}".format(p.jumlah) }}</td>
+                                <td>{{ p.metode_bayar|title }}</td>
+                                <td><span class="badge badge-success">Lunas</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-inbox"></i>
+                    <h5>Belum ada pembayaran</h5>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="card border-0">
+            <div class="card-header">
+                <span><i class="bi bi-bell me-2 text-primary"></i>Notifikasi</span>
+            </div>
+            <div class="card-body p-0">
+                {% if notifikasi %}
+                <div class="list-group list-group-flush">
+                    {% for n in notifikasi %}
+                    <div class="list-group-item d-flex align-items-start gap-2 {% if not n.dibaca %}bg-primary-light{% endif %}">
+                        <i class="bi bi-{% if n.jenis == 'pembayaran' %}credit-card{% elif n.jenis == 'maintenance' %}tools{% else %}info-circle{% endif %} mt-1 text-primary"></i>
+                        <div>
+                            <p class="mb-0">{{ n.pesan }}</p>
+                            <small class="text-muted">{{ n.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-bell-slash"></i>
+                    <h5>Tidak ada notifikasi</h5>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="row g-3">
+    <div class="col-12">
+        <div class="card border-0">
+            <div class="card-body text-center py-5">
+                <i class="bi bi-house-heart fs-1 text-primary mb-3 d-block"></i>
+                <h4>Anda belum memiliki kamar</h4>
+                <p class="text-muted mb-3">Lihat kamar yang tersedia dan daftar sekarang!</p>
+                <a href="{{ url_for('onboarding.index') }}" class="btn btn-primary btn-lg">
+                    <i class="bi bi-search me-1"></i>Cari Kamar
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if riwayat %}
+<div class="row g-3 mt-2">
+    <div class="col-12">
+        <div class="card border-0">
+            <div class="card-header">
+                <span><i class="bi bi-clock-history me-2 text-muted"></i>Riwayat Sewa</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Kamar</th>
+                                <th>Check-in</th>
+                                <th>Check-out</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for b in riwayat %}
+                            <tr>
+                                <td>{{ b.room.nomor_kamar }}</td>
+                                <td>{{ b.tanggal_masuk.strftime('%d/%m/%Y') }}</td>
+                                <td>{{ b.tanggal_keluar.strftime('%d/%m/%Y') if b.tanggal_keluar else '-' }}</td>
+                                <td><span class="badge badge-secondary">{{ b.status|title }}</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}

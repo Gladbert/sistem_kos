@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}Detail Kamar {{ room.nomor_kamar }} - Sistem Kos{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+    <a href="{{ url_for('onboarding.lihat_kamar') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Kembali ke Daftar Kamar
+    </a>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h2 class="mb-1">Kamar {{ room.nomor_kamar }}</h2>
+                        <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill">
+                            <i class="bi bi-tag me-1"></i>{{ room.tipe }}
+                        </span>
+                        <span class="badge bg-secondary bg-opacity-10 text-secondary px-3 py-2 rounded-pill ms-1">
+                            <i class="bi bi-layers me-1"></i>Lantai {{ room.lantai }}
+                        </span>
+                    </div>
+                    <div class="text-end">
+                        <div class="fs-3 fw-bold text-primary">Rp{{ "{:,.0f}".format(room.harga_per_bulan) }}</div>
+                        <div class="small text-muted">per bulan</div>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-sm-6 col-md-3">
+                        <div class="d-flex align-items-center gap-2 p-3 bg-light rounded-3">
+                            <i class="bi bi-layers fs-4 text-primary"></i>
+                            <div>
+                                <div class="small text-muted">Lantai</div>
+                                <div class="fw-semibold">{{ room.lantai }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-md-3">
+                        <div class="d-flex align-items-center gap-2 p-3 bg-light rounded-3">
+                            <i class="bi bi-tag fs-4 text-primary"></i>
+                            <div>
+                                <div class="small text-muted">Tipe</div>
+                                <div class="fw-semibold">{{ room.tipe }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-md-3">
+                        <div class="d-flex align-items-center gap-2 p-3 bg-light rounded-3">
+                            <i class="bi bi-credit-card fs-4 text-primary"></i>
+                            <div>
+                                <div class="small text-muted">Harga</div>
+                                <div class="fw-semibold">Rp{{ "{:,.0f}".format(room.harga_per_bulan) }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-md-3">
+                        <div class="d-flex align-items-center gap-2 p-3 bg-light rounded-3">
+                            <i class="bi bi-info-circle fs-4 text-{% if room.status == 'tersedia' %}success{% else %}danger{% endif %}"></i>
+                            <div>
+                                <div class="small text-muted">Status</div>
+                                <div class="fw-semibold {% if room.status == 'tersedia' %}text-success{% else %}text-danger{% endif %}">
+                                    {% if room.status == 'tersedia' %}Tersedia{% else %}Terisi{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {% if room.deskripsi %}
+                <h5 class="fw-semibold mb-2"><i class="bi bi-file-text me-1"></i>Deskripsi</h5>
+                <p class="text-muted mb-3">{{ room.deskripsi }}</p>
+                {% endif %}
+
+                {% if room.fasilitas %}
+                <h5 class="fw-semibold mb-2"><i class="bi bi-check-circle me-1"></i>Fasilitas</h5>
+                <div class="mb-0">
+                    {% set fasilitas_list = room.fasilitas.split(',') %}
+                    <div class="row g-2">
+                        {% for f in fasilitas_list %}
+                        {% set f_clean = f|trim %}
+                        {% if f_clean %}
+                        <div class="col-sm-6">
+                            <div class="d-flex align-items-center gap-2 p-2">
+                                <i class="bi bi-check-circle-fill text-success flex-shrink-0"></i>
+                                <span>{{ f_clean }}</span>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if room.ukuran %}
+                <hr>
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-arrows-angle-expand text-muted"></i>
+                    <span class="text-muted">Ukuran:</span>
+                    <span class="fw-semibold">{{ room.ukuran }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card sticky-top" style="top: 80px;">
+            <div class="card-body p-4 text-center">
+                <div class="mb-3">
+                    <i class="bi bi-door-open text-primary" style="font-size: 3rem;"></i>
+                </div>
+                <h5 class="fw-semibold">Kamar {{ room.nomor_kamar }}</h5>
+                <div class="my-3">
+                    <span class="badge {% if room.status == 'tersedia' %}badge-success{% else %}badge-danger{% endif %} fs-6 px-3 py-2">
+                        <i class="bi bi-{% if room.status == 'tersedia' %}check-circle{% else %}x-circle{% endif %} me-1"></i>
+                        {% if room.status == 'tersedia' %}Tersedia{% else %}Terisi{% endif %}
+                    </span>
+                </div>
+                <div class="fs-3 fw-bold text-primary mb-1">Rp{{ "{:,.0f}".format(room.harga_per_bulan) }}</div>
+                <div class="text-muted small mb-3">per bulan</div>
+
+                {% if room.status == 'tersedia' %}
+                <a href="{{ url_for('onboarding.daftar', room_id=room.id) }}" class="btn btn-primary btn-lg w-100 mb-2">
+                    <i class="bi bi-person-plus me-1"></i>Daftar Sekarang
+                </a>
+                <p class="small text-muted mb-0">Pesan sekarang, bayar deposit untuk konfirmasi</p>
+                {% else %}
+                <button class="btn btn-secondary btn-lg w-100 mb-2" disabled>
+                    <i class="bi bi-lock me-1"></i>Kamar Tidak Tersedia
+                </button>
+                <p class="small text-muted mb-0">Kamar sedang terisi oleh penghuni lain</p>
+                {% endif %}
+
+                <hr class="my-3">
+                <div class="text-start small">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted">ID Kamar</span>
+                        <span class="fw-semibold">#{{ room.id }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted">Nomor Kamar</span>
+                        <span class="fw-semibold">{{ room.nomor_kamar }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted">Tipe</span>
+                        <span class="fw-semibold">{{ room.tipe }}</span>
+                    </div>
+                </div>
+
+                <a href="{{ url_for('onboarding.lihat_kamar') }}" class="btn btn-outline-secondary w-100 mt-3">
+                    <i class="bi bi-arrow-left me-1"></i>Kembali ke Daftar
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
