@@ -14,6 +14,9 @@
         <a href="{{ url_for('accounting.laporan', tahun=tahun) }}" class="btn btn-outline-primary">
             <i class="bi bi-file-text me-1"></i>Laporan Tahunan
         </a>
+        <a href="{{ url_for('accounting.export_csv', tahun=tahun, bulan=bulan, jenis='semua') }}" class="btn btn-outline-success">
+            <i class="bi bi-download me-1"></i>CSV
+        </a>
     </div>
 </div>
 

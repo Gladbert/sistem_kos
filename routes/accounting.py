@@ -1,5 +1,6 @@
+import csv, io
 from datetime import date, datetime, timedelta
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, Response
 from flask_login import login_required, current_user
 from extensions import db
 from models import Payment, Expense, Booking
@@ -200,3 +201,60 @@ def laporan():
         total_pemasukan=total_pemasukan,
         total_pengeluaran=total_pengeluaran,
         total_laba=total_pemasukan - total_pengeluaran)
+
+
+@accounting_bp.route("/export/csv")
+@login_required
+def export_csv():
+    if current_user.role not in ("admin", "management"):
+        flash("Akses ditolak.", "danger")
+        return redirect(url_for("dashboard.index"))
+
+    tahun = request.args.get("tahun", date.today().year, type=int)
+    bulan = request.args.get("bulan", 0, type=int)
+    jenis = request.args.get("jenis", "semua")
+
+    out = io.StringIO()
+    w = csv.writer(out)
+    w.writerow(["Laporan Keuangan - Sistem Manajemen Kos", f"Periode: {tahun}" + (f"-{bulan:02d}" if bulan else "")])
+    w.writerow([])
+
+    if jenis in ("semua", "pemasukan"):
+        w.writerow(["PEMASUKAN"])
+        w.writerow(["Tanggal", "Penghuni", "Kamar", "Bulan", "Jumlah", "Metode", "Status"])
+        q = Payment.query.join(Payment.booking).join(Booking.client).filter(Payment.status == "lunas")
+        if bulan:
+            s, e = get_month_range(tahun, bulan)
+            q = q.filter(Payment.tanggal_bayar >= s, Payment.tanggal_bayar <= e)
+        for p in q.all():
+            w.writerow([
+                p.tanggal_bayar.strftime("%d/%m/%Y") if p.tanggal_bayar else "-",
+                p.booking.client.nama_lengkap, p.booking.room.nomor_kamar,
+                p.bulan_dibayar_untuk, p.jumlah, p.metode_bayar, p.status
+            ])
+        total = float(sum(p.jumlah for p in q.all()))
+        w.writerow(["Total Pemasukan", "", "", "", total])
+        w.writerow([])
+
+    if jenis in ("semua", "pengeluaran"):
+        w.writerow(["PENGELUARAN"])
+        w.writerow(["Tanggal", "Kategori", "Deskripsi", "Jumlah"])
+        q = Expense.query
+        if bulan:
+            s, e = get_month_range(tahun, bulan)
+            q = q.filter(Expense.tanggal >= s, Expense.tanggal <= e)
+        for e in q.all():
+            w.writerow([
+                e.tanggal.strftime("%d/%m/%Y") if e.tanggal else "-",
+                e.kategori, e.deskripsi or "", e.jumlah
+            ])
+        total = float(sum(e.jumlah for e in q.all()))
+        w.writerow(["Total Pengeluaran", "", "", total])
+        w.writerow([])
+
+    out.seek(0)
+    return Response(
+        out.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment;filename=laporan_{tahun}{'_'+str(bulan) if bulan else ''}.csv"}
+    )

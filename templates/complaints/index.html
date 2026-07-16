@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Komplain - Sistem Kos{% endblock %}
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center">
+    <div>
+        <h1>Komplain</h1>
+        <p>Laporan dan keluhan penghuni</p>
+    </div>
+    <a href="{{ url_for('complaints.create') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-1"></i>Ajukan Komplain
+    </a>
+</div>
+
+{% if complaints %}
+<div class="row g-3">
+    {% for c in complaints %}
+    <div class="col-12">
+        <div class="card border-0">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-3">
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <span class="badge bg-primary-subtle text-primary-emphasis">{{ c.kategori }}</span>
+                            {% set st = c.status|lower %}
+                            {% if st == 'diajukan' %}
+                            <span class="badge badge-warning">Diajukan</span>
+                            {% elif st == 'ditindaklanjuti' %}
+                            <span class="badge badge-info">Ditindaklanjuti</span>
+                            {% elif st == 'selesai' %}
+                            <span class="badge badge-success">Selesai</span>
+                            {% else %}
+                            <span class="badge badge-secondary">{{ c.status }}</span>
+                            {% endif %}
+                        </div>
+                        <h6 class="mb-1">{{ c.judul }}</h6>
+                        <p class="text-muted mb-2" style="white-space:pre-line">{{ c.deskripsi }}</p>
+                        {% if c.tanggapan %}
+                        <div class="bg-light p-3 rounded-3 mt-2">
+                            <small class="fw-medium text-primary"><i class="bi bi-reply me-1"></i>Tanggapan:</small>
+                            <p class="mb-0 mt-1" style="white-space:pre-line">{{ c.tanggapan }}</p>
+                            {% if c.responder %}
+                            <small class="text-muted mt-1 d-block">- {{ c.responder.nama_lengkap }}</small>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        <small class="text-muted mt-2 d-block">
+                            <i class="bi bi-person me-1"></i>{{ c.user.nama_lengkap }}
+                            &middot; {{ c.created_at.strftime('%d/%m/%Y %H:%M') }}
+                        </small>
+                    </div>
+                </div>
+                {% if current_user.role in ('admin', 'management') and c.status != 'selesai' %}
+                <hr>
+                <form method="POST" action="{{ url_for('complaints.respond', id=c.id) }}" class="mt-2">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="row g-2">
+                        <div class="col-md-8">
+                            <textarea name="tanggapan" class="form-control" rows="2"
+                                      placeholder="Tulis tanggapan..." required>{{ c.tanggapan or '' }}</textarea>
+                        </div>
+                        <div class="col-md-2">
+                            <select name="status" class="form-select">
+                                <option value="ditindaklanjuti" {% if c.status == 'ditindaklanjuti' %}selected{% endif %}>Ditindaklanjuti</option>
+                                <option value="selesai" {% if c.status == 'selesai' %}selected{% endif %}>Selesai</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-send me-1"></i>Kirim
+                            </button>
+                        </div>
+                    </div>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <i class="bi bi-chat-dots"></i>
+    <h5>Belum ada komplain</h5>
+</div>
+{% endif %}
+{% endblock %}

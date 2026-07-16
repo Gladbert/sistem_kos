@@ -152,3 +152,62 @@ class Notification(db.Model):
     wa_sent = db.Column(db.Boolean, default=False)
     dibaca = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class Announcement(db.Model):
+    __tablename__ = "announcements"
+
+    id = db.Column(db.Integer, primary_key=True)
+    judul = db.Column(db.String(200), nullable=False)
+    isi = db.Column(db.Text, nullable=False)
+    prioritas = db.Column(db.String(20), default="normal")
+    ditampilkan = db.Column(db.Boolean, default=True)
+    created_by = db.Column(db.Integer, db.ForeignKey("users.id"))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    creator = db.relationship("User", backref="announcements")
+
+
+class Complaint(db.Model):
+    __tablename__ = "complaints"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    judul = db.Column(db.String(200), nullable=False)
+    deskripsi = db.Column(db.Text, nullable=False)
+    kategori = db.Column(db.String(50), default="umum")
+    status = db.Column(db.String(20), default="diajukan")
+    tanggapan = db.Column(db.Text)
+    ditanggapi_oleh = db.Column(db.Integer, db.ForeignKey("users.id"))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship("User", foreign_keys=[user_id], backref="complaints")
+    responder = db.relationship("User", foreign_keys=[ditanggapi_oleh])
+
+
+class ActivityLog(db.Model):
+    __tablename__ = "activity_logs"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    tindakan = db.Column(db.String(100), nullable=False)
+    deskripsi = db.Column(db.Text)
+    model = db.Column(db.String(50))
+    model_id = db.Column(db.Integer)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship("User", backref="activity_logs")
+
+
+class RoomItem(db.Model):
+    __tablename__ = "room_items"
+
+    id = db.Column(db.Integer, primary_key=True)
+    room_id = db.Column(db.Integer, db.ForeignKey("rooms.id"), nullable=False)
+    nama = db.Column(db.String(150), nullable=False)
+    jumlah = db.Column(db.Integer, default=1)
+    kondisi = db.Column(db.String(50), default="baik")
+    catatan = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    room = db.relationship("Room", backref="items")

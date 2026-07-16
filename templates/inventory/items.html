@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Inventaris Kamar {{ room.nomor_kamar }} - Sistem Kos{% endblock %}
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center">
+    <div>
+        <h1>Kamar {{ room.nomor_kamar }}</h1>
+        <p>Inventaris barang dan fasilitas</p>
+    </div>
+    <a href="{{ url_for('inventory.add_item', room_id=room.id) }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-1"></i>Tambah Barang
+    </a>
+</div>
+
+<div class="d-flex gap-2 mb-3">
+    <a href="{{ url_for('rooms.detail', id=room.id) }}" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-info-circle me-1"></i>Detail Kamar
+    </a>
+    <a href="{{ url_for('inventory.index') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Semua Kamar
+    </a>
+</div>
+
+{% if items %}
+<div class="row g-3">
+    {% for i in items %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card border-0">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="mb-1">{{ i.nama }}</h6>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-primary-subtle text-primary-emphasis">{{ i.jumlah }}x</span>
+                            {% set k = i.kondisi|lower %}
+                            {% if k == 'baik' %}
+                            <span class="badge badge-success">Baik</span>
+                            {% elif k == 'rusak' %}
+                            <span class="badge badge-danger">Rusak</span>
+                            {% elif k == 'perlu_perbaikan' or k == 'perlu perbaikan' %}
+                            <span class="badge badge-warning">Perlu Perbaikan</span>
+                            {% else %}
+                            <span class="badge badge-secondary">{{ i.kondisi }}</span>
+                            {% endif %}
+                        </div>
+                        {% if i.catatan %}
+                        <small class="text-muted d-block mt-1">{{ i.catatan }}</small>
+                        {% endif %}
+                    </div>
+                    <div class="d-flex gap-1">
+                        <a href="{{ url_for('inventory.edit_item', id=i.id) }}" class="btn btn-sm btn-outline-primary btn-icon">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <a href="{{ url_for('inventory.delete_item', id=i.id) }}" class="btn btn-sm btn-outline-danger btn-icon"
+                           onclick="return confirm('Hapus {{ i.nama }}?')">
+                            <i class="bi bi-trash"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <i class="bi bi-box"></i>
+    <h5>Belum ada barang di kamar ini</h5>
+    <a href="{{ url_for('inventory.add_item', room_id=room.id) }}" class="btn btn-primary mt-2">
+        <i class="bi bi-plus-lg me-1"></i>Tambah Barang
+    </a>
+</div>
+{% endif %}
+{% endblock %}

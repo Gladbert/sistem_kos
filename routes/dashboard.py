@@ -2,7 +2,7 @@ from datetime import date
 from flask import Blueprint, render_template, redirect, flash, url_for
 from flask_login import login_required, current_user
 from extensions import db
-from models import User, Room, Booking, Payment, Expense, Notification, MaintenanceRequest
+from models import User, Room, Booking, Payment, Expense, Notification, MaintenanceRequest, Complaint
 
 dashboard_bp = Blueprint("dashboard", __name__, url_prefix="/dashboard")
 
@@ -67,6 +67,8 @@ def admin():
         MaintenanceRequest.status.in_(["diajukan", "diproses"])
     ).order_by(MaintenanceRequest.created_at.desc()).limit(5).all()
 
+    komplain_baru = Complaint.query.filter_by(status="diajukan").count()
+
     return render_template("dashboard/admin.html",
         total_kamar=total_kamar, kamar_terisi=kamar_terisi,
         kamar_tersedia=kamar_tersedia, total_penghuni=total_penghuni,
@@ -75,7 +77,8 @@ def admin():
         tagihan_belum_dibayar=tagihan_belum_dibayar,
         pembayaran_terbaru=pembayaran_terbaru,
         pengeluaran_terbaru=pengeluaran_terbaru,
-        permintaan_maintenance=permintaan_maintenance)
+        permintaan_maintenance=permintaan_maintenance,
+        komplain_baru=komplain_baru)
 
 
 @dashboard_bp.route("/client")

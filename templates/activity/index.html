@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Log Aktivitas - Sistem Kos{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Log Aktivitas</h1>
+    <p>Riwayat perubahan dan tindakan dalam sistem</p>
+</div>
+
+<form class="filter-bar" method="GET">
+    <select name="model" class="form-select" onchange="this.form.submit()">
+        <option value="">Semua Modul</option>
+        {% for m in models %}
+        <option value="{{ m }}" {% if request.args.get('model') == m %}selected{% endif %}>{{ m }}</option>
+        {% endfor %}
+    </select>
+    <input type="text" name="tindakan" class="form-control" placeholder="Cari tindakan..."
+           value="{{ request.args.get('tindakan', '') }}">
+    <button type="submit" class="btn btn-outline-primary"><i class="bi bi-search"></i></button>
+</form>
+
+<div class="card border-0">
+    <div class="card-body p-0">
+        {% if logs %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Waktu</th>
+                        <th>Pengguna</th>
+                        <th>Tindakan</th>
+                        <th>Deskripsi</th>
+                        <th>Modul</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for l in logs %}
+                    <tr>
+                        <td class="text-nowrap"><small>{{ l.created_at.strftime('%d/%m/%Y %H:%M') }}</small></td>
+                        <td>{{ l.user.nama_lengkap if l.user else 'Sistem' }}</td>
+                        <td class="fw-medium">{{ l.tindakan }}</td>
+                        <td style="max-width:300px">
+                            <span class="d-inline-block text-truncate" style="max-width:100%">{{ l.deskripsi }}</span>
+                        </td>
+                        <td><span class="badge badge-info">{{ l.model }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-clock-history"></i>
+            <h5>Belum ada aktivitas</h5>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

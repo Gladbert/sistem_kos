@@ -28,13 +28,28 @@
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('clients.index') }}"><i class="bi bi-people me-1"></i>Penghuni</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('payments.index') }}"><i class="bi bi-credit-card me-1"></i>Pembayaran</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('accounting.index') }}"><i class="bi bi-graph-up me-1"></i>Keuangan</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('maintenance.index') }}"><i class="bi bi-tools me-1"></i>Maintenance</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('maintenance.vendor_index') }}"><i class="bi bi-truck me-1"></i>Vendor</a></li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-grid me-1"></i>Lainnya
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ url_for('maintenance.index') }}"><i class="bi bi-tools me-1"></i>Maintenance</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('maintenance.vendor_index') }}"><i class="bi bi-truck me-1"></i>Vendor</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('announcements.index') }}"><i class="bi bi-megaphone me-1"></i>Pengumuman</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('complaints.index') }}"><i class="bi bi-chat-dots me-1"></i>Komplain</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('inventory.index') }}"><i class="bi bi-box me-1"></i>Inventaris</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('activity.index') }}"><i class="bi bi-clock-history me-1"></i>Log Aktivitas</a></li>
+                        </ul>
+                    </li>
                 </ul>
                 {% else %}
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('dashboard.client') }}"><i class="bi bi-speedometer2 me-1"></i>Dashboard</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('payments.index') }}"><i class="bi bi-credit-card me-1"></i>Pembayaran</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('complaints.create') }}"><i class="bi bi-chat-dots me-1"></i>Komplain</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('announcements.index') }}"><i class="bi bi-megaphone me-1"></i>Pengumuman</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('onboarding.index') }}"><i class="bi bi-search me-1"></i>Cari Kamar</a></li>
                 </ul>
                 {% endif %}

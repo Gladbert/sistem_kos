@@ -1,7 +1,7 @@
 from app import create_app
 from extensions import db
-from models import User, Room, Booking, Payment, Expense, Vendor, MaintenanceRequest, Notification
-from datetime import date, timedelta
+from models import User, Room, Booking, Payment, Expense, Vendor, MaintenanceRequest, Notification, Announcement, Complaint, RoomItem, ActivityLog
+from datetime import date, timedelta, datetime
 import random
 
 
@@ -117,6 +117,60 @@ def seed():
             catatan="Sudah dihubungi teknisi"
         )
         db.session.add(mr)
+        db.session.commit()
+
+        # Announcements
+        ann = Announcement(
+            judul="Pembersihan Lingkungan", isi="Akan diadakan pembersihan lingkungan bersama pada hari Sabtu, 20 Juli 2026 pukul 08.00. Semua penghuni diharap berpartisipasi.",
+            prioritas="sedang", created_by=admin.id
+        )
+        db.session.add(ann)
+        db.session.add(Announcement(
+            judul="Pembayaran Bulanan", isi="Pengingat: Pembayaran kos bulanan paling lambat tanggal 10 setiap bulan. Terima kasih.",
+            prioritas="penting", created_by=admin.id
+        ))
+        db.session.commit()
+
+        # Seed activity logs
+        db.session.add(ActivityLog(user_id=admin.id, tindakan="Buat pengumuman", deskripsi="Judul: Pembersihan Lingkungan", model="Announcement"))
+        db.session.add(ActivityLog(user_id=admin.id, tindakan="Buat pengumuman", deskripsi="Judul: Pembayaran Bulanan", model="Announcement"))
+
+        # Complaint (from client budi)
+        db.session.add(Complaint(
+            user_id=clients[0].id, judul="AC kamar kurang dingin",
+            deskripsi="AC di kamar 101 sudah 2 hari ini tidak dingin. Mohon segera diperbaiki.",
+            kategori="fasilitas", status="ditindaklanjuti",
+            tanggapan="Akan kami kirim teknisi besok pagi.", ditanggapi_oleh=admin.id
+        ))
+        db.session.add(Complaint(
+            user_id=clients[1].id, judul="Kamar mandi bocor",
+            deskripsi="Air dari lantai atas menetes di kamar mandi. Mohon dicek.",
+            kategori="fasilitas", status="diajukan"
+        ))
+        db.session.commit()
+
+        # Activity logs for complaint
+        db.session.add(ActivityLog(user_id=admin.id, tindakan="Tanggapi komplain", deskripsi="Judul: AC kamar kurang dingin, Status: ditindaklanjuti", model="Complaint"))
+        db.session.commit()
+
+        # Room inventory
+        items = [
+            (rooms[0], "AC Split 1PK", 1, "baik", "Daikin, dipasang 2024"),
+            (rooms[0], "Kasur Springbed", 1, "baik", "Ukuran 160x200"),
+            (rooms[0], "Lemari Pakaian", 1, "baik", "3 pintu"),
+            (rooms[0], "Meja Belajar", 1, "rusak", "Kaki meja goyang"),
+            (rooms[0], "Kursi", 1, "baik", ""),
+            (rooms[2], "AC Split 1.5PK", 1, "baik", "Panasonic, dipasang 2025"),
+            (rooms[2], "TV 32 inch", 1, "baik", "Smart TV"),
+            (rooms[2], "Kulkas 1 pintu", 1, "baik", "Polytron"),
+        ]
+        for room, nama, jumlah, kondisi, catatan in items:
+            db.session.add(RoomItem(room_id=room.id, nama=nama, jumlah=jumlah, kondisi=kondisi, catatan=catatan))
+        db.session.commit()
+
+        # Activity logs for room items
+        db.session.add(ActivityLog(user_id=admin.id, tindakan="Tambah barang", deskripsi="AC Split 1PK di 101", model="RoomItem"))
+        db.session.add(ActivityLog(user_id=admin.id, tindakan="Tambah barang", deskripsi="Kasur Springbed di 101", model="RoomItem"))
         db.session.commit()
 
         print("Seed data created successfully!")

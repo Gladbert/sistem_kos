@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if item else 'Tambah' }} Barang - Sistem Kos{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>{{ 'Edit' if item else 'Tambah' }} Barang</h1>
+    <p>Kamar {{ room.nomor_kamar }}</p>
+</div>
+
+<div class="row">
+    <div class="col-lg-6">
+        <div class="card border-0">
+            <div class="card-body">
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label class="form-label">Nama Barang</label>
+                        <input type="text" name="nama" class="form-control" required
+                               value="{{ item.nama if item else '' }}">
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Jumlah</label>
+                            <input type="number" name="jumlah" class="form-control" min="1"
+                                   value="{{ item.jumlah if item else '1' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Kondisi</label>
+                            <select name="kondisi" class="form-select">
+                                <option value="baik" {% if item and item.kondisi == 'baik' %}selected{% endif %}>Baik</option>
+                                <option value="perlu perbaikan" {% if item and item.kondisi == 'perlu perbaikan' %}selected{% endif %}>Perlu Perbaikan</option>
+                                <option value="rusak" {% if item and item.kondisi == 'rusak' %}selected{% endif %}>Rusak</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Catatan</label>
+                        <textarea name="catatan" class="form-control" rows="2">{{ item.catatan if item else '' }}</textarea>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg me-1"></i>{{ 'Simpan' if item else 'Tambah' }}
+                        </button>
+                        <a href="{{ url_for('inventory.room_items', room_id=room.id) }}" class="btn btn-outline-secondary">Batal</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
