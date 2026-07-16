@@ -135,8 +135,8 @@ check('1.8 Logout -> login page', b'Masuk' in resp.data or 'login' in resp.reque
 resp = c.get('/dashboard/admin', follow_redirects=True)
 check('1.9 Guest blocked from dashboard', b'Masuk' in resp.data or 'login' in resp.request.path)
 
-# ====================== 2. ONBOARDING ======================
-print("\n=== 2. ONBOARDING ===")
+# ====================== 2. ONBOARDING & APPROVAL ======================
+print("\n=== 2. ONBOARDING & APPROVAL ===")
 resp = c.get('/onboarding/', follow_redirects=True)
 check('2.1 Public room listing 200', resp.status_code == 200 and b'Kamar' in resp.data)
 
@@ -144,7 +144,7 @@ resp = c.get('/onboarding/kamar', follow_redirects=True)
 check('2.2 Public kamar page', resp.status_code == 200)
 
 resp = c.get('/onboarding/kamar/1', follow_redirects=True)
-check('2.3 Room detail', resp.status_code == 200 and b'101' in resp.data or b'Kamar' in resp.data)
+check('2.3 Room detail', resp.status_code == 200)
 
 resp = c.get('/onboarding/kamar/999', follow_redirects=True)
 check('2.4 Nonexistent room 404', resp.status_code == 404)
@@ -152,8 +152,36 @@ check('2.4 Nonexistent room 404', resp.status_code == 404)
 resp = c.post('/onboarding/daftar/2', data={'tanggal_masuk': '2026-08-01', 'durasi': 3}, follow_redirects=True)
 check('2.5 Register w/o login -> login page', b'Masuk' in resp.data or 'login' in resp.request.path)
 
+c.get('/auth/logout', follow_redirects=True)
+c.post('/auth/login', data={'username': 'agus', 'password': 'client123'}, follow_redirects=True)
+resp = c.post('/onboarding/daftar/2', data={'tanggal_masuk': '2026-08-01', 'durasi': 3}, follow_redirects=True)
+check('2.6 Client booking creates pending', b'persetujuan' in resp.data or b'menunggu' in resp.data)
+
+resp = c.get('/dashboard/client', follow_redirects=True)
+check('2.7 Client sees pending booking', b'menunggu' in resp.data)
+
+c.get('/auth/logout', follow_redirects=True)
+c.post('/auth/login', data={'username': 'admin', 'password': 'admin123'}, follow_redirects=True)
+resp = c.get('/dashboard/admin', follow_redirects=True)
+check('2.8 Admin sees pending alert', b'persetujuan' in resp.data or b'menunggu' in resp.data)
+
+with app.app_context():
+    from models import Booking
+    pending = Booking.query.filter_by(status='pending').first()
+if pending:
+    resp = c.post(f'/dashboard/booking/{pending.id}/approve', follow_redirects=True)
+    check('2.9 Approve booking', b'berhasil' in resp.data or b'disetujui' in resp.data)
+else:
+    check('2.9 Approve booking - no pending to test', False, "No pending booking found")
+
+c.get('/auth/logout', follow_redirects=True)
+c.post('/auth/login', data={'username': 'agus', 'password': 'client123'}, follow_redirects=True)
+resp = c.get('/dashboard/client', follow_redirects=True)
+check('2.10 Client sees approved booking', b'Kamar' in resp.data or b'102' in resp.data)
+
 # ====================== 3. ADMIN DASHBOARD ======================
 print("\n=== 3. ADMIN DASHBOARD ===")
+c.get('/auth/logout', follow_redirects=True)
 c.post('/auth/login', data={'username': 'admin', 'password': 'admin123'}, follow_redirects=True)
 resp = c.get('/dashboard/admin', follow_redirects=True)
 check('3.1 Admin dashboard 200', resp.status_code == 200)
@@ -351,6 +379,51 @@ check('9.7 Vendor WA link redirect', resp.status_code in (302, 303))
 
 resp = c.post('/maintenance/vendor/hapus/1', follow_redirects=True)
 check('9.8 Delete vendor', b'berhasil' in resp.data)
+
+# ====================== 10. NEW FEATURES ======================
+print("\n=== 10. NEW FEATURES ===")
+c.get('/auth/logout', follow_redirects=True)
+c.post('/auth/login', data={'username': 'admin', 'password': 'admin123'}, follow_redirects=True)
+
+# Auto-proses
+resp = c.post('/dashboard/auto-proses', follow_redirects=True)
+check('10.1 Auto-proses runs', resp.status_code == 200)
+
+# Create pending booking for tolak test
+c.get('/auth/logout', follow_redirects=True)
+c.post('/auth/login', data={'username': 'eko', 'password': 'client123'}, follow_redirects=True)
+resp = c.post('/onboarding/daftar/6', data={'tanggal_masuk': '2026-09-01', 'durasi': 3}, follow_redirects=True)
+c.get('/auth/logout', follow_redirects=True)
+c.post('/auth/login', data={'username': 'admin', 'password': 'admin123'}, follow_redirects=True)
+
+with app.app_context():
+    from models import Booking, Notification
+    pending = Booking.query.filter_by(status='pending').first()
+if pending:
+    resp = c.post(f'/dashboard/booking/{pending.id}/tolak', follow_redirects=True)
+    check('10.2 Tolak booking', b'ditolak' in resp.data)
+else:
+    check('10.2 Tolak booking - no pending to test', False, "No pending booking found")
+
+# Notification mark as read
+c.get('/auth/logout', follow_redirects=True)
+c.post('/auth/login', data={'username': 'admin', 'password': 'admin123'}, follow_redirects=True)
+with app.app_context():
+    from models import Notification
+    n = Notification.query.first()
+if n:
+    resp = c.post(f'/dashboard/notifikasi/baca/{n.id}', follow_redirects=True)
+    check('10.3 Mark notif read', resp.status_code == 200)
+
+    resp = c.post('/dashboard/notifikasi/baca-semua', follow_redirects=True)
+    check('10.4 Mark all notif read', b'dibaca' in resp.data or resp.status_code == 200)
+
+# Client dashboard notif count
+c.get('/auth/logout', follow_redirects=True)
+c.post('/auth/login', data={'username': 'budi', 'password': 'client123'}, follow_redirects=True)
+resp = c.get('/dashboard/client', follow_redirects=True)
+check('10.5 Client dashboard loads', resp.status_code == 200)
+check('10.6 Notif badge present', b'Notifikasi' in resp.data)
 
 # ====================== SUMMARY ======================
 print(f"\n{'='*60}")

@@ -1,20 +1,33 @@
 {% extends "base.html" %}
 {% block title %}Dashboard - Sistem Kos{% endblock %}
 {% block content %}
-<div class="page-header">
-    <h1>Dashboard Saya</h1>
-    <p>Selamat datang, {{ current_user.nama_lengkap }}</p>
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center">
+    <div>
+        <h1>Dashboard Saya</h1>
+        <p>Selamat datang, {{ current_user.nama_lengkap }}</p>
+    </div>
+    {% if notif_belum_dibaca > 0 %}
+    <form method="POST" action="{{ url_for('dashboard.baca_semua_notif') }}" style="display:inline">
+        <button class="btn btn-sm btn-outline-primary"><i class="bi bi-check-all me-1"></i>Tandai Semua Dibaca</button>
+    </form>
+    {% endif %}
 </div>
 
-{% if booking %}
+{% if booking_pending %}
+<div class="alert alert-warning" role="alert">
+    <i class="bi bi-hourglass-split me-1"></i>Permintaan sewa kamar <strong>{{ booking_pending.room.nomor_kamar }}</strong> sedang menunggu persetujuan pengelola.
+</div>
+{% endif %}
+
+{% if booking_aktif %}
 <div class="row g-3 mb-4">
     <div class="col-md-4">
         <div class="card border-0 h-100">
             <div class="card-body text-center">
                 <i class="bi bi-door-open fs-1 text-primary mb-2 d-block"></i>
-                <h5 class="card-title">Kamar {{ booking.room.nomor_kamar }}</h5>
-                <p class="text-muted mb-0">{{ booking.room.tipe }}</p>
-                <p class="text-muted">Lantai {{ booking.room.lantai }}</p>
+                <h5 class="card-title">Kamar {{ booking_aktif.room.nomor_kamar }}</h5>
+                <p class="text-muted mb-0">{{ booking_aktif.room.tipe }}</p>
+                <p class="text-muted">Lantai {{ booking_aktif.room.lantai }}</p>
             </div>
         </div>
     </div>
@@ -22,10 +35,10 @@
         <div class="card border-0 h-100">
             <div class="card-body text-center">
                 <i class="bi bi-calendar-check fs-1 text-success mb-2 d-block"></i>
-                <h5 class="card-title">{{ booking.tanggal_masuk.strftime('%d/%m/%Y') }}</h5>
+                <h5 class="card-title">{{ booking_aktif.tanggal_masuk.strftime('%d/%m/%Y') }}</h5>
                 <p class="text-muted mb-0">Check-in</p>
-                {% if booking.tanggal_keluar %}
-                <p class="text-muted">Sampai {{ booking.tanggal_keluar.strftime('%d/%m/%Y') }}</p>
+                {% if booking_aktif.tanggal_keluar %}
+                <p class="text-muted">Sampai {{ booking_aktif.tanggal_keluar.strftime('%d/%m/%Y') }}</p>
                 {% endif %}
             </div>
         </div>
@@ -33,8 +46,8 @@
     <div class="col-md-4">
         <div class="card border-0 h-100">
             <div class="card-body text-center">
-                <i class="bi bi-{% if booking.tagihan_bulan_ini %}exclamation-circle text-warning{% else %}check-circle text-success{% endif %} fs-1 mb-2 d-block"></i>
-                <h5 class="card-title">{% if booking.tagihan_bulan_ini %}Belum Lunas{% else %}Lancar{% endif %}</h5>
+                <i class="bi bi-{% if booking_aktif.tagihan_bulan_ini %}exclamation-circle text-warning{% else %}check-circle text-success{% endif %} fs-1 mb-2 d-block"></i>
+                <h5 class="card-title">{% if booking_aktif.tagihan_bulan_ini %}Belum Lunas{% else %}Lancar{% endif %}</h5>
                 <p class="text-muted mb-0">Status Pembayaran</p>
                 <p class="text-muted">Per {{ date_today.strftime('%d/%m/%Y') }}</p>
             </div>
@@ -52,15 +65,7 @@
                 {% if pembayaran %}
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>Tanggal</th>
-                                <th>Bulan</th>
-                                <th>Jumlah</th>
-                                <th>Metode</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
+                        <thead><tr><th>Tanggal</th><th>Bulan</th><th>Jumlah</th><th>Metode</th><th>Status</th></tr></thead>
                         <tbody>
                             {% for p in pembayaran %}
                             <tr>
@@ -74,12 +79,7 @@
                         </tbody>
                     </table>
                 </div>
-                {% else %}
-                <div class="empty-state">
-                    <i class="bi bi-inbox"></i>
-                    <h5>Belum ada pembayaran</h5>
-                </div>
-                {% endif %}
+                {% else %}<div class="empty-state"><i class="bi bi-inbox"></i><h5>Belum ada pembayaran</h5></div>{% endif %}
             </div>
         </div>
     </div>
@@ -89,7 +89,7 @@
     <div class="col-12">
         <div class="card border-0">
             <div class="card-header">
-                <span><i class="bi bi-bell me-2 text-primary"></i>Notifikasi</span>
+                <span><i class="bi bi-bell me-2 text-primary"></i>Notifikasi {% if notif_belum_dibaca > 0 %}<span class="badge bg-danger">{{ notif_belum_dibaca }}</span>{% endif %}</span>
             </div>
             <div class="card-body p-0">
                 {% if notifikasi %}
@@ -97,24 +97,24 @@
                     {% for n in notifikasi %}
                     <div class="list-group-item d-flex align-items-start gap-2 {% if not n.dibaca %}bg-primary-light{% endif %}">
                         <i class="bi bi-{% if n.jenis == 'pembayaran' %}credit-card{% elif n.jenis == 'maintenance' %}tools{% else %}info-circle{% endif %} mt-1 text-primary"></i>
-                        <div>
+                        <div class="flex-grow-1">
                             <p class="mb-0">{{ n.pesan }}</p>
                             <small class="text-muted">{{ n.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
                         </div>
+                        {% if not n.dibaca %}
+                        <form method="POST" action="{{ url_for('dashboard.baca_notifikasi', id=n.id) }}" style="display:inline">
+                            <button class="btn btn-sm btn-outline-secondary" title="Tandai dibaca"><i class="bi bi-check"></i></button>
+                        </form>
+                        {% endif %}
                     </div>
                     {% endfor %}
                 </div>
-                {% else %}
-                <div class="empty-state">
-                    <i class="bi bi-bell-slash"></i>
-                    <h5>Tidak ada notifikasi</h5>
-                </div>
-                {% endif %}
+                {% else %}<div class="empty-state"><i class="bi bi-bell-slash"></i><h5>Tidak ada notifikasi</h5></div>{% endif %}
             </div>
         </div>
     </div>
 </div>
-{% else %}
+{% elif not booking_pending %}
 <div class="row g-3">
     <div class="col-12">
         <div class="card border-0">
@@ -129,6 +129,7 @@
         </div>
     </div>
 </div>
+{% endif %}
 
 {% if riwayat %}
 <div class="row g-3 mt-2">
@@ -140,21 +141,14 @@
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>Kamar</th>
-                                <th>Check-in</th>
-                                <th>Check-out</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
+                        <thead><tr><th>Kamar</th><th>Check-in</th><th>Check-out</th><th>Status</th></tr></thead>
                         <tbody>
                             {% for b in riwayat %}
                             <tr>
                                 <td>{{ b.room.nomor_kamar }}</td>
                                 <td>{{ b.tanggal_masuk.strftime('%d/%m/%Y') }}</td>
                                 <td>{{ b.tanggal_keluar.strftime('%d/%m/%Y') if b.tanggal_keluar else '-' }}</td>
-                                <td><span class="badge badge-secondary">{{ b.status|title }}</span></td>
+                                <td><span class="badge {% if b.status == 'aktif' %}badge-success{% elif b.status == 'pending' %}badge-warning{% else %}badge-secondary{% endif %}">{{ b.status|title }}</span></td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -164,6 +158,5 @@
         </div>
     </div>
 </div>
-{% endif %}
 {% endif %}
 {% endblock %}

@@ -1,141 +1,130 @@
 {% extends "base.html" %}
-
 {% block title %}Dashboard Admin - Sistem Manajemen Kos{% endblock %}
-
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}
 {% block content %}
 <div class="page-header d-flex flex-wrap justify-content-between align-items-center">
-    <div>
-        <h1>Dashboard</h1>
-        <p>Ringkasan operasional kos</p>
-    </div>
+    <div><h1>Dashboard</h1><p>Ringkasan operasional kos</p></div>
+    <form method="POST" action="{{ url_for('dashboard.auto_proses') }}" style="display:inline">
+        <button class="btn btn-outline-primary" onclick="return confirm('Jalankan proses otomatis?')">
+            <i class="bi bi-arrow-repeat me-1"></i>Proses Otomatis
+        </button>
+    </form>
 </div>
 
 <div class="row g-3 mb-4">
-    <div class="col-sm-6 col-xl-3">
+    <div class="col-sm-6 col-xl-2">
         <div class="stat-card card border-0 h-100">
             <div class="d-flex align-items-center gap-3">
-                <div class="stat-icon" style="background:var(--primary-light);color:var(--primary)">
-                    <i class="bi bi-door-open fs-4"></i>
-                </div>
-                <div>
-                    <div class="stat-value">{{ total_kamar }}</div>
-                    <div class="stat-label">Total Kamar</div>
-                </div>
+                <div class="stat-icon" style="background:var(--primary-light);color:var(--primary)"><i class="bi bi-door-open fs-4"></i></div>
+                <div><div class="stat-value">{{ total_kamar }}</div><div class="stat-label">Total Kamar</div></div>
             </div>
         </div>
     </div>
-    <div class="col-sm-6 col-xl-3">
+    <div class="col-sm-6 col-xl-2">
         <div class="stat-card card border-0 h-100">
             <div class="d-flex align-items-center gap-3">
-                <div class="stat-icon" style="background:#dcfce7;color:#166534">
-                    <i class="bi bi-person-fill fs-4"></i>
-                </div>
-                <div>
-                    <div class="stat-value">{{ kamar_terisi }}</div>
-                    <div class="stat-label">Kamar Terisi</div>
-                </div>
+                <div class="stat-icon" style="background:#dcfce7;color:#166534"><i class="bi bi-person-fill fs-4"></i></div>
+                <div><div class="stat-value">{{ kamar_terisi }}</div><div class="stat-label">Terisi ({{ occupancy_rate }}%)</div></div>
             </div>
         </div>
     </div>
-    <div class="col-sm-6 col-xl-3">
+    <div class="col-sm-6 col-xl-2">
         <div class="stat-card card border-0 h-100">
             <div class="d-flex align-items-center gap-3">
-                <div class="stat-icon" style="background:#fef3c7;color:#92400e">
-                    <i class="bi bi-door-closed fs-4"></i>
-                </div>
-                <div>
-                    <div class="stat-value">{{ kamar_tersedia }}</div>
-                    <div class="stat-label">Kamar Tersedia</div>
-                </div>
+                <div class="stat-icon" style="background:#fef3c7;color:#92400e"><i class="bi bi-door-closed fs-4"></i></div>
+                <div><div class="stat-value">{{ kamar_tersedia }}</div><div class="stat-label">Tersedia</div></div>
             </div>
         </div>
     </div>
-    <div class="col-sm-6 col-xl-3">
+    <div class="col-sm-6 col-xl-2">
         <div class="stat-card card border-0 h-100">
             <div class="d-flex align-items-center gap-3">
-                <div class="stat-icon" style="background:#dbeafe;color:#1e40af">
-                    <i class="bi bi-people-fill fs-4"></i>
-                </div>
-                <div>
-                    <div class="stat-value">{{ total_penghuni }}</div>
-                    <div class="stat-label">Total Penghuni</div>
-                </div>
+                <div class="stat-icon" style="background:#dbeafe;color:#1e40af"><i class="bi bi-people-fill fs-4"></i></div>
+                <div><div class="stat-value">{{ total_penghuni }}</div><div class="stat-label">Penghuni</div></div>
             </div>
         </div>
     </div>
-</div>
-
-<div class="row g-3 mb-4">
-    <div class="col-sm-6 col-xl-3">
+    <div class="col-sm-6 col-xl-2">
         <div class="stat-card card border-0 h-100">
             <div class="d-flex align-items-center gap-3">
-                <div class="stat-icon" style="background:#dcfce7;color:#166534">
-                    <i class="bi bi-graph-up-arrow fs-4"></i>
-                </div>
-                <div>
-                    <div class="stat-value">
-                        {% if pemasukan_bulan_ini is not none %}
-                        Rp{{ "{:,.0f}".format(pemasukan_bulan_ini) }}
-                        {% else %}
-                        Rp0
-                        {% endif %}
-                    </div>
-                    <div class="stat-label">Pemasukan Bulan Ini</div>
-                </div>
+                <div class="stat-icon" style="background:#fef3c7;color:#92400e"><i class="bi bi-clock-history fs-4"></i></div>
+                <div><div class="stat-value">{{ tagihan_belum_dibayar }}</div><div class="stat-label">Tagihan Tertunda</div></div>
             </div>
         </div>
     </div>
-    <div class="col-sm-6 col-xl-3">
-        <div class="stat-card card border-0 h-100">
-            <div class="d-flex align-items-center gap-3">
-                <div class="stat-icon" style="background:#fee2e2;color:#991b1b">
-                    <i class="bi bi-graph-down-arrow fs-4"></i>
-                </div>
-                <div>
-                    <div class="stat-value">
-                        {% if pengeluaran_bulan_ini is not none %}
-                        Rp{{ "{:,.0f}".format(pengeluaran_bulan_ini) }}
-                        {% else %}
-                        Rp0
-                        {% endif %}
-                    </div>
-                    <div class="stat-label">Pengeluaran Bulan Ini</div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-6 col-xl-3">
-        <div class="stat-card card border-0 h-100">
-            <div class="d-flex align-items-center gap-3">
-                <div class="stat-icon" style="background:#fef3c7;color:#92400e">
-                    <i class="bi bi-clock-history fs-4"></i>
-                </div>
-                <div>
-                    <div class="stat-value">{{ tagihan_belum_dibayar }}</div>
-                    <div class="stat-label">Tagihan Belum Dibayar</div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-6 col-xl-3">
+    <div class="col-sm-6 col-xl-2">
         <a href="{{ url_for('complaints.index') }}" class="text-decoration-none">
             <div class="stat-card card border-0 h-100">
                 <div class="d-flex align-items-center gap-3">
-                    <div class="stat-icon" style="background:#f3e8ff;color:#7c3aed">
-                        <i class="bi bi-chat-dots fs-4"></i>
-                    </div>
-                    <div>
-                        <div class="stat-value">{{ komplain_baru }}</div>
-                        <div class="stat-label">Komplain Baru</div>
-                    </div>
+                    <div class="stat-icon" style="background:#f3e8ff;color:#7c3aed"><i class="bi bi-chat-dots fs-4"></i></div>
+                    <div><div class="stat-value">{{ komplain_baru }}</div><div class="stat-label">Komplain Baru</div></div>
                 </div>
             </div>
         </a>
     </div>
 </div>
 
+{% if booking_pending %}
+<div class="alert alert-warning d-flex justify-content-between align-items-center" role="alert">
+    <span><i class="bi bi-exclamation-circle me-1"></i>{{ kamar_pending }} permintaan booking menunggu persetujuan</span>
+</div>
+{% endif %}
+
 <div class="row g-3 mb-4">
-    <div class="col-lg-4 col-xl-4">
+    <div class="col-lg-8">
+        <div class="card border-0 h-100">
+            <div class="card-header"><span><i class="bi bi-graph-up me-2 text-primary"></i>Tren Pemasukan 6 Bulan</span></div>
+            <div class="card-body"><canvas id="incomeChart" height="80"></canvas></div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card border-0 h-100">
+            <div class="card-header"><span><i class="bi bi-pie-chart me-2 text-primary"></i>Hunian</span></div>
+            <div class="card-body"><canvas id="occupancyChart" height="80"></canvas></div>
+        </div>
+    </div>
+</div>
+
+{% if booking_pending %}
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="card border-0 border-warning">
+            <div class="card-header d-flex justify-content-between align-items-center bg-warning-subtle">
+                <span><i class="bi bi-hourglass-split me-2"></i>Persetujuan Booking ({{ kamar_pending }})</span>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead><tr><th>Pemohon</th><th>Kamar</th><th>Check-in</th><th>Durasi</th><th>No. Telepon</th><th>Aksi</th></tr></thead>
+                    <tbody>
+                        {% for b in booking_pending %}
+                        <tr>
+                            <td class="fw-medium">{{ b.client.nama_lengkap }}</td>
+                            <td><span class="badge bg-primary-subtle text-primary-emphasis">{{ b.room.nomor_kamar }}</span></td>
+                            <td>{{ b.tanggal_masuk.strftime('%d/%m/%Y') }}</td>
+                            <td>{{ b.durasi_bulan }} bln</td>
+                            <td><a href="tel:{{ b.client.no_telepon }}">{{ b.client.no_telepon }}</a></td>
+                            <td>
+                                <form method="POST" action="{{ url_for('dashboard.approve_booking', id=b.id) }}" style="display:inline">
+                                    <button class="btn btn-sm btn-success" title="Setujui"><i class="bi bi-check-lg"></i></button>
+                                </form>
+                                <form method="POST" action="{{ url_for('dashboard.tolak_booking', id=b.id) }}" style="display:inline" onsubmit="return confirm('Tolak booking ini?')">
+                                    <button class="btn btn-sm btn-outline-danger" title="Tolak"><i class="bi bi-x-lg"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="row g-3 mb-4">
+    <div class="col-lg-4">
         <div class="card border-0 h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-credit-card me-2 text-primary"></i>Pembayaran Terbaru</span>
@@ -145,54 +134,24 @@
                 {% if pembayaran_terbaru %}
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>Penghuni</th>
-                                <th>Jumlah</th>
-                                <th>Tanggal</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
+                        <thead><tr><th>Penghuni</th><th>Jumlah</th><th>Tanggal</th><th>Status</th></tr></thead>
                         <tbody>
                             {% for p in pembayaran_terbaru %}
                             <tr>
                                 <td class="fw-medium">{{ p.booking.client.nama_lengkap }}</td>
                                 <td>Rp{{ "{:,.0f}".format(p.jumlah) }}</td>
-                                <td>
-                                    {% if p.tanggal_bayar %}
-                                    <span class="text-nowrap">{{ p.tanggal_bayar.strftime('%d/%m/%Y') }}</span>
-                                    {% else %}
-                                    <span class="text-muted">-</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% set status = p.status|lower %}
-                                    {% if status == 'lunas' or status == 'dikonfirmasi' or status == 'confirmed' %}
-                                    <span class="badge badge-success">Lunas</span>
-                                    {% elif status == 'pending' %}
-                                    <span class="badge badge-warning">Pending</span>
-                                    {% elif status == 'expired' or status == 'kadaluarsa' %}
-                                    <span class="badge badge-danger">Kadaluarsa</span>
-                                    {% else %}
-                                    <span class="badge badge-secondary">{{ p.status }}</span>
-                                    {% endif %}
-                                </td>
+                                <td>{% if p.tanggal_bayar %}<span class="text-nowrap">{{ p.tanggal_bayar.strftime('%d/%m/%Y') }}</span>{% else %}<span class="text-muted">-</span>{% endif %}</td>
+                                <td><span class="badge badge-success">Lunas</span></td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
-                {% else %}
-                <div class="empty-state">
-                    <i class="bi bi-inbox"></i>
-                    <h5>Belum ada pembayaran</h5>
-                </div>
-                {% endif %}
+                {% else %}<div class="empty-state"><i class="bi bi-inbox"></i><h5>Belum ada pembayaran</h5></div>{% endif %}
             </div>
         </div>
     </div>
-
-    <div class="col-lg-4 col-xl-4">
+    <div class="col-lg-4">
         <div class="card border-0 h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-cart3 me-2 text-danger"></i>Pengeluaran Terbaru</span>
@@ -202,117 +161,85 @@
                 {% if pengeluaran_terbaru %}
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>Kategori</th>
-                                <th>Jumlah</th>
-                                <th>Tanggal</th>
-                            </tr>
-                        </thead>
+                        <thead><tr><th>Kategori</th><th>Jumlah</th><th>Tanggal</th></tr></thead>
                         <tbody>
                             {% for e in pengeluaran_terbaru %}
                             <tr>
                                 <td class="fw-medium">{{ e.kategori }}</td>
                                 <td class="text-danger">Rp{{ "{:,.0f}".format(e.jumlah) }}</td>
-                                <td>
-                                    {% if e.tanggal %}
-                                    <span class="text-nowrap">{{ e.tanggal.strftime('%d/%m/%Y') }}</span>
-                                    {% else %}
-                                    <span class="text-muted">-</span>
-                                    {% endif %}
-                                </td>
+                                <td>{% if e.tanggal %}<span class="text-nowrap">{{ e.tanggal.strftime('%d/%m/%Y') }}</span>{% else %}<span class="text-muted">-</span>{% endif %}</td>
                             </tr>
-                            {% if e.deskripsi %}
-                            <tr class="border-0">
-                                <td colspan="3" class="pt-0 text-muted" style="font-size:.75rem">
-                                    <i class="bi bi-chat-quote me-1"></i>{{ e.deskripsi }}
-                                </td>
-                            </tr>
-                            {% endif %}
+                            {% if e.deskripsi %}<tr class="border-0"><td colspan="3" class="pt-0 text-muted" style="font-size:.75rem"><i class="bi bi-chat-quote me-1"></i>{{ e.deskripsi }}</td></tr>{% endif %}
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
-                {% else %}
-                <div class="empty-state">
-                    <i class="bi bi-inbox"></i>
-                    <h5>Belum ada pengeluaran</h5>
-                </div>
-                {% endif %}
+                {% else %}<div class="empty-state"><i class="bi bi-inbox"></i><h5>Belum ada pengeluaran</h5></div>{% endif %}
             </div>
         </div>
     </div>
-
-    <div class="col-lg-4 col-xl-4">
+    <div class="col-lg-4">
         <div class="card border-0 h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-tools me-2 text-warning"></i>Permintaan Maintenance</span>
+                <span><i class="bi bi-tools me-2 text-warning"></i>Maintenance</span>
                 <a href="{{ url_for('maintenance.index') }}" class="btn btn-sm btn-outline-primary">Lihat Semua</a>
             </div>
             <div class="card-body p-0">
                 {% if permintaan_maintenance %}
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>Kamar</th>
-                                <th>Deskripsi</th>
-                                <th>Prioritas</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
+                        <thead><tr><th>Kamar</th><th>Deskripsi</th><th>Prioritas</th><th>Status</th></tr></thead>
                         <tbody>
                             {% for m in permintaan_maintenance %}
                             <tr>
-                                <td class="fw-medium">
-                                    <i class="bi bi-door-open me-1 text-muted"></i>{{ m.room.nomor_kamar }}
-                                </td>
-                                <td style="max-width:160px">
-                                    <span class="d-inline-block text-truncate" style="max-width:100%">
-                                        {{ m.deskripsi }}
-                                    </span>
-                                </td>
-                                <td>
-                                    {% set prioritas = m.prioritas|lower %}
-                                    {% if prioritas == 'tinggi' or prioritas == 'high' or prioritas == 'urgent' %}
-                                    <span class="badge badge-danger">Tinggi</span>
-                                    {% elif prioritas == 'sedang' or prioritas == 'medium' %}
-                                    <span class="badge badge-warning">Sedang</span>
-                                    {% elif prioritas == 'rendah' or prioritas == 'low' %}
-                                    <span class="badge badge-info">Rendah</span>
-                                    {% else %}
-                                    <span class="badge badge-secondary">{{ m.prioritas }}</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% set status = m.status|lower %}
-                                    {% if status == 'dibuka' or status == 'open' or status == 'diajukan' %}
-                                    <span class="badge badge-info">Dibuka</span>
-                                    {% elif status == 'dikerjakan' or status == 'in_progress' or status == 'proses' %}
-                                    <span class="badge badge-warning">Dikerjakan</span>
-                                    {% elif status == 'selesai' or status == 'done' or status == 'completed' %}
-                                    <span class="badge badge-success">Selesai</span>
-                                    {% elif status == 'ditolak' or status == 'rejected' %}
-                                    <span class="badge badge-danger">Ditolak</span>
-                                    {% else %}
-                                    <span class="badge badge-secondary">{{ m.status }}</span>
-                                    {% endif %}
-                                </td>
+                                <td class="fw-medium"><i class="bi bi-door-open me-1 text-muted"></i>{{ m.room.nomor_kamar }}</td>
+                                <td style="max-width:120px"><span class="d-inline-block text-truncate" style="max-width:100%">{{ m.deskripsi }}</span></td>
+                                <td><span class="badge {% if m.prioritas in ('tinggi','high','urgent') %}badge-danger{% elif m.prioritas in ('sedang','medium') %}badge-warning{% else %}badge-info{% endif %}">{{ m.prioritas }}</span></td>
+                                <td><span class="badge {% if m.status == 'selesai' %}badge-success{% elif m.status in ('diajukan','dibuka','open') %}badge-info{% elif m.status in ('diproses','dikerjakan') %}badge-warning{% else %}badge-secondary{% endif %}">{{ m.status }}</span></td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
-                {% else %}
-                <div class="empty-state">
-                    <i class="bi bi-check2-all"></i>
-                    <h5>Tidak ada permintaan maintenance</h5>
-                </div>
-                {% endif %}
+                {% else %}<div class="empty-state"><i class="bi bi-check2-all"></i><h5>Tidak ada permintaan</h5></div>{% endif %}
             </div>
         </div>
     </div>
 </div>
+
+{% if unpaid_bookings %}
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="card border-0 border-danger">
+            <div class="card-header d-flex justify-content-between align-items-center bg-danger-subtle">
+                <span><i class="bi bi-exclamation-triangle me-2"></i>Tagihan Belum Dibayar ({{ tagihan_belum_dibayar }})</span>
+                <span class="text-muted small">Collection rate: {{ collection_rate }}%</span>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead><tr><th>Penghuni</th><th>Kamar</th><th>Tagihan</th><th>No. Telepon</th><th>Aksi</th></tr></thead>
+                    <tbody>
+                        {% for b in unpaid_bookings %}
+                        {% set pesan = 'Halo ' + b.client.nama_lengkap + '!%0APengingat pembayaran kos kamar ' + b.room.nomor_kamar + '.%0ATagihan: Rp' + '{:,.0f}'.format(b.room.harga_per_bulan) + '%0ASilakan transfer ke BCA 1234567890 a.n Pengelola Kos.' %}
+                        <tr>
+                            <td class="fw-medium">{{ b.client.nama_lengkap }}</td>
+                            <td><span class="badge bg-primary-subtle text-primary-emphasis">{{ b.room.nomor_kamar }}</span></td>
+                            <td>Rp{{ "{:,.0f}".format(b.room.harga_per_bulan) }}</td>
+                            <td>{{ b.client.no_telepon or '-' }}</td>
+                            <td>
+                                <a href="https://wa.me/{{ b.client.no_telepon }}?text={{ pesan }}" target="_blank" class="btn btn-sm btn-success">
+                                    <i class="bi bi-whatsapp me-1"></i>Ingatkan
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <div class="row g-3">
     <div class="col-12">
@@ -325,95 +252,55 @@
                 {% if penghuni %}
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>Nama</th>
-                                <th>Kamar</th>
-                                <th>No. Telepon</th>
-                            </tr>
-                        </thead>
+                        <thead><tr><th>Nama</th><th>Kamar</th><th>No. Telepon</th></tr></thead>
                         <tbody>
                             {% for h in penghuni %}
                             <tr>
-                                <td class="fw-medium">
-                                    <i class="bi bi-person-circle me-2 text-muted"></i>{{ h.nama_lengkap }}
-                                </td>
-                                <td>
-                                    {% if h.nomor_kamar and h.nomor_kamar != '-' %}
-                                    <span class="badge bg-primary-subtle text-primary-emphasis">
-                                        <i class="bi bi-door-open me-1"></i>{{ h.nomor_kamar }}
-                                    </span>
-                                    {% else %}
-                                    <span class="text-muted">-</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if h.no_telepon %}
-                                    <a href="tel:{{ h.no_telepon }}" class="text-decoration-none">{{ h.no_telepon }}</a>
-                                    {% else %}
-                                    <span class="text-muted">-</span>
-                                    {% endif %}
-                                </td>
+                                <td class="fw-medium"><i class="bi bi-person-circle me-2 text-muted"></i>{{ h.nama_lengkap }}</td>
+                                <td>{% if h.nomor_kamar and h.nomor_kamar != '-' %}<span class="badge bg-primary-subtle text-primary-emphasis"><i class="bi bi-door-open me-1"></i>{{ h.nomor_kamar }}</span>{% else %}<span class="text-muted">-</span>{% endif %}</td>
+                                <td>{% if h.no_telepon %}<a href="tel:{{ h.no_telepon }}" class="text-decoration-none">{{ h.no_telepon }}</a>{% else %}<span class="text-muted">-</span>{% endif %}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
-                {% else %}
-                <div class="empty-state">
-                    <i class="bi bi-person-plus"></i>
-                    <h5>Belum ada penghuni</h5>
-                </div>
-                {% endif %}
+                {% else %}<div class="empty-state"><i class="bi bi-person-plus"></i><h5>Belum ada penghuni</h5></div>{% endif %}
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
 
-<div class="row g-3 mt-3">
-    <div class="col-md-3">
-        <a href="{{ url_for('announcements.index') }}" class="text-decoration-none">
-            <div class="card border-0 h-100 text-center py-3">
-                <div class="card-body">
-                    <i class="bi bi-megaphone fs-2 text-primary mb-2 d-block"></i>
-                    <h6 class="mb-0">Pengumuman</h6>
-                    <small class="text-muted">Buat & kelola pengumuman</small>
-                </div>
-            </div>
-        </a>
-    </div>
-    <div class="col-md-3">
-        <a href="{{ url_for('complaints.index') }}" class="text-decoration-none">
-            <div class="card border-0 h-100 text-center py-3">
-                <div class="card-body">
-                    <i class="bi bi-chat-dots fs-2 text-warning mb-2 d-block"></i>
-                    <h6 class="mb-0">Komplain</h6>
-                    <small class="text-muted">Kelola komplain penghuni</small>
-                </div>
-            </div>
-        </a>
-    </div>
-    <div class="col-md-3">
-        <a href="{{ url_for('inventory.index') }}" class="text-decoration-none">
-            <div class="card border-0 h-100 text-center py-3">
-                <div class="card-body">
-                    <i class="bi bi-box fs-2 text-success mb-2 d-block"></i>
-                    <h6 class="mb-0">Inventaris</h6>
-                    <small class="text-muted">Barang & fasilitas kamar</small>
-                </div>
-            </div>
-        </a>
-    </div>
-    <div class="col-md-3">
-        <a href="{{ url_for('activity.index') }}" class="text-decoration-none">
-            <div class="card border-0 h-100 text-center py-3">
-                <div class="card-body">
-                    <i class="bi bi-clock-history fs-2 text-info mb-2 d-block"></i>
-                    <h6 class="mb-0">Log Aktivitas</h6>
-                    <small class="text-muted">Riwayat perubahan sistem</small>
-                </div>
-            </div>
-        </a>
-    </div>
-</div>
+{% block extra_scripts %}
+<script>
+const incomeChart = new Chart(document.getElementById('incomeChart'), {
+    type: 'bar',
+    data: {
+        labels: [{% for d in pemasukan_6bulan %}'{{ d.bulan }}',{% endfor %}],
+        datasets: [{
+            label: 'Pemasukan (Rp)',
+            data: [{% for d in pemasukan_6bulan %}{{ d.total }},{% endfor %}],
+            backgroundColor: 'rgba(59,130,246,0.6)',
+            borderColor: 'rgb(59,130,246)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { callback: v => 'Rp' + v.toLocaleString('id') } } }
+    }
+});
+const occupancyChart = new Chart(document.getElementById('occupancyChart'), {
+    type: 'doughnut',
+    data: {
+        labels: ['Terisi', 'Tersedia', 'Maintenance'],
+        datasets: [{
+            data: [{{ kamar_terisi }}, {{ kamar_tersedia }}, {{ kamar_maintenance }}],
+            backgroundColor: ['#22c55e', '#f59e0b', '#ef4444']
+        }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+});
+</script>
 {% endblock %}
