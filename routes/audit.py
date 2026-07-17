@@ -206,6 +206,8 @@ def delete(audit_id):
     booking_id = audit.booking_id
 
     if request.method == "POST":
+        # Clean up AuditItemResult records to avoid foreign key constraints
+        AuditItemResult.query.filter_by(audit_id=audit_id).delete()
         db.session.delete(audit)
         db.session.commit()
         flash("Audit berhasil dihapus.", "success")
