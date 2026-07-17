@@ -8,3 +8,4 @@ venv/
 .env/
 .codegraph/
 opencode.json
+# AGENTS.md is intentionally tracked despite this ignore list
