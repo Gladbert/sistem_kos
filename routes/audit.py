@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, make_response, jsonify
 from flask_login import login_required, current_user
 from extensions import db
 from models import RoomAudit, AuditItemResult, RoomItem, Booking, Notification
@@ -122,3 +122,98 @@ def edit(audit_id):
 
     results = {r.item_id: r for r in AuditItemResult.query.filter_by(audit_id=audit.id).all()}
     return render_template("audit/edit.html", audit=audit, booking=booking, items=items, results=results)
+
+
+@audit_bp.route("/export/<int:booking_id>")
+@login_required
+def export(booking_id):
+    if current_user.role not in ("admin", "management"):
+        flash("Akses ditolak.", "danger")
+        return redirect(url_for("dashboard.index"))
+
+    booking = Booking.query.get_or_404(booking_id)
+    check_in = RoomAudit.query.filter_by(booking_id=booking_id, tipe="check_in").first()
+    check_out = RoomAudit.query.filter_by(booking_id=booking_id, tipe="check_out").first()
+
+    format_type = request.args.get("format", "csv")
+
+    if format_type == "json":
+        if check_in:
+            ci_items = [
+                {"item_id": r.item_id, "item_nama": r.item.nama, "kondisi": r.kondisi, "catatan": r.catatan}
+                for r in check_in.audit_item_results
+            ]
+        else:
+            ci_items = []
+        if check_out:
+            co_items = [
+                {"item_id": r.item_id, "item_nama": r.item.nama, "kondisi": r.kondisi, "catatan": r.catatan}
+                for r in check_out.audit_item_results
+            ]
+        else:
+            co_items = []
+
+        data = {
+            "booking_id": booking_id,
+            "room": booking.room.nomor_kamar,
+            "check_in": {
+                "created_at": check_in.created_at.isoformat() if check_in else None,
+                "created_by": check_in.created_by if check_in else None,
+                "catatan": check_in.catatan if check_in else None,
+                "items": ci_items,
+            },
+            "check_out": {
+                "created_at": check_out.created_at.isoformat() if check_out else None,
+                "created_by": check_out.created_by if check_out else None,
+                "catatan": check_out.catatan if check_out else None,
+                "items": co_items,
+            },
+        }
+        return jsonify(data)
+
+    lines = []
+    lines.append(f"Booking ID: {booking_id}")
+    lines.append(f"Kamar: {booking.room.nomor_kamar}")
+    lines.append("")
+
+    for label, audit in (("CHECK_IN", check_in), ("CHECK_OUT", check_out)):
+        lines.append(f"=== {label} ===")
+        if audit:
+            lines.append(f"Tanggal: {audit.created_at}")
+            lines.append(f"Oleh: {audit.created_by}")
+            lines.append(f"Catatan: {audit.catatan or ''}")
+            lines.append("ID Item,Nama Item,Kondisi,Catatan")
+            for item in audit.items:
+                lines.append(f"{item.item_id},{item.item.nama},{item.kondisi},{item.catatan or ''}")
+        else:
+            lines.append("Tidak ada audit.")
+        lines.append("")
+
+    response = make_response("\n".join(lines))
+    response.headers["Content-Type"] = "text/csv"
+    response.headers["Content-Disposition"] = f"attachment; filename=audit_{booking_id}.csv"
+    return response
+
+
+@audit_bp.route("/delete/<int:audit_id>", methods=["GET", "POST"])
+@login_required
+def delete(audit_id):
+    if current_user.role not in ("admin", "management"):
+        flash("Akses ditolak.", "danger")
+        return redirect(url_for("dashboard.index"))
+
+    audit = RoomAudit.query.get_or_404(audit_id)
+    booking_id = audit.booking_id
+
+    if request.method == "POST":
+        db.session.delete(audit)
+        db.session.commit()
+        flash("Audit berhasil dihapus.", "success")
+        return redirect(url_for("audit.detail", booking_id=booking_id))
+
+    return render_template(
+        "audit/delete.html",
+        audit=audit,
+        booking=audit.booking,
+        items=AuditItemResult.query.filter_by(audit_id=audit_id).all(),
+    )

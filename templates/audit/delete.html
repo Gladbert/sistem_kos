@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-danger text-white">
+            <h4 class="mb-0">Hapus Audit</h4>
+        </div>
+        <div class="card-body">
+            <p>Apakah Anda yakin ingin menghapus audit
+                {% if audit.tipe == "check_in" %}check-in
+                {% elif audit.tipe == "check_out" %}check-out
+                {% else %}{{ audit.tipe }}{% endif %}
+                untuk kamar {{ booking.room.nomor_kamar }}? Tindakan ini tidak dapat dibatalkan.</p>
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-danger">Hapus</button>
+                <a href="{{ url_for('audit.detail', booking_id=booking.id) }}" class="btn btn-secondary">Batal</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

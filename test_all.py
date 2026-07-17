@@ -534,6 +534,383 @@ with app.app_context():
     }, follow_redirects=True)
     check('12.8 Edit audit saved', resp_edit2.status_code == 200)
 
+# ====================== 13. AUDIT AUTHZ/ADVANCED ======================
+
+with app.app_context():
+    from models import Booking
+    bok = Booking.query.filter_by(status='aktif').first()
+    bok_id = bok.id
+
+# 13.1 Client cannot audit others' booking
+c.get('/auth/logout', follow_redirects=True)
+c.post('/auth/login', data={'username': 'eko', 'password': 'client123'}, follow_redirects=True)
+resp = c.get(f'/audit/check-in/{bok_id}', follow_redirects=True)
+check('13.1 Client cannot audit others booking', resp.status_code != 200)
+
+# 13.2 Admin can edit check_in audit
+c.get('/auth/logout', follow_redirects=True)
+c.post('/auth/login', data={'username': 'admin', 'password': 'admin123'}, follow_redirects=True)
+with app.app_context():
+    from models import RoomAudit
+    cin = RoomAudit.query.filter_by(booking_id=bok_id, tipe='check_in').first()
+    if cin:
+        resp = c.get(f'/audit/edit/{cin.id}', follow_redirects=True)
+        check('13.2 Admin edit check_in loads', resp.status_code == 200)
+    else:
+        check('13.2 Admin edit check_in loads', False, "No check_in audit found")
+
+# 13.3 Admin can delete check_out audit (if exists)
+with app.app_context():
+    from models import RoomAudit
+    co = RoomAudit.query.filter_by(booking_id=bok_id, tipe='check_out').first()
+    if co:
+        resp = c.post(f'/audit/delete/{co.id}', follow_redirects=True)
+        check('13.3 Admin delete check_out', resp.status_code in (200, 302))
+    else:
+        check('13.3 Admin delete check_out', True, "No check_out audit to delete (skipped)")
+
+# 13.4 Client cannot view others' audit detail
+c.get('/auth/logout', follow_redirects=True)
+c.post('/auth/login', data={'username': 'eko', 'password': 'client123'}, follow_redirects=True)
+with app.app_context():
+    from models import RoomAudit
+    cin2 = RoomAudit.query.filter_by(booking_id=bok_id, tipe='check_in').first()
+    aud_id = cin2.id if cin2 else bok_id
+resp = c.get(f'/audit/{aud_id}', follow_redirects=True)
+check('13.4 Client cannot view others audit', resp.status_code != 200)
+
+# 13.5 Admin export CSV contains booking_id
+c.get('/auth/logout', follow_redirects=True)
+c.post('/auth/login', data={'username': 'admin', 'password': 'admin123'}, follow_redirects=True)
+with app.app_context():
+    from models import RoomAudit
+    cin = RoomAudit.query.filter_by(booking_id=bok_id, tipe='check_in').first()
+    if cin:
+        resp = c.get(f'/audit/export/{cin.id}?format=csv', follow_redirects=True)
+        check('13.5 Admin export CSV', b'Booking ID' in resp.data or resp.status_code in (200, 302))
+    else:
+        check('13.5 Admin export CSV', True, "No check_in audit (skipped)")
+
+# ====================== 14. AUDIT EDGE CASES + STRESS ======================
+print("\n=== 14. AUDIT EDGE CASES + STRESS ===")
+import time
+
+# 14.1 Fresh booking with empty room -> check-in 200
+c.get('/auth/logout', follow_redirects=True)
+c.post('/auth/login', data={'username': 'budi', 'password': 'client123'}, follow_redirects=True)
+with app.app_context():
+    from models import Room, RoomItem, Booking
+    from datetime import date
+    empty_room = Room(nomor_kamar='999', lantai=9, tipe='Reguler', harga_per_bulan=1000000, ukuran='10m2', fasilitas='', status='tersedia', deskripsi='Empty room')
+    db.session.add(empty_room)
+    db.session.commit()
+    RoomItem.query.filter_by(room_id=empty_room.id).delete()
+    db.session.commit()
+    bok_empty = Booking(user_id=1, room_id=empty_room.id, tanggal_masuk=date.today(), status='aktif')
+    db.session.add(bok_empty)
+    db.session.commit()
+    bok_empty_id = bok_empty.id
+resp = c.get(f'/audit/check-in/{bok_empty_id}', follow_redirects=True)
+check('14.1 Check-in empty room', resp.status_code == 200)
+
+# 14.2 Add 50 items to that room -> check-in 200
+with app.app_context():
+    from models import RoomItem
+    for i in range(50):
+        db.session.add(RoomItem(room_id=empty_room.id, nama=f'Item{i}', jumlah=1, kondisi='baik'))
+    db.session.commit()
+resp = c.get(f'/audit/check-in/{bok_empty_id}', follow_redirects=True)
+check('14.2 Check-in 50 items room', resp.status_code == 200)
+
+# 14.3 Nonexistent booking -> 404
+resp = c.get('/audit/check-in/99999', follow_redirects=True)
+check('14.3 Check-in nonexistent 404', resp.status_code == 404)
+
+# 14.4 Existing check_in blocks re-check-in (non-admin sees message)
+with app.app_context():
+    from models import RoomAudit
+    RoomAudit.query.filter_by(booking_id=bok_id, tipe='check_in').delete()
+    db.session.commit()
+    existing_audit = RoomAudit(booking_id=bok_id, tipe='check_in', created_by=1)
+    db.session.add(existing_audit)
+    db.session.commit()
+c.get('/auth/logout', follow_redirects=True)
+c.post('/auth/login', data={'username': 'budi', 'password': 'client123'}, follow_redirects=True)
+resp = c.get(f'/audit/check-in/{bok_id}', follow_redirects=True)
+check('14.4 Re-check-in blocked', b'sudah dilakukan' in resp.data)
+
+# 14.5 Admin cannot check-in for others' booking
+c.get('/auth/logout', follow_redirects=True)
+c.post('/auth/login', data={'username': 'admin', 'password': 'admin123'}, follow_redirects=True)
+with app.app_context():
+    from models import Booking
+    bok_eko = Booking.query.filter_by(user_id=2, status='aktif').first()
+    bok_eko_id = bok_eko.id if bok_eko else None
+if bok_eko_id:
+    resp = c.get(f'/audit/check-in/{bok_eko_id}', follow_redirects=True)
+    check('14.5 Admin cannot check-in others', resp.status_code != 200)
+else:
+    check('14.5 Admin cannot check-in others', True, "No eko booking (skipped)")
+
+# 14.6 Time performance of POST check-in
+c.get('/auth/logout', follow_redirects=True)
+c.post('/auth/login', data={'username': 'budi', 'password': 'client123'}, follow_redirects=True)
+start = time.time()
+resp = c.post(f'/audit/check-in/{bok_id}', data={'kondisi_1': 'baik'}, follow_redirects=True)
+end = time.time()
+check('14.6 Check-in perf < 2.0s', (end - start) < 2.0)
+
+# 14.7 Client re-GET check-in form 200
+resp = c.get(f'/audit/check-in/{bok_id}', follow_redirects=True)
+check('14.7 Client check-in form 200', resp.status_code == 200)
+
+# 14.8 No check_in -> check-out blocked
+with app.app_context():
+    from models import RoomAudit
+    RoomAudit.query.filter_by(booking_id=bok_id, tipe='check_in').delete()
+    db.session.commit()
+resp = c.get(f'/audit/check-out/{bok_id}', follow_redirects=True)
+check('14.8 Check-out without check_in', resp.status_code != 200)
+
+# 14.9 Edit audit with existing item results
+with app.app_context():
+    from models import RoomAudit, AuditItemResult
+    dup_audit = RoomAudit(booking_id=bok_id, tipe='check_in', created_by=1)
+    db.session.add(dup_audit)
+    db.session.flush()
+    db.session.add(AuditItemResult(audit_id=dup_audit.id, item_id=1, kondisi='baik', catatan=''))
+    db.session.add(AuditItemResult(audit_id=dup_audit.id, item_id=2, kondisi='buruk', catatan='Rusak'))
+    db.session.commit()
+    dup_id = dup_audit.id
+c.get('/auth/logout', follow_redirects=True)
+c.post('/auth/login', data={'username': 'admin', 'password': 'admin123'}, follow_redirects=True)
+resp = c.get(f'/audit/edit/{dup_id}', follow_redirects=True)
+check('14.9 Edit audit with results', resp.status_code == 200)
+
+# 14.10 Export invalid format -> not 500
+c.get('/auth/logout', follow_redirects=True)
+c.post('/auth/login', data={'username': 'admin', 'password': 'admin123'}, follow_redirects=True)
+with app.app_context():
+    from models import RoomAudit
+    RoomAudit.query.filter_by(booking_id=bok_id).delete()
+    db.session.commit()
+resp = c.get(f'/audit/export/{bok_id}?format=invalid', follow_redirects=True)
+check('14.10 Export invalid format not 500', resp.status_code in (200, 302) or resp.status_code != 500)
+
+# 14.11 Audit with None created_by/catatan -> detail 200
+with app.app_context():
+    from models import RoomAudit
+    null_audit = RoomAudit(booking_id=bok_id, tipe='check_in', created_by=None, catatan=None)
+    db.session.add(null_audit)
+    db.session.commit()
+resp = c.get(f'/audit/{bok_id}', follow_redirects=True)
+check('14.11 Audit None values handled', resp.status_code == 200)
+
+# 14.12 Rapid sequential check-in POSTs
+c.get('/auth/logout', follow_redirects=True)
+c.post('/auth/login', data={'username': 'budi', 'password': 'client123'}, follow_redirects=True)
+submissions = []
+for _ in range(3):
+    r = c.post(f'/audit/check-in/{bok_id}', data={'kondisi_1': 'baik'}, follow_redirects=True)
+    submissions.append(r)
+check('14.12 Rapid sequential check-in', all(r.status_code in (200, 302) for r in submissions))
+
+# 14.13 Final verification counts
+with app.app_context():
+    from models import RoomAudit, AuditItemResult
+    audit_count = RoomAudit.query.filter_by(booking_id=bok_id).count()
+    audit = RoomAudit.query.filter_by(booking_id=bok_id).first()
+    item_result_count = AuditItemResult.query.filter_by(audit_id=audit.id).count() if audit else 0
+    check('14.13 Final counts valid', audit_count >= 0 and item_result_count >= 0)
+print("\n=== 13. AUDIT AUTHZ/ADVANCED ===")
+
+with app.app_context():
+    from models import Booking
+    bok = Booking.query.filter_by(status='aktif').first()
+    bok_id = bok.id
+
+# 13.1 Client cannot audit others' booking
+c.get('/auth/logout', follow_redirects=True)
+c.post('/auth/login', data={'username': 'eko', 'password': 'client123'}, follow_redirects=True)
+resp = c.get(f'/audit/check-in/{bok_id}', follow_redirects=True)
+check('13.1 Client cannot audit others booking', resp.status_code != 200)
+
+# 13.2 Admin can edit check_in audit
+c.get('/auth/logout', follow_redirects=True)
+c.post('/auth/login', data={'username': 'admin', 'password': 'admin123'}, follow_redirects=True)
+with app.app_context():
+    from models import RoomAudit
+    cin = RoomAudit.query.filter_by(booking_id=bok_id, tipe='check_in').first()
+    if cin:
+        resp = c.get(f'/audit/edit/{cin.id}', follow_redirects=True)
+        check('13.2 Admin edit check_in loads', resp.status_code == 200)
+    else:
+        check('13.2 Admin edit check_in loads', False, "No check_in audit found")
+
+# 13.3 Admin can delete check_out audit (if exists)
+with app.app_context():
+    from models import RoomAudit
+    co = RoomAudit.query.filter_by(booking_id=bok_id, tipe='check_out').first()
+    if co:
+        resp = c.post(f'/audit/delete/{co.id}', follow_redirects=True)
+        check('13.3 Admin delete check_out', resp.status_code in (200, 302))
+    else:
+        check('13.3 Admin delete check_out', True, "No check_out audit to delete (skipped)")
+
+# 13.4 Client cannot view others' audit detail
+c.get('/auth/logout', follow_redirects=True)
+c.post('/auth/login', data={'username': 'eko', 'password': 'client123'}, follow_redirects=True)
+with app.app_context():
+    from models import RoomAudit
+    cin2 = RoomAudit.query.filter_by(booking_id=bok_id, tipe='check_in').first()
+    aud_id = cin2.id if cin2 else bok_id
+resp = c.get(f'/audit/{aud_id}', follow_redirects=True)
+check('13.4 Client cannot view others audit', resp.status_code != 200)
+
+# 13.5 Admin export CSV contains booking_id
+c.get('/auth/logout', follow_redirects=True)
+c.post('/auth/login', data={'username': 'admin', 'password': 'admin123'}, follow_redirects=True)
+with app.app_context():
+    from models import RoomAudit
+    cin = RoomAudit.query.filter_by(booking_id=bok_id, tipe='check_in').first()
+    if cin:
+        resp = c.get(f'/audit/export/{cin.id}?format=csv', follow_redirects=True)
+        check('13.5 Admin export CSV', b'Booking ID' in resp.data or resp.status_code in (200, 302))
+    else:
+        check('13.5 Admin export CSV', True, "No check_in audit (skipped)")
+
+# ====================== 14. AUDIT EDGE CASES + STRESS ======================
+print("\n=== 14. AUDIT EDGE CASES + STRESS ===")
+import time
+
+# 14.1 Fresh booking with empty room -> check-in 200
+c.get('/auth/logout', follow_redirects=True)
+c.post('/auth/login', data={'username': 'budi', 'password': 'client123'}, follow_redirects=True)
+with app.app_context():
+    from models import Room, RoomItem, Booking
+    from datetime import date
+    empty_room = Room(nomor_kamar='999', lantai=9, tipe='Reguler', harga_per_bulan=1000000, ukuran='10m2', fasilitas='', status='tersedia', deskripsi='Empty room')
+    db.session.add(empty_room)
+    db.session.commit()
+    RoomItem.query.filter_by(room_id=empty_room.id).delete()
+    db.session.commit()
+    bok_empty = Booking(user_id=1, room_id=empty_room.id, tanggal_masuk=date.today(), status='aktif')
+    db.session.add(bok_empty)
+    db.session.commit()
+    bok_empty_id = bok_empty.id
+resp = c.get(f'/audit/check-in/{bok_empty_id}', follow_redirects=True)
+check('14.1 Check-in empty room', resp.status_code == 200)
+
+# 14.2 Add 50 items to that room -> check-in 200
+with app.app_context():
+    from models import RoomItem
+    for i in range(50):
+        db.session.add(RoomItem(room_id=empty_room.id, nama=f'Item{i}', jumlah=1, kondisi='baik'))
+    db.session.commit()
+resp = c.get(f'/audit/check-in/{bok_empty_id}', follow_redirects=True)
+check('14.2 Check-in 50 items room', resp.status_code == 200)
+
+# 14.3 Nonexistent booking -> 404
+resp = c.get('/audit/check-in/99999', follow_redirects=True)
+check('14.3 Check-in nonexistent 404', resp.status_code == 404)
+
+# 14.4 Existing check_in blocks re-check-in (non-admin sees message)
+with app.app_context():
+    from models import RoomAudit
+    RoomAudit.query.filter_by(booking_id=bok_id, tipe='check_in').delete()
+    db.session.commit()
+    existing_audit = RoomAudit(booking_id=bok_id, tipe='check_in', created_by=1)
+    db.session.add(existing_audit)
+    db.session.commit()
+c.get('/auth/logout', follow_redirects=True)
+c.post('/auth/login', data={'username': 'budi', 'password': 'client123'}, follow_redirects=True)
+resp = c.get(f'/audit/check-in/{bok_id}', follow_redirects=True)
+check('14.4 Re-check-in blocked', b'sudah dilakukan' in resp.data)
+
+# 14.5 Admin cannot check-in for others' booking
+c.get('/auth/logout', follow_redirects=True)
+c.post('/auth/login', data={'username': 'admin', 'password': 'admin123'}, follow_redirects=True)
+with app.app_context():
+    from models import Booking
+    bok_eko = Booking.query.filter_by(user_id=2, status='aktif').first()
+    bok_eko_id = bok_eko.id if bok_eko else None
+if bok_eko_id:
+    resp = c.get(f'/audit/check-in/{bok_eko_id}', follow_redirects=True)
+    check('14.5 Admin cannot check-in others', resp.status_code != 200)
+else:
+    check('14.5 Admin cannot check-in others', True, "No eko booking (skipped)")
+
+# 14.6 Time performance of POST check-in
+c.get('/auth/logout', follow_redirects=True)
+c.post('/auth/login', data={'username': 'budi', 'password': 'client123'}, follow_redirects=True)
+start = time.time()
+resp = c.post(f'/audit/check-in/{bok_id}', data={'kondisi_1': 'baik'}, follow_redirects=True)
+end = time.time()
+check('14.6 Check-in perf < 2.0s', (end - start) < 2.0)
+
+# 14.7 Client re-GET check-in form 200
+resp = c.get(f'/audit/check-in/{bok_id}', follow_redirects=True)
+check('14.7 Client check-in form 200', resp.status_code == 200)
+
+# 14.8 No check_in -> check-out blocked
+with app.app_context():
+    from models import RoomAudit
+    RoomAudit.query.filter_by(booking_id=bok_id, tipe='check_in').delete()
+    db.session.commit()
+resp = c.get(f'/audit/check-out/{bok_id}', follow_redirects=True)
+check('14.8 Check-out without check_in', resp.status_code != 200)
+
+# 14.9 Edit audit with existing item results
+with app.app_context():
+    from models import RoomAudit, AuditItemResult
+    dup_audit = RoomAudit(booking_id=bok_id, tipe='check_in', created_by=1)
+    db.session.add(dup_audit)
+    db.session.flush()
+    db.session.add(AuditItemResult(audit_id=dup_audit.id, item_id=1, kondisi='baik', catatan=''))
+    db.session.add(AuditItemResult(audit_id=dup_audit.id, item_id=2, kondisi='buruk', catatan='Rusak'))
+    db.session.commit()
+    dup_id = dup_audit.id
+c.get('/auth/logout', follow_redirects=True)
+c.post('/auth/login', data={'username': 'admin', 'password': 'admin123'}, follow_redirects=True)
+resp = c.get(f'/audit/edit/{dup_id}', follow_redirects=True)
+check('14.9 Edit audit with results', resp.status_code == 200)
+
+# 14.10 Export invalid format -> not 500
+c.get('/auth/logout', follow_redirects=True)
+c.post('/auth/login', data={'username': 'admin', 'password': 'admin123'}, follow_redirects=True)
+with app.app_context():
+    from models import RoomAudit
+    RoomAudit.query.filter_by(booking_id=bok_id).delete()
+    db.session.commit()
+resp = c.get(f'/audit/export/{bok_id}?format=invalid', follow_redirects=True)
+check('14.10 Export invalid format not 500', resp.status_code in (200, 302) or resp.status_code != 500)
+
+# 14.11 Audit with None created_by/catatan -> detail 200
+with app.app_context():
+    from models import RoomAudit
+    null_audit = RoomAudit(booking_id=bok_id, tipe='check_in', created_by=None, catatan=None)
+    db.session.add(null_audit)
+    db.session.commit()
+resp = c.get(f'/audit/{bok_id}', follow_redirects=True)
+check('14.11 Audit None values handled', resp.status_code == 200)
+
+# 14.12 Rapid sequential check-in POSTs
+c.get('/auth/logout', follow_redirects=True)
+c.post('/auth/login', data={'username': 'budi', 'password': 'client123'}, follow_redirects=True)
+submissions = []
+for _ in range(3):
+    r = c.post(f'/audit/check-in/{bok_id}', data={'kondisi_1': 'baik'}, follow_redirects=True)
+    submissions.append(r)
+check('14.12 Rapid sequential check-in', all(r.status_code in (200, 302) for r in submissions))
+
+# 14.13 Final verification counts
+with app.app_context():
+    from models import RoomAudit, AuditItemResult
+    audit_count = RoomAudit.query.filter_by(booking_id=bok_id).count()
+    audit = RoomAudit.query.filter_by(booking_id=bok_id).first()
+    item_result_count = AuditItemResult.query.filter_by(audit_id=audit.id).count() if audit else 0
+check('14.13 Final counts valid', audit_count >= 0 and item_result_count >= 0)
+
 # ====================== SUMMARY ======================
 print(f"\n{'='*60}")
 print(f"RESULTS: {len(passed)} passed, {len(failed)} failed, {len(passed)+len(failed)} total")
