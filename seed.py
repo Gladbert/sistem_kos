@@ -109,6 +109,7 @@ def seed():
         ]
         for kat, jml, dsc in expenses_data:
             db.session.add(Expense(
+                kos_id=kos1.id,
                 kategori=kat, jumlah=jml,
                 tanggal=date.today() - timedelta(days=random.randint(1, 15)),
                 deskripsi=dsc
@@ -143,13 +144,13 @@ def seed():
 
         # Complaint (from client budi)
         db.session.add(Complaint(
-            user_id=clients[0].id, judul="AC kamar kurang dingin",
+            user_id=clients[0].id, kos_id=kos1.id, judul="AC kamar kurang dingin",
             deskripsi="AC di kamar 101 sudah 2 hari ini tidak dingin. Mohon segera diperbaiki.",
             kategori="fasilitas", status="ditindaklanjuti",
             tanggapan="Akan kami kirim teknisi besok pagi.", ditanggapi_oleh=admin.id
         ))
         db.session.add(Complaint(
-            user_id=clients[1].id, judul="Kamar mandi bocor",
+            user_id=clients[1].id, kos_id=kos1.id, judul="Kamar mandi bocor",
             deskripsi="Air dari lantai atas menetes di kamar mandi. Mohon dicek.",
             kategori="fasilitas", status="diajukan"
         ))

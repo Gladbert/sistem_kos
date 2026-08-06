@@ -1,8 +1,8 @@
 from datetime import date, datetime
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, session
 from flask_login import login_required, current_user
 from extensions import db
-from models import Payment, Booking, Notification
+from models import Payment, Booking, Notification, Room
 
 payments_bp = Blueprint("payments", __name__, url_prefix="/payments")
 
@@ -11,17 +11,26 @@ payments_bp = Blueprint("payments", __name__, url_prefix="/payments")
 @login_required
 def index():
     if current_user.role in ("admin", "management"):
+        kos_id = session.get("kos_id")
         booking_id = request.args.get("booking_id", type=int)
         status = request.args.get("status")
         query = Payment.query
 
+        if kos_id:
+            kos_room_ids = [r.id for r in db.session.query(Room.id).filter_by(kos_id=kos_id).all()]
+            kos_booking_ids = [b.id for b in db.session.query(Booking.id).filter(Booking.room_id.in_(kos_room_ids)).all()] if kos_room_ids else []
+            query = query.filter(Payment.booking_id.in_(kos_booking_ids)) if kos_booking_ids else query.filter(False)
         if booking_id:
             query = query.filter_by(booking_id=booking_id)
         if status:
             query = query.filter_by(status=status)
 
         payments = query.order_by(Payment.created_at.desc()).all()
-        bookings = Booking.query.filter_by(status="aktif").all()
+        bookings_q = Booking.query.filter_by(status="aktif")
+        if kos_id:
+            kos_room_ids = [r.id for r in db.session.query(Room.id).filter_by(kos_id=kos_id).all()]
+            bookings_q = bookings_q.filter(Booking.room_id.in_(kos_room_ids)) if kos_room_ids else bookings_q.filter(False)
+        bookings = bookings_q.all()
         return render_template("payments/index.html", payments=payments, bookings=bookings)
 
     booking = Booking.query.filter_by(user_id=current_user.id, status="aktif").first()

@@ -25,13 +25,15 @@ def admin():
         return redirect(url_for("dashboard.client"))
 
     kos_id = session.get("kos_id")
-    room_query = Room.query.filter_by(kos_id=kos_id) if kos_id else Room.query
-    room_ids = [r.id for r in room_query.all()]
+    if kos_id:
+        room_ids = [r.id for r in db.session.query(Room.id).filter_by(kos_id=kos_id).all()]
+    else:
+        room_ids = [r.id for r in db.session.query(Room.id).all()]
 
     total_kamar = len(room_ids)
-    kamar_terisi = room_query.filter_by(status="terisi").count()
-    kamar_tersedia = room_query.filter_by(status="tersedia").count()
-    kamar_maintenance = room_query.filter_by(status="maintenance").count()
+    kamar_terisi = db.session.query(Room).filter_by(kos_id=kos_id, status="terisi").count() if kos_id else Room.query.filter_by(status="terisi").count()
+    kamar_tersedia = db.session.query(Room).filter_by(kos_id=kos_id, status="tersedia").count() if kos_id else Room.query.filter_by(status="tersedia").count()
+    kamar_maintenance = db.session.query(Room).filter_by(kos_id=kos_id, status="maintenance").count() if kos_id else Room.query.filter_by(status="maintenance").count()
 
     active_bookings = Booking.query.filter(Booking.room_id.in_(room_ids), Booking.status == "aktif").all() if room_ids else []
     kamar_terisi_count = len(active_bookings)
@@ -59,6 +61,7 @@ def admin():
     ).scalar() or 0
 
     pengeluaran_bulan_ini = db.session.query(db.func.sum(Expense.jumlah)).filter(
+        Expense.kos_id == kos_id if kos_id else True,
         db.func.strftime("%Y-%m", Expense.tanggal) == date.today().strftime("%Y-%m")
     ).scalar() or 0
 
@@ -104,13 +107,13 @@ def admin():
         pemasukan_6bulan.append({"bulan": bulan_str, "total": total})
 
     pembayaran_terbaru = Payment.query.filter(Payment.booking_id.in_(booking_ids)).order_by(Payment.created_at.desc()).limit(5).all() if booking_ids else []
-    pengeluaran_terbaru = Expense.query.order_by(Expense.created_at.desc()).limit(5).all()
+    pengeluaran_terbaru = Expense.query.filter(Expense.kos_id == kos_id if kos_id else True).order_by(Expense.created_at.desc()).limit(5).all()
     permintaan_maintenance = MaintenanceRequest.query.filter(
         MaintenanceRequest.room_id.in_(room_ids),
         MaintenanceRequest.status.in_(["diajukan", "diproses"])
     ).order_by(MaintenanceRequest.created_at.desc()).limit(5).all() if room_ids else []
 
-    komplain_baru = Complaint.query.filter_by(status="diajukan").count()
+    komplain_baru = Complaint.query.filter(Complaint.kos_id == kos_id if kos_id else True, Complaint.status == "diajukan").count()
 
     booking_audit = active_bookings[:5]
 

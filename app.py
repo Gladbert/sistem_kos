@@ -32,12 +32,14 @@ def create_app():
     @app.context_processor
     def inject_kos():
         from flask_login import current_user
+        if not current_user.is_authenticated:
+            return {"all_kos": [], "current_kos": None}
         all_kos = Kos.query.filter_by(is_active=True).order_by(Kos.nama).all()
         kos_id = session.get("kos_id")
         current_kos = None
         if kos_id:
             current_kos = Kos.query.get(kos_id)
-        elif all_kos:
+        if not current_kos and all_kos:
             current_kos = all_kos[0]
             session["kos_id"] = current_kos.id
         return {"all_kos": all_kos, "current_kos": current_kos}

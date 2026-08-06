@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, flash, url_for
+from flask import Blueprint, render_template, request, redirect, flash, url_for, session
 from flask_login import login_required, current_user
 from extensions import db
 from models import Complaint
@@ -10,8 +10,12 @@ complaint_bp = Blueprint("complaints", __name__, url_prefix="/komplain")
 @complaint_bp.route("/")
 @login_required
 def index():
+    kos_id = session.get("kos_id")
     if current_user.role in ("admin", "management"):
-        c = Complaint.query.order_by(Complaint.created_at.desc()).all()
+        q = Complaint.query
+        if kos_id:
+            q = q.filter(Complaint.kos_id == kos_id)
+        c = q.order_by(Complaint.created_at.desc()).all()
     else:
         c = Complaint.query.filter_by(user_id=current_user.id).order_by(Complaint.created_at.desc()).all()
     return render_template("complaints/index.html", complaints=c)
@@ -21,8 +25,9 @@ def index():
 @login_required
 def create():
     if request.method == "POST":
+        kos_id = session.get("kos_id")
         c = Complaint(
-            user_id=current_user.id, judul=request.form["judul"],
+            user_id=current_user.id, kos_id=kos_id, judul=request.form["judul"],
             deskripsi=request.form["deskripsi"],
             kategori=request.form.get("kategori", "umum")
         )

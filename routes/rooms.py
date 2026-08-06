@@ -22,7 +22,10 @@ def index():
             query = query.filter_by(status=status)
         rooms = query.order_by(Room.lantai, Room.nomor_kamar).all()
         return render_template("rooms/index.html", rooms=rooms)
-    rooms = Room.query.filter_by(status="tersedia").order_by(Room.lantai, Room.nomor_kamar).all()
+    query = Room.query.filter_by(status="tersedia")
+    if kos_id:
+        query = query.filter_by(kos_id=kos_id)
+    rooms = query.order_by(Room.lantai, Room.nomor_kamar).all()
     return render_template("rooms/public.html", rooms=rooms)
 
 
@@ -85,12 +88,6 @@ def edit(id):
             flash("Nomor kamar wajib diisi.", "danger")
             return render_template("rooms/form.html", room=room)
 
-        existing = Room.query.filter_by(nomor_kamar=nomor).first()
-        if existing and existing.id != id:
-            flash("Nomor kamar sudah digunakan.", "danger")
-            return render_template("rooms/form.html", room=room)
-
-        # Ensure unique within kos
         kos_id = session.get("kos_id")
         dup = Room.query.filter_by(nomor_kamar=nomor, kos_id=kos_id).first()
         if dup and dup.id != id:

@@ -42,6 +42,29 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
+                {% if current_user.role in ('admin', 'management') and all_kos %}
+                <div class="d-lg-none mb-2">
+                    <div class="dropdown w-100">
+                        <a class="btn btn-outline-light btn-sm dropdown-toggle w-100 text-start" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-buildings me-1"></i>{{ current_kos.nama if current_kos else 'Pilih Kos' }}
+                        </a>
+                        <ul class="dropdown-menu w-100">
+                            {% for kos in all_kos %}
+                            <li>
+                                <form method="POST" action="{{ url_for('kos.pilih', id=kos.id) }}" class="d-inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="dropdown-item {% if current_kos and current_kos.id == kos.id %}active{% endif %}">
+                                        {{ kos.nama }}
+                                    </button>
+                                </form>
+                            </li>
+                            {% endfor %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('kos.index') }}"><i class="bi bi-gear me-1"></i>Kelola Kos</a></li>
+                        </ul>
+                    </div>
+                </div>
+                {% endif %}
                 {% if current_user.role in ('admin', 'management') %}
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('dashboard.admin') }}"><i class="bi bi-speedometer2 me-1"></i>Dashboard</a></li>

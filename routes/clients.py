@@ -1,8 +1,8 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, session
 from flask_login import login_required, current_user
 from extensions import db
 from sqlalchemy import or_
-from models import User, Booking, Payment, Notification
+from models import User, Booking, Payment, Notification, Room
 
 clients_bp = Blueprint("clients", __name__, url_prefix="/clients")
 
@@ -28,7 +28,12 @@ def index():
         )
 
     clients = query.order_by(User.created_at.desc()).all()
-    aktif_ids = [b.user_id for b in Booking.query.filter_by(status="aktif").all()]
+    kos_id = session.get("kos_id")
+    aktif_q = Booking.query.filter_by(status="aktif")
+    if kos_id:
+        kos_room_ids = [r.id for r in db.session.query(Room.id).filter_by(kos_id=kos_id).all()]
+        aktif_q = aktif_q.filter(Booking.room_id.in_(kos_room_ids)) if kos_room_ids else aktif_q.filter(False)
+    aktif_ids = [b.user_id for b in aktif_q.all()]
 
     return render_template("clients/index.html", clients=clients, aktif_ids=aktif_ids)
 

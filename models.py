@@ -125,6 +125,7 @@ class Expense(db.Model):
     __tablename__ = "expenses"
 
     id = db.Column(db.Integer, primary_key=True)
+    kos_id = db.Column(db.Integer, db.ForeignKey("kos.id"), nullable=True)
     kategori = db.Column(db.String(50), nullable=False)
     jumlah = db.Column(db.Float, nullable=False)
     tanggal = db.Column(db.Date, default=date.today)
@@ -133,6 +134,7 @@ class Expense(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     vendor = db.relationship("Vendor", backref="expenses")
+    kos = db.relationship("Kos", backref="expenses")
 
 
 class Vendor(db.Model):
@@ -196,6 +198,7 @@ class Complaint(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    kos_id = db.Column(db.Integer, db.ForeignKey("kos.id"), nullable=True)
     judul = db.Column(db.String(200), nullable=False)
     deskripsi = db.Column(db.Text, nullable=False)
     kategori = db.Column(db.String(50), default="umum")
@@ -206,6 +209,7 @@ class Complaint(db.Model):
 
     user = db.relationship("User", foreign_keys=[user_id], backref="complaints")
     responder = db.relationship("User", foreign_keys=[ditanggapi_oleh])
+    kos = db.relationship("Kos", backref="complaints")
 
 
 class ActivityLog(db.Model):
