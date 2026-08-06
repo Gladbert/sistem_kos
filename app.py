@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, session
 from extensions import db, login_manager, csrf
 
 
@@ -13,7 +13,7 @@ def create_app():
     login_manager.login_view = "auth.login"
     login_manager.login_message = "Silakan login terlebih dahulu."
 
-    from models import User
+    from models import User, Kos
 
     @login_manager.user_loader
     def load_user(user_id):
@@ -28,6 +28,19 @@ def create_app():
     def inject_utility():
         from datetime import date
         return {"date_today": date.today()}
+
+    @app.context_processor
+    def inject_kos():
+        from flask_login import current_user
+        all_kos = Kos.query.filter_by(is_active=True).order_by(Kos.nama).all()
+        kos_id = session.get("kos_id")
+        current_kos = None
+        if kos_id:
+            current_kos = Kos.query.get(kos_id)
+        elif all_kos:
+            current_kos = all_kos[0]
+            session["kos_id"] = current_kos.id
+        return {"all_kos": all_kos, "current_kos": current_kos}
 
     from routes import register_routes
     register_routes(app)

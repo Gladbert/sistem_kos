@@ -4,6 +4,27 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from extensions import db
 
 
+class Kos(db.Model):
+    __tablename__ = "kos"
+
+    id = db.Column(db.Integer, primary_key=True)
+    nama = db.Column(db.String(150), nullable=False)
+    alamat = db.Column(db.Text)
+    deskripsi = db.Column(db.Text)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    rooms = db.relationship("Room", backref="kos", lazy="dynamic")
+
+    @property
+    def total_kamar(self):
+        return self.rooms.count()
+
+    @property
+    def kamar_terisi(self):
+        return self.rooms.filter_by(status="terisi").count()
+
+
 class User(UserMixin, db.Model):
     __tablename__ = "users"
 
@@ -32,7 +53,9 @@ class Room(db.Model):
     __tablename__ = "rooms"
 
     id = db.Column(db.Integer, primary_key=True)
-    nomor_kamar = db.Column(db.String(10), unique=True, nullable=False)
+    kos_id = db.Column(db.Integer, db.ForeignKey("kos.id"), nullable=True)
+    nomor_kamar = db.Column(db.String(10), nullable=False)
+    __table_args__ = (db.UniqueConstraint('kos_id', 'nomor_kamar', name='uq_kos_kamar'),)
     lantai = db.Column(db.Integer, default=1)
     tipe = db.Column(db.String(50), default="Reguler")
     harga_per_bulan = db.Column(db.Float, nullable=False)

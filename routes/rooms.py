@@ -1,7 +1,7 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, session
 from flask_login import login_required, current_user
 from extensions import db
-from models import Room, Booking, MaintenanceRequest
+from models import Room, Booking, MaintenanceRequest, Kos
 
 rooms_bp = Blueprint("rooms", __name__, url_prefix="/rooms")
 
@@ -9,10 +9,13 @@ rooms_bp = Blueprint("rooms", __name__, url_prefix="/rooms")
 @rooms_bp.route("/")
 @login_required
 def index():
+    kos_id = session.get("kos_id")
     if current_user.role == "admin":
         lantai = request.args.get("lantai", type=int)
         status = request.args.get("status")
         query = Room.query
+        if kos_id:
+            query = query.filter_by(kos_id=kos_id)
         if lantai:
             query = query.filter_by(lantai=lantai)
         if status:
@@ -36,8 +39,10 @@ def tambah():
             flash("Nomor kamar wajib diisi.", "danger")
             return render_template("rooms/form.html")
 
-        if Room.query.filter_by(nomor_kamar=nomor).first():
-            flash("Nomor kamar sudah ada.", "danger")
+        kos_id = session.get("kos_id")
+        existing = Room.query.filter_by(nomor_kamar=nomor, kos_id=kos_id).first()
+        if existing:
+            flash("Nomor kamar sudah ada di kos ini.", "danger")
             return render_template("rooms/form.html")
 
         try:
@@ -47,6 +52,7 @@ def tambah():
             return render_template("rooms/form.html")
 
         room = Room(
+            kos_id=kos_id,
             nomor_kamar=nomor,
             lantai=int(request.form.get("lantai", 1)),
             tipe=request.form.get("tipe", "Reguler"),
@@ -82,6 +88,13 @@ def edit(id):
         existing = Room.query.filter_by(nomor_kamar=nomor).first()
         if existing and existing.id != id:
             flash("Nomor kamar sudah digunakan.", "danger")
+            return render_template("rooms/form.html", room=room)
+
+        # Ensure unique within kos
+        kos_id = session.get("kos_id")
+        dup = Room.query.filter_by(nomor_kamar=nomor, kos_id=kos_id).first()
+        if dup and dup.id != id:
+            flash("Nomor kamar sudah ada di kos ini.", "danger")
             return render_template("rooms/form.html", room=room)
 
         try:

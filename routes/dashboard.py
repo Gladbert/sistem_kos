@@ -1,9 +1,9 @@
 import urllib.parse
 from datetime import date
-from flask import Blueprint, render_template, redirect, flash, url_for, request
+from flask import Blueprint, render_template, redirect, flash, url_for, request, session
 from flask_login import login_required, current_user
 from extensions import db
-from models import User, Room, Booking, Payment, Expense, Notification, MaintenanceRequest, Complaint
+from models import User, Room, Booking, Payment, Expense, Notification, MaintenanceRequest, Complaint, Kos
 from helpers import log_activity
 
 dashboard_bp = Blueprint("dashboard", __name__, url_prefix="/dashboard")
@@ -24,35 +24,37 @@ def admin():
         flash("Akses ditolak.", "danger")
         return redirect(url_for("dashboard.client"))
 
-    total_kamar = Room.query.count()
-    kamar_terisi = Booking.query.filter_by(status="aktif").count()
-    kamar_tersedia = Room.query.filter_by(status="tersedia").count()
-    kamar_pending = Booking.query.filter_by(status="pending").count()
-    kamar_maintenance = Room.query.filter(Room.status == "maintenance").count()
+    kos_id = session.get("kos_id")
+    room_query = Room.query.filter_by(kos_id=kos_id) if kos_id else Room.query
+    room_ids = [r.id for r in room_query.all()]
 
-    total_penghuni = db.session.query(Booking.user_id).filter(
-        Booking.status == "aktif"
-    ).distinct().count()
+    total_kamar = len(room_ids)
+    kamar_terisi = room_query.filter_by(status="terisi").count()
+    kamar_tersedia = room_query.filter_by(status="tersedia").count()
+    kamar_maintenance = room_query.filter_by(status="maintenance").count()
 
-    penghuni_raw = User.query.join(Booking).filter(
-        Booking.status == "aktif", User.role == "client"
-    ).all()
+    active_bookings = Booking.query.filter(Booking.room_id.in_(room_ids), Booking.status == "aktif").all() if room_ids else []
+    kamar_terisi_count = len(active_bookings)
+    kamar_pending = Booking.query.filter(Booking.room_id.in_(room_ids), Booking.status == "pending").count() if room_ids else 0
+
+    total_penghuni = len(set(b.user_id for b in active_bookings))
 
     penghuni = []
-    for u in penghuni_raw:
-        b = Booking.query.filter_by(user_id=u.id, status="aktif").first()
+    for b in active_bookings:
+        u = b.client
         penghuni.append({
             "id": u.id,
             "nama_lengkap": u.nama_lengkap,
             "username": u.username,
             "no_telepon": u.no_telepon,
             "is_active": u.is_active,
-            "nomor_kamar": b.room.nomor_kamar if b else "-",
-            "kamar_id": b.room_id if b else None,
+            "nomor_kamar": b.room.nomor_kamar,
+            "kamar_id": b.room_id,
         })
 
     pemasukan_bulan_ini = db.session.query(db.func.sum(Payment.jumlah)).filter(
         Payment.status == "lunas",
+        Payment.booking_id.in_([b.id for b in active_bookings]) if active_bookings else False,
         db.func.strftime("%Y-%m", Payment.tanggal_bayar) == date.today().strftime("%Y-%m")
     ).scalar() or 0
 
@@ -62,26 +64,28 @@ def admin():
 
     tagihan_belum_dibayar = 0
     unpaid_bookings = []
-    for b in Booking.query.filter_by(status="aktif").all():
+    for b in active_bookings:
         if b.tagihan_bulan_ini:
             tagihan_belum_dibayar += 1
             unpaid_bookings.append(b)
 
-    booking_pending = Booking.query.filter_by(status="pending").order_by(Booking.created_at.asc()).all()
+    booking_pending = Booking.query.filter(Booking.room_id.in_(room_ids), Booking.status == "pending").order_by(Booking.created_at.asc()).all() if room_ids else []
 
     bulan_ini = date.today().strftime("%Y-%m")
     pembayaran_bulan_ini = Payment.query.filter(
         Payment.status == "lunas",
+        Payment.booking_id.in_([b.id for b in active_bookings]) if active_bookings else False,
         db.func.strftime("%Y-%m", Payment.tanggal_bayar) == bulan_ini
     ).count()
 
-    total_tagihan = Booking.query.filter_by(status="aktif").count()
+    total_tagihan = len(active_bookings)
     collection_rate = round((pembayaran_bulan_ini / total_tagihan * 100) if total_tagihan > 0 else 0)
-    occupancy_rate = round((kamar_terisi / total_kamar * 100) if total_kamar > 0 else 0)
+    occupancy_rate = round((kamar_terisi_count / total_kamar * 100) if total_kamar > 0 else 0)
 
-    tipe_kamar = db.session.query(Room.tipe, db.func.count(Room.id)).group_by(Room.tipe).all()
+    tipe_kamar = db.session.query(Room.tipe, db.func.count(Room.id)).filter(Room.kos_id == kos_id if kos_id else True).group_by(Room.tipe).all() if kos_id else []
 
     pemasukan_6bulan = []
+    booking_ids = [b.id for b in active_bookings]
     for i in range(5, -1, -1):
         m = date.today().month - i
         y = date.today().year
@@ -94,22 +98,24 @@ def admin():
         bulan_str = f"{y:04d}-{m:02d}"
         total = db.session.query(db.func.sum(Payment.jumlah)).filter(
             Payment.status == "lunas",
+            Payment.booking_id.in_(booking_ids) if booking_ids else False,
             db.func.strftime("%Y-%m", Payment.tanggal_bayar) == bulan_str
         ).scalar() or 0
         pemasukan_6bulan.append({"bulan": bulan_str, "total": total})
 
-    pembayaran_terbaru = Payment.query.order_by(Payment.created_at.desc()).limit(5).all()
+    pembayaran_terbaru = Payment.query.filter(Payment.booking_id.in_(booking_ids)).order_by(Payment.created_at.desc()).limit(5).all() if booking_ids else []
     pengeluaran_terbaru = Expense.query.order_by(Expense.created_at.desc()).limit(5).all()
     permintaan_maintenance = MaintenanceRequest.query.filter(
+        MaintenanceRequest.room_id.in_(room_ids),
         MaintenanceRequest.status.in_(["diajukan", "diproses"])
-    ).order_by(MaintenanceRequest.created_at.desc()).limit(5).all()
+    ).order_by(MaintenanceRequest.created_at.desc()).limit(5).all() if room_ids else []
 
     komplain_baru = Complaint.query.filter_by(status="diajukan").count()
 
-    booking_audit = Booking.query.filter_by(status="aktif").order_by(Booking.tanggal_masuk.desc()).limit(5).all()
+    booking_audit = active_bookings[:5]
 
     return render_template("dashboard/admin.html",
-        total_kamar=total_kamar, kamar_terisi=kamar_terisi,
+        total_kamar=total_kamar, kamar_terisi=kamar_terisi_count,
         kamar_tersedia=kamar_tersedia, total_penghuni=total_penghuni,
         penghuni=penghuni, pemasukan_bulan_ini=pemasukan_bulan_ini,
         pengeluaran_bulan_ini=pengeluaran_bulan_ini,

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if kos else 'Tambah' }} Kos - Sistem Kos{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ 'Edit' if kos else 'Tambah' }} Kos</h1>
+    <p>{{ 'Perbarui informasi kos' if kos else 'Tambahkan kos baru' }}</p>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card border-0">
+            <div class="card-body p-4">
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="mb-3">
+                        <label for="nama" class="form-label fw-medium">Nama Kos <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="nama" name="nama"
+                               value="{{ kos.nama if kos else '' }}" required
+                               placeholder="Contoh: Kos Melati, Kos Bu Dewi">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="alamat" class="form-label fw-medium">Alamat</label>
+                        <input type="text" class="form-control" id="alamat" name="alamat"
+                               value="{{ kos.alamat if kos and kos.alamat else '' }}"
+                               placeholder="Alamat lengkap kos">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="deskripsi" class="form-label fw-medium">Deskripsi</label>
+                        <textarea class="form-control" id="deskripsi" name="deskripsi" rows="3"
+                                  placeholder="Deskripsi singkat tentang kos ini">{{ kos.deskripsi if kos and kos.deskripsi else '' }}</textarea>
+                    </div>
+
+                    <div class="d-flex gap-2 justify-content-end">
+                        <a href="{{ url_for('kos.index') }}" class="btn btn-outline-secondary">Batal</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg me-1"></i>{{ 'Simpan' if kos else 'Tambah' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

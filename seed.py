@@ -1,6 +1,6 @@
 from app import create_app
 from extensions import db
-from models import User, Room, Booking, Payment, Expense, Vendor, MaintenanceRequest, Notification, Announcement, Complaint, RoomItem, ActivityLog
+from models import User, Room, Booking, Payment, Expense, Vendor, MaintenanceRequest, Notification, Announcement, Complaint, RoomItem, ActivityLog, Kos
 from datetime import date, timedelta, datetime
 import random
 
@@ -16,6 +16,12 @@ def seed():
                      nama_lengkap="Admin Kos", no_telepon="08123456789")
         admin.set_password("admin123")
         db.session.add(admin)
+
+        # Kos
+        kos1 = Kos(nama="Kos Melati", alamat="Jl. Melati No. 10", deskripsi="Kos putra/putri strategis dekat kampus")
+        kos2 = Kos(nama="Kos Anggrek", alamat="Jl. Anggrek No. 25", deskripsi="Kos eksklusif dengan fasilitas lengkap")
+        db.session.add_all([kos1, kos2])
+        db.session.commit()
 
         # Test clients
         clients_data = [
@@ -35,16 +41,16 @@ def seed():
 
         # Rooms
         rooms_data = [
-            ("101", 1, "Reguler", 1500000, "12m2", "AC, Kasur, Lemari, Meja"),
-            ("102", 1, "Reguler", 1500000, "12m2", "AC, Kasur, Lemari, Meja"),
-            ("103", 1, "Deluxe", 2000000, "16m2", "AC, Kasur, Lemari, Meja, TV, Kamar Mandi Dalam"),
-            ("201", 2, "Reguler", 1500000, "12m2", "AC, Kasur, Lemari, Meja"),
-            ("202", 2, "Deluxe", 2000000, "16m2", "AC, Kasur, Lemari, Meja, TV, Kamar Mandi Dalam"),
-            ("203", 2, "VIP", 3000000, "24m2", "AC, Kasur, Lemari, Meja, TV, Kulkas, Kamar Mandi Dalam, Balkon"),
+            (kos1.id, "101", 1, "Reguler", 1500000, "12m2", "AC, Kasur, Lemari, Meja"),
+            (kos1.id, "102", 1, "Reguler", 1500000, "12m2", "AC, Kasur, Lemari, Meja"),
+            (kos1.id, "103", 1, "Deluxe", 2000000, "16m2", "AC, Kasur, Lemari, Meja, TV, Kamar Mandi Dalam"),
+            (kos2.id, "101", 1, "Reguler", 1500000, "12m2", "AC, Kasur, Lemari, Meja"),
+            (kos2.id, "102", 1, "Deluxe", 2000000, "16m2", "AC, Kasur, Lemari, Meja, TV, Kamar Mandi Dalam"),
+            (kos2.id, "103", 1, "VIP", 3000000, "24m2", "AC, Kasur, Lemari, Meja, TV, Kulkas, Kamar Mandi Dalam, Balkon"),
         ]
         rooms = []
-        for no, lt, tp, hr, uk, fs in rooms_data:
-            r = Room(nomor_kamar=no, lantai=lt, tipe=tp, harga_per_bulan=hr,
+        for kid, no, lt, tp, hr, uk, fs in rooms_data:
+            r = Room(kos_id=kid, nomor_kamar=no, lantai=lt, tipe=tp, harga_per_bulan=hr,
                      ukuran=uk, fasilitas=fs, status="tersedia",
                      deskripsi=f"Kamar {tp} nyaman di lantai {lt}")
             db.session.add(r)
@@ -75,12 +81,12 @@ def seed():
             months_back = 1
             while today - tgl_masuk > timedelta(days=months_back * 30):
                 bulan = (tgl_masuk + timedelta(days=months_back * 30)).strftime("%Y-%m")
-                Payment(
+                db.session.add(Payment(
                     booking_id=booking.id, jumlah=room.harga_per_bulan,
                     tanggal_bayar=date.today() - timedelta(days=random.randint(1, 5)),
                     bulan_dibayar_untuk=bulan, metode_bayar="transfer",
                     status="lunas"
-                )
+                ))
                 months_back += 1
             db.session.commit()
 
@@ -151,6 +157,14 @@ def seed():
 
         # Activity logs for complaint
         db.session.add(ActivityLog(user_id=admin.id, tindakan="Tanggapi komplain", deskripsi="Judul: AC kamar kurang dingin, Status: ditindaklanjuti", model="Complaint"))
+        db.session.commit()
+
+        # Notifications
+        db.session.add(Notification(user_id=clients[0].id, pesan="Selamat datang di Kos Melati!", jenis="umum", dibaca=True))
+        db.session.add(Notification(user_id=clients[0].id, pesan="Pembayaran bulan Juli sudah diterima.", jenis="pembayaran"))
+        db.session.add(Notification(user_id=clients[1].id, pesan="Selamat datang di Kos Melati!", jenis="umum", dibaca=True))
+        db.session.add(Notification(user_id=clients[3].id, pesan="Selamat datang di Kos Anggrek!", jenis="umum"))
+        db.session.add(Notification(user_id=clients[3].id, pesan="Pembayaran bulan Juni sudah diterima.", jenis="pembayaran", dibaca=True))
         db.session.commit()
 
         # Room inventory
