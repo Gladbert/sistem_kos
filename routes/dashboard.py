@@ -1,10 +1,9 @@
-import urllib.parse
 from datetime import date
 from flask import Blueprint, render_template, redirect, flash, url_for, request, session
 from flask_login import login_required, current_user
 from extensions import db
 from models import User, Room, Booking, Payment, Expense, Notification, MaintenanceRequest, Complaint, Kos
-from helpers import log_activity, admin_or_management, get_or_404, kos_room_ids
+from helpers import log_activity, admin_or_management, get_or_404, kos_room_ids, create_notification, kos_expense_query
 
 dashboard_bp = Blueprint("dashboard", __name__, url_prefix="/dashboard")
 
@@ -48,12 +47,11 @@ def admin():
         db.func.strftime("%Y-%m", Payment.tanggal_bayar) == bulan_ini,
     ).scalar() or 0
 
-    pengeluaran_bulan_ini_q = db.session.query(db.func.sum(Expense.jumlah)).filter(
-        db.func.strftime("%Y-%m", Expense.tanggal) == bulan_ini,
-    )
-    if kos_id:
-        pengeluaran_bulan_ini_q = pengeluaran_bulan_ini_q.filter(Expense.kos_id == kos_id)
-    pengeluaran_bulan_ini = pengeluaran_bulan_ini_q.scalar() or 0
+    pengeluaran_bulan_ini = kos_expense_query(
+        db.session.query(db.func.sum(Expense.jumlah)).filter(
+            db.func.strftime("%Y-%m", Expense.tanggal) == bulan_ini,
+        )
+    ).scalar() or 0
 
     tagihan_belum_dibayar = 0
     unpaid_bookings = []
@@ -95,10 +93,7 @@ def admin():
         pemasukan_6bulan.append({"bulan": bulan_str, "total": total})
 
     pembayaran_terbaru = Payment.query.filter(Payment.booking_id.in_(booking_ids)).order_by(Payment.created_at.desc()).limit(5).all() if booking_ids else []
-    pengeluaran_terbaru_q = Expense.query
-    if kos_id:
-        pengeluaran_terbaru_q = pengeluaran_terbaru_q.filter(Expense.kos_id == kos_id)
-    pengeluaran_terbaru = pengeluaran_terbaru_q.order_by(Expense.created_at.desc()).limit(5).all()
+    pengeluaran_terbaru = kos_expense_query(Expense.query).order_by(Expense.created_at.desc()).limit(5).all()
 
     permintaan_maintenance = MaintenanceRequest.query.filter(
         MaintenanceRequest.room_id.in_(room_ids),
@@ -152,13 +147,11 @@ def approve_booking(id):
         return redirect(url_for("dashboard.admin"))
     booking.status = "aktif"
     booking.room.status = "terisi"
-    db.session.add(Notification(
-        user_id=booking.user_id,
-        pesan=f"Permintaan sewa kamar {booking.room.nomor_kamar} telah DISETUJUI! Silakan check-in.",
-        jenis="umum",
-    ))
     log_activity(current_user.id, "Setujui booking", f"Kamar {booking.room.nomor_kamar} - {booking.client.nama_lengkap}", "Booking")
-    db.session.commit()
+    create_notification(
+        booking.user_id,
+        f"Permintaan sewa kamar {booking.room.nomor_kamar} telah DISETUJUI! Silakan check-in.",
+    )
     flash(f"Booking kamar {booking.room.nomor_kamar} oleh {booking.client.nama_lengkap} disetujui.", "success")
     return redirect(url_for("dashboard.admin"))
 
@@ -170,12 +163,11 @@ def tolak_booking(id):
     if booking.status != "pending":
         flash("Booking sudah diproses.", "warning")
         return redirect(url_for("dashboard.admin"))
-    db.session.add(Notification(
-        user_id=booking.user_id,
-        pesan=f"Permintaan sewa kamar {booking.room.nomor_kamar} telah DITOLAK. Silakan hubungi pengelola untuk detail.",
-        jenis="umum",
-    ))
     log_activity(current_user.id, "Tolak booking", f"Kamar {booking.room.nomor_kamar} - {booking.client.nama_lengkap}", "Booking")
+    create_notification(
+        booking.user_id,
+        f"Permintaan sewa kamar {booking.room.nomor_kamar} telah DITOLAK. Silakan hubungi pengelola untuk detail.",
+    )
     db.session.delete(booking)
     db.session.commit()
     flash(f"Booking kamar {booking.room.nomor_kamar} oleh {booking.client.nama_lengkap} ditolak.", "info")

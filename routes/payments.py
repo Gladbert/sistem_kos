@@ -1,10 +1,9 @@
-import urllib.parse
 from datetime import date, datetime
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session
 from flask_login import login_required, current_user
 from extensions import db
-from models import Payment, Booking, Notification, Room
-from helpers import admin_or_management, get_or_404, kos_room_ids
+from models import Payment, Booking, Room
+from helpers import admin_or_management, get_or_404, kos_room_ids, parse_amount, create_notification, wa_redirect
 
 payments_bp = Blueprint("payments", __name__, url_prefix="/payments")
 
@@ -48,14 +47,9 @@ def index():
 def tambah():
     if request.method == "POST":
         booking_id = request.form.get("booking_id", type=int)
-        try:
-            jumlah = float(request.form.get("jumlah", 0))
-        except ValueError:
-            flash("Jumlah harus angka.", "danger")
-            return render_template("payments/form.html", bookings=Booking.query.filter_by(status="aktif").all())
-
-        if jumlah <= 0:
-            flash("Jumlah harus lebih dari 0.", "danger")
+        jumlah, err = parse_amount(request.form.get("jumlah"))
+        if err:
+            flash(err, "danger")
             return render_template("payments/form.html", bookings=Booking.query.filter_by(status="aktif").all())
 
         booking = db.session.get(Booking, booking_id)
@@ -75,12 +69,11 @@ def tambah():
         db.session.add(payment)
         db.session.commit()
 
-        db.session.add(Notification(
-            user_id=booking.user_id,
-            pesan=f"Pembayaran Rp{jumlah:,.0f} untuk bulan {payment.bulan_dibayar_untuk} telah diterima.",
+        create_notification(
+            booking.user_id,
+            f"Pembayaran Rp{jumlah:,.0f} untuk bulan {payment.bulan_dibayar_untuk} telah diterima.",
             jenis="pembayaran",
-        ))
-        db.session.commit()
+        )
 
         flash("Pembayaran berhasil dicatat.", "success")
         return redirect(url_for("payments.index"))
@@ -94,11 +87,11 @@ def edit(id):
     payment = get_or_404(Payment, id)
 
     if request.method == "POST":
-        try:
-            payment.jumlah = float(request.form.get("jumlah", 0))
-        except ValueError:
-            flash("Jumlah harus angka.", "danger")
+        jumlah_val, err = parse_amount(request.form.get("jumlah"))
+        if err:
+            flash(err, "danger")
             return render_template("payments/form.html", payment=payment, bookings=[])
+        payment.jumlah = jumlah_val
 
         payment.tanggal_bayar = datetime.strptime(request.form["tanggal_bayar"], "%Y-%m-%d").date() if request.form.get("tanggal_bayar") else date.today()
         payment.bulan_dibayar_untuk = request.form.get("bulan_dibayar_untuk")
@@ -148,15 +141,14 @@ def kirim_resi(payment_id):
         pesan += f"\n\n*Sisa tagihan bulan ini: Rp{sisa:,.0f}*"
     pesan += "\n\nTerima kasih telah membayar tepat waktu."
 
-    db.session.add(Notification(
-        user_id=payment.booking.user_id,
-        pesan=f"Resi pembayaran Rp{payment.jumlah:,.0f} ({payment.bulan_dibayar_untuk}) dikirim via WA.",
+    create_notification(
+        payment.booking.user_id,
+        f"Resi pembayaran Rp{payment.jumlah:,.0f} ({payment.bulan_dibayar_untuk}) dikirim via WA.",
         jenis="pembayaran",
         wa_sent=True,
-    ))
-    db.session.commit()
+    )
 
-    return redirect(f"https://wa.me/{booking.client.no_telepon}?text={urllib.parse.quote(pesan)}")
+    return wa_redirect(booking.client.no_telepon, pesan)
 
 
 @payments_bp.route("/notifikasi/<int:booking_id>")
@@ -171,12 +163,11 @@ def notifikasi_wa(booking_id):
     pesan += f"\n\nSilakan transfer ke:\nBank BCA - 1234567890\nA/N: Pengelola Kos"
     pesan += f"\n\n*Jangan lupa kirim bukti transfer ya!*"
 
-    db.session.add(Notification(
-        user_id=booking.user_id,
-        pesan=f"Pengingat pembayaran dikirim via WA untuk kamar {booking.room.nomor_kamar}",
+    create_notification(
+        booking.user_id,
+        f"Pengingat pembayaran dikirim via WA untuk kamar {booking.room.nomor_kamar}",
         jenis="pembayaran",
         wa_sent=True,
-    ))
-    db.session.commit()
+    )
 
-    return redirect(f"https://wa.me/{booking.client.no_telepon}?text={urllib.parse.quote(pesan)}")
+    return wa_redirect(booking.client.no_telepon, pesan)

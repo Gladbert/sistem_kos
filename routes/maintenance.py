@@ -1,9 +1,8 @@
-import urllib.parse
 from datetime import date
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from extensions import db
-from models import MaintenanceRequest, Vendor, Room, Notification
-from helpers import admin_or_management, get_or_404, kos_rooms, kos_room_ids
+from models import MaintenanceRequest, Vendor, Room
+from helpers import admin_or_management, get_or_404, kos_rooms, kos_room_ids, create_notification, wa_redirect
 
 maintenance_bp = Blueprint("maintenance", __name__, url_prefix="/maintenance")
 
@@ -52,12 +51,11 @@ def tambah():
             room = db.session.get(Room, room_id)
             if room and room.booking_aktif:
                 client = room.booking_aktif.client
-                db.session.add(Notification(
-                    user_id=client.id,
-                    pesan=f"Ada maintenance untuk kamar {room.nomor_kamar}: {deskripsi[:50]}...",
+                create_notification(
+                    client.id,
+                    f"Ada maintenance untuk kamar {room.nomor_kamar}: {deskripsi[:50]}...",
                     jenis="maintenance",
-                ))
-                db.session.commit()
+                )
 
         flash("Permintaan maintenance berhasil diajukan.", "success")
         return redirect(url_for("maintenance.index"))
@@ -167,7 +165,7 @@ def vendor_hapus(id):
 def vendor_wa(id):
     vendor = get_or_404(Vendor, id)
     pesan = f"Halo {vendor.nama}, kami dari pengelola kos ingin menghubungi Anda terkait pekerjaan maintenance."
-    return redirect(f"https://wa.me/{vendor.no_telepon}?text={urllib.parse.quote(pesan)}")
+    return wa_redirect(vendor.no_telepon, pesan)
 
 
 @maintenance_bp.route("/vendor/hubungi/<int:mr_id>")
@@ -186,7 +184,7 @@ def vendor_hubungi(mr_id):
         pesan += f"\nBiaya: Rp{mr.biaya:,.0f}"
     pesan += f"\n\nMohon segera ditindaklanjuti. Terima kasih."
 
-    return redirect(f"https://wa.me/{mr.vendor.no_telepon}?text={urllib.parse.quote(pesan)}")
+    return wa_redirect(mr.vendor.no_telepon, pesan)
 
 
 @maintenance_bp.route("/notif-penghuni/<int:mr_id>")
@@ -205,12 +203,11 @@ def notif_penghuni(mr_id):
         pesan += f"\nBiaya: Rp{mr.biaya:,.0f}"
     pesan += f"\n\nTerima kasih."
 
-    db.session.add(Notification(
-        user_id=booking.client.id,
-        pesan=f"Notifikasi maintenance selesai dikirim ke {booking.client.nama_lengkap} (Kamar {mr.room.nomor_kamar})",
+    create_notification(
+        booking.client.id,
+        f"Notifikasi maintenance selesai dikirim ke {booking.client.nama_lengkap} (Kamar {mr.room.nomor_kamar})",
         jenis="maintenance",
         wa_sent=True,
-    ))
-    db.session.commit()
+    )
 
-    return redirect(f"https://wa.me/{booking.client.no_telepon}?text={urllib.parse.quote(pesan)}")
+    return wa_redirect(booking.client.no_telepon, pesan)

@@ -4,27 +4,28 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db
 from models import User, Room, Booking, Payment, Notification
+from helpers import create_notification
 
 onboarding_bp = Blueprint("onboarding", __name__, url_prefix="/onboarding")
 
 
-@onboarding_bp.route("/")
-def index():
+def _available_rooms():
     query = Room.query.filter_by(status="tersedia")
     kos_id = session.get("kos_id")
     if kos_id:
         query = query.filter_by(kos_id=kos_id)
-    rooms = query.order_by(Room.lantai, Room.nomor_kamar).all()
+    return query
+
+
+@onboarding_bp.route("/")
+def index():
+    rooms = _available_rooms().order_by(Room.lantai, Room.nomor_kamar).all()
     return render_template("onboarding/index.html", rooms=rooms)
 
 
 @onboarding_bp.route("/kamar")
 def lihat_kamar():
-    query = Room.query.filter_by(status="tersedia")
-    kos_id = session.get("kos_id")
-    if kos_id:
-        query = query.filter_by(kos_id=kos_id)
-    rooms = query.order_by(Room.harga_per_bulan).all()
+    rooms = _available_rooms().order_by(Room.harga_per_bulan).all()
     return render_template("onboarding/kamar.html", rooms=rooms)
 
 
@@ -83,12 +84,10 @@ def daftar(room_id):
         db.session.add(booking)
         db.session.commit()
 
-        notif = Notification(
-            user_id=current_user.id,
-            pesan=f"Permintaan sewa kamar {room.nomor_kamar} telah dikirim. Menunggu persetujuan pengelola.",
-            jenis="umum",
+        create_notification(
+            current_user.id,
+            f"Permintaan sewa kamar {room.nomor_kamar} telah dikirim. Menunggu persetujuan pengelola.",
         )
-        db.session.add(notif)
 
         # Notify admin
         admins = User.query.filter(User.role.in_(["admin", "management"])).all()

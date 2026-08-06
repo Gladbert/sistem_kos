@@ -4,7 +4,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db
 from models import Payment, Expense, Booking, Vendor
-from helpers import admin_or_management, get_or_404
+from helpers import admin_or_management, get_or_404, parse_amount, kos_expense_query
 
 accounting_bp = Blueprint("accounting", __name__, url_prefix="/accounting")
 
@@ -15,12 +15,7 @@ def get_month_range(year, month):
     return date(year, month, 1), date(year + 1, month, 1) - timedelta(days=1)
 
 
-def _kos_expense_query(base_query):
-    """Apply kos_id filter to an Expense query if session kos is set."""
-    kos_id = session.get("kos_id")
-    if kos_id:
-        return base_query.filter(Expense.kos_id == kos_id)
-    return base_query
+
 
 
 @accounting_bp.route("/")
@@ -37,7 +32,7 @@ def index():
         Payment.tanggal_bayar <= end_date,
     ).scalar() or 0
 
-    pengeluaran = _kos_expense_query(
+    pengeluaran = kos_expense_query(
         db.session.query(db.func.sum(Expense.jumlah)).filter(
             Expense.tanggal >= start_date,
             Expense.tanggal <= end_date,
@@ -52,7 +47,7 @@ def index():
         Payment.tanggal_bayar <= end_date,
     ).order_by(Payment.tanggal_bayar.desc()).all()
 
-    daftar_pengeluaran = _kos_expense_query(
+    daftar_pengeluaran = kos_expense_query(
         Expense.query.filter(Expense.tanggal >= start_date, Expense.tanggal <= end_date)
     ).order_by(Expense.tanggal.desc()).all()
 
@@ -65,7 +60,7 @@ def index():
         p = db.session.query(db.func.sum(Payment.jumlah)).filter(
             Payment.status == "lunas", Payment.tanggal_bayar >= s, Payment.tanggal_bayar <= e,
         ).scalar() or 0
-        pe = _kos_expense_query(
+        pe = kos_expense_query(
             db.session.query(db.func.sum(Expense.jumlah)).filter(Expense.tanggal >= s, Expense.tanggal <= e)
         ).scalar() or 0
         pemasukan_chart.append(float(p))
@@ -84,14 +79,9 @@ def index():
 @admin_or_management
 def tambah_pengeluaran():
     if request.method == "POST":
-        try:
-            jumlah = float(request.form.get("jumlah", 0))
-        except ValueError:
-            flash("Jumlah harus angka.", "danger")
-            return render_template("accounting/expense_form.html", vendors=Vendor.query.order_by(Vendor.nama).all())
-
-        if jumlah <= 0:
-            flash("Jumlah harus lebih dari 0.", "danger")
+        jumlah, err = parse_amount(request.form.get("jumlah"))
+        if err:
+            flash(err, "danger")
             return render_template("accounting/expense_form.html", vendors=Vendor.query.order_by(Vendor.nama).all())
 
         expense = Expense(
@@ -116,11 +106,11 @@ def edit_pengeluaran(id):
     expense = get_or_404(Expense, id)
 
     if request.method == "POST":
-        try:
-            expense.jumlah = float(request.form.get("jumlah", 0))
-        except ValueError:
-            flash("Jumlah harus angka.", "danger")
+        jumlah_val, err = parse_amount(request.form.get("jumlah"))
+        if err:
+            flash(err, "danger")
             return render_template("accounting/expense_form.html", expense=expense, vendors=Vendor.query.order_by(Vendor.nama).all())
+        expense.jumlah = jumlah_val
 
         expense.kategori = request.form.get("kategori", "lainnya")
         expense.tanggal = datetime.strptime(request.form["tanggal"], "%Y-%m-%d").date() if request.form.get("tanggal") else date.today()
@@ -156,7 +146,7 @@ def laporan():
         p = db.session.query(db.func.sum(Payment.jumlah)).filter(
             Payment.status == "lunas", Payment.tanggal_bayar >= s, Payment.tanggal_bayar <= e,
         ).scalar() or 0
-        pe = _kos_expense_query(
+        pe = kos_expense_query(
             db.session.query(db.func.sum(Expense.jumlah)).filter(Expense.tanggal >= s, Expense.tanggal <= e)
         ).scalar() or 0
         bulanan.append({
@@ -207,7 +197,7 @@ def export_csv():
     if jenis in ("semua", "pengeluaran"):
         w.writerow(["PENGELUARAN"])
         w.writerow(["Tanggal", "Kategori", "Deskripsi", "Jumlah"])
-        eq = _kos_expense_query(Expense.query)
+        eq = kos_expense_query(Expense.query)
         if bulan:
             s, e = get_month_range(tahun, bulan)
             eq = eq.filter(Expense.tanggal >= s, Expense.tanggal <= e)
