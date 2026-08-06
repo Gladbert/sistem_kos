@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db
 from models import Room, Booking, MaintenanceRequest, Kos
-from helpers import admin_or_management, get_or_404
+from helpers import admin_or_management, get_or_404, parse_amount
 
 rooms_bp = Blueprint("rooms", __name__, url_prefix="/rooms")
 
@@ -45,10 +45,9 @@ def tambah():
             flash("Nomor kamar sudah ada di kos ini.", "danger")
             return render_template("rooms/form.html")
 
-        try:
-            harga = float(request.form.get("harga_per_bulan", 0))
-        except ValueError:
-            flash("Harga harus angka.", "danger")
+        harga, err = parse_amount(request.form.get("harga_per_bulan"), label="Harga")
+        if err:
+            flash(err, "danger")
             return render_template("rooms/form.html")
 
         room = Room(
@@ -87,10 +86,9 @@ def edit(id):
             flash("Nomor kamar sudah ada di kos ini.", "danger")
             return render_template("rooms/form.html", room=room)
 
-        try:
-            harga = float(request.form.get("harga_per_bulan", 0))
-        except ValueError:
-            flash("Harga harus angka.", "danger")
+        harga, err = parse_amount(request.form.get("harga_per_bulan"), label="Harga")
+        if err:
+            flash(err, "danger")
             return render_template("rooms/form.html", room=room)
 
         room.nomor_kamar = nomor

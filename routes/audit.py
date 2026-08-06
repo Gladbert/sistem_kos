@@ -7,6 +7,16 @@ from helpers import admin_or_management, get_or_404
 audit_bp = Blueprint("audit", __name__, url_prefix="/audit")
 
 
+def _save_audit_items(audit, items):
+    """Upsert AuditItemResult rows from form data."""
+    for item in items:
+        db.session.add(AuditItemResult(
+            audit_id=audit.id, item_id=item.id,
+            kondisi=request.form.get(f"kondisi_{item.id}", "baik"),
+            catatan=request.form.get(f"catatan_{item.id}", "").strip(),
+        ))
+
+
 @audit_bp.route("/check-in/<int:booking_id>", methods=["GET", "POST"])
 @login_required
 def check_in(booking_id):
@@ -28,13 +38,7 @@ def check_in(booking_id):
             db.session.add(audit)
             db.session.flush()
 
-        AuditItemResult.query.filter_by(audit_id=audit.id).delete()
-        for item in items:
-            db.session.add(AuditItemResult(
-                audit_id=audit.id, item_id=item.id,
-                kondisi=request.form.get(f"kondisi_{item.id}", "baik"),
-                catatan=request.form.get(f"catatan_{item.id}", "").strip(),
-            ))
+        _save_audit_items(audit, items)
 
         if not existing:
             db.session.add(Notification(user_id=booking.user_id, pesan=f"Audit check-in kamar {booking.room.nomor_kamar} selesai.", jenis="umum"))
@@ -62,12 +66,7 @@ def check_out(booking_id):
         db.session.add(audit)
         db.session.flush()
 
-        for item in items:
-            db.session.add(AuditItemResult(
-                audit_id=audit.id, item_id=item.id,
-                kondisi=request.form.get(f"kondisi_{item.id}", "baik"),
-                catatan=request.form.get(f"catatan_{item.id}", "").strip(),
-            ))
+        _save_audit_items(audit, items)
 
         db.session.add(Notification(user_id=booking.user_id, pesan=f"Audit check-out kamar {booking.room.nomor_kamar} selesai.", jenis="umum"))
         db.session.commit()
