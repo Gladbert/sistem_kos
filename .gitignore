@@ -8,4 +8,5 @@ venv/
 .env/
 .codegraph/
 opencode.json
+test_all.py
 # AGENTS.md is intentionally tracked despite this ignore list
