@@ -4,45 +4,46 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db
 from models import Payment, Expense, Booking, Vendor
+from helpers import admin_or_management, get_or_404
 
 accounting_bp = Blueprint("accounting", __name__, url_prefix="/accounting")
+
 
 def get_month_range(year, month):
     if month == 12:
         return date(year, month, 1), date(year + 1, 1, 1) - timedelta(days=1)
     return date(year, month, 1), date(year + 1, month, 1) - timedelta(days=1)
 
-def _kos_filter():
-    """Return kos_id from session, or None for unscoped."""
-    return session.get("kos_id")
+
+def _kos_expense_query(base_query):
+    """Apply kos_id filter to an Expense query if session kos is set."""
+    kos_id = session.get("kos_id")
+    if kos_id:
+        return base_query.filter(Expense.kos_id == kos_id)
+    return base_query
+
 
 @accounting_bp.route("/")
-@login_required
+@admin_or_management
 def index():
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
-
     tahun = request.args.get("tahun", date.today().year, type=int)
     bulan = request.args.get("bulan", date.today().month, type=int)
-    kos_id = _kos_filter()
 
     start_date, end_date = get_month_range(tahun, bulan)
 
-    income_q = db.session.query(db.func.sum(Payment.jumlah)).filter(
+    pemasukan = db.session.query(db.func.sum(Payment.jumlah)).filter(
         Payment.status == "lunas",
         Payment.tanggal_bayar >= start_date,
         Payment.tanggal_bayar <= end_date,
-    )
-    expense_q = db.session.query(db.func.sum(Expense.jumlah)).filter(
-        Expense.tanggal >= start_date,
-        Expense.tanggal <= end_date,
-    )
-    if kos_id:
-        expense_q = expense_q.filter(Expense.kos_id == kos_id)
+    ).scalar() or 0
 
-    pemasukan = income_q.scalar() or 0
-    pengeluaran = expense_q.scalar() or 0
+    pengeluaran = _kos_expense_query(
+        db.session.query(db.func.sum(Expense.jumlah)).filter(
+            Expense.tanggal >= start_date,
+            Expense.tanggal <= end_date,
+        )
+    ).scalar() or 0
+
     laba_rugi = pemasukan - pengeluaran
 
     daftar_pemasukan = Payment.query.filter(
@@ -51,13 +52,9 @@ def index():
         Payment.tanggal_bayar <= end_date,
     ).order_by(Payment.tanggal_bayar.desc()).all()
 
-    daftar_pengeluaran_q = Expense.query.filter(
-        Expense.tanggal >= start_date,
-        Expense.tanggal <= end_date,
-    )
-    if kos_id:
-        daftar_pengeluaran_q = daftar_pengeluaran_q.filter(Expense.kos_id == kos_id)
-    daftar_pengeluaran = daftar_pengeluaran_q.order_by(Expense.tanggal.desc()).all()
+    daftar_pengeluaran = _kos_expense_query(
+        Expense.query.filter(Expense.tanggal >= start_date, Expense.tanggal <= end_date)
+    ).order_by(Expense.tanggal.desc()).all()
 
     bulan_names = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
     pemasukan_chart = []
@@ -66,53 +63,39 @@ def index():
     for m in range(1, 13):
         s, e = get_month_range(tahun, m)
         p = db.session.query(db.func.sum(Payment.jumlah)).filter(
-            Payment.status == "lunas",
-            Payment.tanggal_bayar >= s,
-            Payment.tanggal_bayar <= e,
+            Payment.status == "lunas", Payment.tanggal_bayar >= s, Payment.tanggal_bayar <= e,
         ).scalar() or 0
-        pe_q = db.session.query(db.func.sum(Expense.jumlah)).filter(
-            Expense.tanggal >= s,
-            Expense.tanggal <= e,
-        )
-        if kos_id:
-            pe_q = pe_q.filter(Expense.kos_id == kos_id)
-        pe = pe_q.scalar() or 0
+        pe = _kos_expense_query(
+            db.session.query(db.func.sum(Expense.jumlah)).filter(Expense.tanggal >= s, Expense.tanggal <= e)
+        ).scalar() or 0
         pemasukan_chart.append(float(p))
         pengeluaran_chart.append(float(pe))
 
     return render_template("accounting/index.html",
         tahun=tahun, bulan=bulan,
         pemasukan=pemasukan, pengeluaran=pengeluaran, laba_rugi=laba_rugi,
-        daftar_pemasukan=daftar_pemasukan,
-        daftar_pengeluaran=daftar_pengeluaran,
+        daftar_pemasukan=daftar_pemasukan, daftar_pengeluaran=daftar_pengeluaran,
         bulan_names=bulan_names,
-        pemasukan_chart=pemasukan_chart,
-        pengeluaran_chart=pengeluaran_chart,
+        pemasukan_chart=pemasukan_chart, pengeluaran_chart=pengeluaran_chart,
         selected_bulan=date(tahun, bulan, 1).strftime("%B"))
 
-@accounting_bp.route("/pengeluaran/tambah", methods=["GET", "POST"])
-@login_required
-def tambah_pengeluaran():
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
 
+@accounting_bp.route("/pengeluaran/tambah", methods=["GET", "POST"])
+@admin_or_management
+def tambah_pengeluaran():
     if request.method == "POST":
         try:
             jumlah = float(request.form.get("jumlah", 0))
         except ValueError:
             flash("Jumlah harus angka.", "danger")
-            vendors = Vendor.query.order_by(Vendor.nama).all()
-            return render_template("accounting/expense_form.html", vendors=vendors)
+            return render_template("accounting/expense_form.html", vendors=Vendor.query.order_by(Vendor.nama).all())
 
         if jumlah <= 0:
             flash("Jumlah harus lebih dari 0.", "danger")
-            vendors = Vendor.query.order_by(Vendor.nama).all()
-            return render_template("accounting/expense_form.html", vendors=vendors)
+            return render_template("accounting/expense_form.html", vendors=Vendor.query.order_by(Vendor.nama).all())
 
-        kos_id = _kos_filter()
         expense = Expense(
-            kos_id=kos_id,
+            kos_id=session.get("kos_id"),
             kategori=request.form.get("kategori", "lainnya"),
             jumlah=jumlah,
             tanggal=datetime.strptime(request.form["tanggal"], "%Y-%m-%d").date() if request.form.get("tanggal") else date.today(),
@@ -124,25 +107,20 @@ def tambah_pengeluaran():
         flash("Pengeluaran berhasil dicatat.", "success")
         return redirect(url_for("accounting.index"))
 
-    vendors = Vendor.query.order_by(Vendor.nama).all()
-    return render_template("accounting/expense_form.html", vendors=vendors)
+    return render_template("accounting/expense_form.html", vendors=Vendor.query.order_by(Vendor.nama).all())
+
 
 @accounting_bp.route("/pengeluaran/edit/<int:id>", methods=["GET", "POST"])
-@login_required
+@admin_or_management
 def edit_pengeluaran(id):
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
-
-    expense = Expense.query.get_or_404(id)
+    expense = get_or_404(Expense, id)
 
     if request.method == "POST":
         try:
             expense.jumlah = float(request.form.get("jumlah", 0))
         except ValueError:
             flash("Jumlah harus angka.", "danger")
-            vendors = Vendor.query.order_by(Vendor.nama).all()
-            return render_template("accounting/expense_form.html", expense=expense, vendors=vendors)
+            return render_template("accounting/expense_form.html", expense=expense, vendors=Vendor.query.order_by(Vendor.nama).all())
 
         expense.kategori = request.form.get("kategori", "lainnya")
         expense.tanggal = datetime.strptime(request.form["tanggal"], "%Y-%m-%d").date() if request.form.get("tanggal") else date.today()
@@ -152,31 +130,23 @@ def edit_pengeluaran(id):
         flash("Pengeluaran berhasil diperbarui.", "success")
         return redirect(url_for("accounting.index"))
 
-    vendors = Vendor.query.order_by(Vendor.nama).all()
-    return render_template("accounting/expense_form.html", expense=expense, vendors=vendors)
+    return render_template("accounting/expense_form.html", expense=expense, vendors=Vendor.query.order_by(Vendor.nama).all())
+
 
 @accounting_bp.route("/pengeluaran/hapus/<int:id>", methods=["POST"])
-@login_required
+@admin_or_management
 def hapus_pengeluaran(id):
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
-
-    expense = Expense.query.get_or_404(id)
+    expense = get_or_404(Expense, id)
     db.session.delete(expense)
     db.session.commit()
     flash("Pengeluaran berhasil dihapus.", "success")
     return redirect(url_for("accounting.index"))
 
-@accounting_bp.route("/laporan")
-@login_required
-def laporan():
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
 
+@accounting_bp.route("/laporan")
+@admin_or_management
+def laporan():
     tahun = request.args.get("tahun", date.today().year, type=int)
-    kos_id = _kos_filter()
     bulanan = []
     total_pemasukan = 0
     total_pengeluaran = 0
@@ -184,17 +154,11 @@ def laporan():
     for m in range(1, 13):
         s, e = get_month_range(tahun, m)
         p = db.session.query(db.func.sum(Payment.jumlah)).filter(
-            Payment.status == "lunas",
-            Payment.tanggal_bayar >= s,
-            Payment.tanggal_bayar <= e,
+            Payment.status == "lunas", Payment.tanggal_bayar >= s, Payment.tanggal_bayar <= e,
         ).scalar() or 0
-        pe_q = db.session.query(db.func.sum(Expense.jumlah)).filter(
-            Expense.tanggal >= s,
-            Expense.tanggal <= e,
-        )
-        if kos_id:
-            pe_q = pe_q.filter(Expense.kos_id == kos_id)
-        pe = pe_q.scalar() or 0
+        pe = _kos_expense_query(
+            db.session.query(db.func.sum(Expense.jumlah)).filter(Expense.tanggal >= s, Expense.tanggal <= e)
+        ).scalar() or 0
         bulanan.append({
             "bulan": date(tahun, m, 1).strftime("%B"),
             "pemasukan": float(p),
@@ -206,21 +170,17 @@ def laporan():
 
     return render_template("accounting/laporan.html",
         tahun=tahun, bulanan=bulanan,
-        total_pemasukan=total_pemasukan,
-        total_pengeluaran=total_pengeluaran,
+        total_pemasukan=total_pemasukan, total_pengeluaran=total_pengeluaran,
         total_laba=total_pemasukan - total_pengeluaran)
 
-@accounting_bp.route("/export/csv")
-@login_required
-def export_csv():
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
 
+@accounting_bp.route("/export/csv")
+@admin_or_management
+def export_csv():
     tahun = request.args.get("tahun", date.today().year, type=int)
     bulan = request.args.get("bulan", 0, type=int)
     jenis = request.args.get("jenis", "semua")
-    kos_id = _kos_filter()
+    kos_id = session.get("kos_id")
 
     out = io.StringIO()
     w = csv.writer(out)
@@ -247,18 +207,13 @@ def export_csv():
     if jenis in ("semua", "pengeluaran"):
         w.writerow(["PENGELUARAN"])
         w.writerow(["Tanggal", "Kategori", "Deskripsi", "Jumlah"])
-        eq = Expense.query
-        if kos_id:
-            eq = eq.filter(Expense.kos_id == kos_id)
+        eq = _kos_expense_query(Expense.query)
         if bulan:
             s, e = get_month_range(tahun, bulan)
             eq = eq.filter(Expense.tanggal >= s, Expense.tanggal <= e)
         expenses = eq.all()
         for e in expenses:
-            w.writerow([
-                e.tanggal.strftime("%d/%m/%Y") if e.tanggal else "-",
-                e.kategori, e.deskripsi or "", e.jumlah
-            ])
+            w.writerow([e.tanggal.strftime("%d/%m/%Y") if e.tanggal else "-", e.kategori, e.deskripsi or "", e.jumlah])
         w.writerow(["Total Pengeluaran", "", "", sum(e.jumlah for e in expenses)])
         w.writerow([])
 

@@ -1,19 +1,16 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, session
+from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from extensions import db
 from sqlalchemy import or_
 from models import User, Booking, Payment, Notification, Room
+from helpers import admin_or_management, get_or_404, kos_room_ids
 
 clients_bp = Blueprint("clients", __name__, url_prefix="/clients")
 
 
 @clients_bp.route("/")
-@login_required
+@admin_or_management
 def index():
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
-
     search = request.args.get("search", "").strip()
     query = User.query.filter_by(role="client")
 
@@ -28,11 +25,10 @@ def index():
         )
 
     clients = query.order_by(User.created_at.desc()).all()
-    kos_id = session.get("kos_id")
+    room_ids = kos_room_ids()
     aktif_q = Booking.query.filter_by(status="aktif")
-    if kos_id:
-        kos_room_ids = [r.id for r in db.session.query(Room.id).filter_by(kos_id=kos_id).all()]
-        aktif_q = aktif_q.filter(Booking.room_id.in_(kos_room_ids)) if kos_room_ids else aktif_q.filter(False)
+    if room_ids:
+        aktif_q = aktif_q.filter(Booking.room_id.in_(room_ids))
     aktif_ids = [b.user_id for b in aktif_q.all()]
 
     return render_template("clients/index.html", clients=clients, aktif_ids=aktif_ids)
@@ -41,29 +37,23 @@ def index():
 @clients_bp.route("/<int:id>")
 @login_required
 def detail(id):
-    if current_user.role not in ("admin", "management"):
-        if current_user.id != id:
-            flash("Akses ditolak.", "danger")
-            return redirect(url_for("dashboard.index"))
+    if current_user.role not in ("admin", "management") and current_user.id != id:
+        flash("Akses ditolak.", "danger")
+        return redirect(url_for("dashboard.index"))
 
-    client = User.query.get_or_404(id)
+    client = get_or_404(User, id)
     bookings = Booking.query.filter_by(user_id=id).order_by(Booking.created_at.desc()).all()
     payments = Payment.query.join(Booking).filter(
         Booking.user_id == id
     ).order_by(Payment.created_at.desc()).all()
 
-    return render_template("clients/detail.html",
-        client=client, bookings=bookings, payments=payments)
+    return render_template("clients/detail.html", client=client, bookings=bookings, payments=payments)
 
 
 @clients_bp.route("/nonaktifkan/<int:id>", methods=["POST"])
-@login_required
+@admin_or_management
 def nonaktifkan(id):
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
-
-    user = User.query.get_or_404(id)
+    user = get_or_404(User, id)
     user.is_active = not user.is_active
     db.session.commit()
     status = "diaktifkan" if user.is_active else "dinonaktifkan"
@@ -72,13 +62,9 @@ def nonaktifkan(id):
 
 
 @clients_bp.route("/edit/<int:id>", methods=["GET", "POST"])
-@login_required
+@admin_or_management
 def edit(id):
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
-
-    client = User.query.get_or_404(id)
+    client = get_or_404(User, id)
 
     if request.method == "POST":
         client.nama_lengkap = request.form.get("nama_lengkap", client.nama_lengkap)

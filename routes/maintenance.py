@@ -1,33 +1,24 @@
 import urllib.parse
-from datetime import date, datetime
-from flask import Blueprint, render_template, redirect, url_for, flash, request, session
-from flask_login import login_required, current_user
+from datetime import date
+from flask import Blueprint, render_template, redirect, url_for, flash, request
 from extensions import db
 from models import MaintenanceRequest, Vendor, Room, Notification
+from helpers import admin_or_management, get_or_404, kos_rooms, kos_room_ids
 
 maintenance_bp = Blueprint("maintenance", __name__, url_prefix="/maintenance")
 
 
-def _kos_rooms():
-    """Return rooms filtered by current kos, or all rooms if no kos selected."""
-    kos_id = session.get("kos_id")
-    return Room.query.filter_by(kos_id=kos_id).all() if kos_id else Room.query.all()
-
-
 @maintenance_bp.route("/")
-@login_required
+@admin_or_management
 def index():
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
-
-    kos_id = session.get("kos_id")
     status = request.args.get("status")
     query = MaintenanceRequest.query
 
-    if kos_id:
-        kos_room_ids = [r.id for r in db.session.query(Room.id).filter_by(kos_id=kos_id).all()]
-        query = query.filter(MaintenanceRequest.room_id.in_(kos_room_ids)) if kos_room_ids else query.filter(False)
+    room_ids = kos_room_ids()
+    if room_ids:
+        query = query.filter(MaintenanceRequest.room_id.in_(room_ids))
+    elif room_ids == []:
+        query = query.filter(False)
     if status:
         query = query.filter_by(status=status)
 
@@ -36,19 +27,15 @@ def index():
 
 
 @maintenance_bp.route("/tambah", methods=["GET", "POST"])
-@login_required
+@admin_or_management
 def tambah():
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
-
     if request.method == "POST":
         room_id = request.form.get("room_id", type=int)
         deskripsi = request.form.get("deskripsi", "").strip()
 
         if not deskripsi:
             flash("Deskripsi wajib diisi.", "danger")
-            return render_template("maintenance/form.html", rooms=_kos_rooms(), vendors=Vendor.query.order_by(Vendor.nama).all())
+            return render_template("maintenance/form.html", rooms=kos_rooms(), vendors=Vendor.query.order_by(Vendor.nama).all())
 
         mr = MaintenanceRequest(
             room_id=room_id,
@@ -62,31 +49,26 @@ def tambah():
         db.session.commit()
 
         if room_id:
-            room = Room.query.get(room_id)
+            room = db.session.get(Room, room_id)
             if room and room.booking_aktif:
                 client = room.booking_aktif.client
-                notif = Notification(
+                db.session.add(Notification(
                     user_id=client.id,
                     pesan=f"Ada maintenance untuk kamar {room.nomor_kamar}: {deskripsi[:50]}...",
                     jenis="maintenance",
-                )
-                db.session.add(notif)
+                ))
                 db.session.commit()
 
         flash("Permintaan maintenance berhasil diajukan.", "success")
         return redirect(url_for("maintenance.index"))
 
-    return render_template("maintenance/form.html", rooms=_kos_rooms(), vendors=Vendor.query.order_by(Vendor.nama).all())
+    return render_template("maintenance/form.html", rooms=kos_rooms(), vendors=Vendor.query.order_by(Vendor.nama).all())
 
 
 @maintenance_bp.route("/edit/<int:id>", methods=["GET", "POST"])
-@login_required
+@admin_or_management
 def edit(id):
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
-
-    mr = MaintenanceRequest.query.get_or_404(id)
+    mr = get_or_404(MaintenanceRequest, id)
 
     if request.method == "POST":
         mr.room_id = request.form.get("room_id", type=int)
@@ -108,17 +90,13 @@ def edit(id):
         flash("Permintaan maintenance berhasil diperbarui.", "success")
         return redirect(url_for("maintenance.index"))
 
-    return render_template("maintenance/form.html", mr=mr, rooms=_kos_rooms(), vendors=Vendor.query.order_by(Vendor.nama).all())
+    return render_template("maintenance/form.html", mr=mr, rooms=kos_rooms(), vendors=Vendor.query.order_by(Vendor.nama).all())
 
 
 @maintenance_bp.route("/hapus/<int:id>", methods=["POST"])
-@login_required
+@admin_or_management
 def hapus(id):
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
-
-    mr = MaintenanceRequest.query.get_or_404(id)
+    mr = get_or_404(MaintenanceRequest, id)
     db.session.delete(mr)
     db.session.commit()
     flash("Permintaan maintenance berhasil dihapus.", "success")
@@ -126,23 +104,15 @@ def hapus(id):
 
 
 @maintenance_bp.route("/vendor")
-@login_required
+@admin_or_management
 def vendor_index():
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
-
     vendors = Vendor.query.order_by(Vendor.nama).all()
     return render_template("maintenance/vendor_index.html", vendors=vendors)
 
 
 @maintenance_bp.route("/vendor/tambah", methods=["GET", "POST"])
-@login_required
+@admin_or_management
 def vendor_tambah():
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
-
     if request.method == "POST":
         nama = request.form.get("nama", "").strip()
         if not nama:
@@ -165,13 +135,9 @@ def vendor_tambah():
 
 
 @maintenance_bp.route("/vendor/edit/<int:id>", methods=["GET", "POST"])
-@login_required
+@admin_or_management
 def vendor_edit(id):
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
-
-    vendor = Vendor.query.get_or_404(id)
+    vendor = get_or_404(Vendor, id)
 
     if request.method == "POST":
         vendor.nama = request.form.get("nama", vendor.nama)
@@ -187,13 +153,9 @@ def vendor_edit(id):
 
 
 @maintenance_bp.route("/vendor/hapus/<int:id>", methods=["POST"])
-@login_required
+@admin_or_management
 def vendor_hapus(id):
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
-
-    vendor = Vendor.query.get_or_404(id)
+    vendor = get_or_404(Vendor, id)
     db.session.delete(vendor)
     db.session.commit()
     flash("Vendor berhasil dihapus.", "success")
@@ -201,25 +163,17 @@ def vendor_hapus(id):
 
 
 @maintenance_bp.route("/vendor/wa/<int:id>")
-@login_required
+@admin_or_management
 def vendor_wa(id):
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
-
-    vendor = Vendor.query.get_or_404(id)
+    vendor = get_or_404(Vendor, id)
     pesan = f"Halo {vendor.nama}, kami dari pengelola kos ingin menghubungi Anda terkait pekerjaan maintenance."
     return redirect(f"https://wa.me/{vendor.no_telepon}?text={urllib.parse.quote(pesan)}")
 
 
 @maintenance_bp.route("/vendor/hubungi/<int:mr_id>")
-@login_required
+@admin_or_management
 def vendor_hubungi(mr_id):
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
-
-    mr = MaintenanceRequest.query.get_or_404(mr_id)
+    mr = get_or_404(MaintenanceRequest, mr_id)
     if not mr.vendor:
         flash("Tidak ada vendor yang ditugaskan.", "warning")
         return redirect(url_for("maintenance.edit", id=mr_id))
@@ -236,13 +190,9 @@ def vendor_hubungi(mr_id):
 
 
 @maintenance_bp.route("/notif-penghuni/<int:mr_id>")
-@login_required
+@admin_or_management
 def notif_penghuni(mr_id):
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
-
-    mr = MaintenanceRequest.query.get_or_404(mr_id)
+    mr = get_or_404(MaintenanceRequest, mr_id)
     booking = mr.room.booking_aktif
     if not booking or not booking.client.no_telepon:
         flash("Tidak ada penghuni aktif di kamar ini.", "warning")
@@ -255,13 +205,12 @@ def notif_penghuni(mr_id):
         pesan += f"\nBiaya: Rp{mr.biaya:,.0f}"
     pesan += f"\n\nTerima kasih."
 
-    notif = Notification(
+    db.session.add(Notification(
         user_id=booking.client.id,
         pesan=f"Notifikasi maintenance selesai dikirim ke {booking.client.nama_lengkap} (Kamar {mr.room.nomor_kamar})",
         jenis="maintenance",
         wa_sent=True,
-    )
-    db.session.add(notif)
+    ))
     db.session.commit()
 
     return redirect(f"https://wa.me/{booking.client.no_telepon}?text={urllib.parse.quote(pesan)}")

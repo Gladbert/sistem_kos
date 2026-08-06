@@ -4,7 +4,7 @@ from flask import Blueprint, render_template, redirect, flash, url_for, request,
 from flask_login import login_required, current_user
 from extensions import db
 from models import User, Room, Booking, Payment, Expense, Notification, MaintenanceRequest, Complaint, Kos
-from helpers import log_activity
+from helpers import log_activity, admin_or_management, get_or_404, kos_room_ids
 
 dashboard_bp = Blueprint("dashboard", __name__, url_prefix="/dashboard")
 
@@ -18,52 +18,42 @@ def index():
 
 
 @dashboard_bp.route("/admin")
-@login_required
+@admin_or_management
 def admin():
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.client"))
-
     kos_id = session.get("kos_id")
-    if kos_id:
-        room_ids = [r.id for r in db.session.query(Room.id).filter_by(kos_id=kos_id).all()]
-    else:
-        room_ids = [r.id for r in db.session.query(Room.id).all()]
+    room_ids = kos_room_ids(kos_id) if kos_id else [r.id for r in db.session.query(Room.id).all()]
 
     total_kamar = len(room_ids)
-    kamar_terisi = db.session.query(Room).filter_by(kos_id=kos_id, status="terisi").count() if kos_id else Room.query.filter_by(status="terisi").count()
-    kamar_tersedia = db.session.query(Room).filter_by(kos_id=kos_id, status="tersedia").count() if kos_id else Room.query.filter_by(status="tersedia").count()
-    kamar_maintenance = db.session.query(Room).filter_by(kos_id=kos_id, status="maintenance").count() if kos_id else Room.query.filter_by(status="maintenance").count()
+    room_q = Room.query.filter(Room.id.in_(room_ids)) if room_ids else Room.query.filter(False)
+    kamar_terisi_count = room_q.filter_by(status="terisi").count()
+    kamar_tersedia = room_q.filter_by(status="tersedia").count()
+    kamar_maintenance = room_q.filter_by(status="maintenance").count()
 
     active_bookings = Booking.query.filter(Booking.room_id.in_(room_ids), Booking.status == "aktif").all() if room_ids else []
-    kamar_terisi_count = len(active_bookings)
     kamar_pending = Booking.query.filter(Booking.room_id.in_(room_ids), Booking.status == "pending").count() if room_ids else 0
-
     total_penghuni = len(set(b.user_id for b in active_bookings))
 
-    penghuni = []
-    for b in active_bookings:
-        u = b.client
-        penghuni.append({
-            "id": u.id,
-            "nama_lengkap": u.nama_lengkap,
-            "username": u.username,
-            "no_telepon": u.no_telepon,
-            "is_active": u.is_active,
-            "nomor_kamar": b.room.nomor_kamar,
-            "kamar_id": b.room_id,
-        })
+    penghuni = [{
+        "id": u.id, "nama_lengkap": u.nama_lengkap, "username": u.username,
+        "no_telepon": u.no_telepon, "is_active": u.is_active,
+        "nomor_kamar": b.room.nomor_kamar, "kamar_id": b.room_id,
+    } for b in active_bookings for u in [b.client]]
+
+    booking_ids = [b.id for b in active_bookings]
+    bulan_ini = date.today().strftime("%Y-%m")
 
     pemasukan_bulan_ini = db.session.query(db.func.sum(Payment.jumlah)).filter(
         Payment.status == "lunas",
-        Payment.booking_id.in_([b.id for b in active_bookings]) if active_bookings else False,
-        db.func.strftime("%Y-%m", Payment.tanggal_bayar) == date.today().strftime("%Y-%m")
+        Payment.booking_id.in_(booking_ids) if booking_ids else False,
+        db.func.strftime("%Y-%m", Payment.tanggal_bayar) == bulan_ini,
     ).scalar() or 0
 
-    pengeluaran_bulan_ini = db.session.query(db.func.sum(Expense.jumlah)).filter(
-        Expense.kos_id == kos_id if kos_id else True,
-        db.func.strftime("%Y-%m", Expense.tanggal) == date.today().strftime("%Y-%m")
-    ).scalar() or 0
+    pengeluaran_bulan_ini_q = db.session.query(db.func.sum(Expense.jumlah)).filter(
+        db.func.strftime("%Y-%m", Expense.tanggal) == bulan_ini,
+    )
+    if kos_id:
+        pengeluaran_bulan_ini_q = pengeluaran_bulan_ini_q.filter(Expense.kos_id == kos_id)
+    pengeluaran_bulan_ini = pengeluaran_bulan_ini_q.scalar() or 0
 
     tagihan_belum_dibayar = 0
     unpaid_bookings = []
@@ -74,21 +64,19 @@ def admin():
 
     booking_pending = Booking.query.filter(Booking.room_id.in_(room_ids), Booking.status == "pending").order_by(Booking.created_at.asc()).all() if room_ids else []
 
-    bulan_ini = date.today().strftime("%Y-%m")
     pembayaran_bulan_ini = Payment.query.filter(
         Payment.status == "lunas",
-        Payment.booking_id.in_([b.id for b in active_bookings]) if active_bookings else False,
-        db.func.strftime("%Y-%m", Payment.tanggal_bayar) == bulan_ini
+        Payment.booking_id.in_(booking_ids) if booking_ids else False,
+        db.func.strftime("%Y-%m", Payment.tanggal_bayar) == bulan_ini,
     ).count()
 
     total_tagihan = len(active_bookings)
     collection_rate = round((pembayaran_bulan_ini / total_tagihan * 100) if total_tagihan > 0 else 0)
     occupancy_rate = round((kamar_terisi_count / total_kamar * 100) if total_kamar > 0 else 0)
 
-    tipe_kamar = db.session.query(Room.tipe, db.func.count(Room.id)).filter(Room.kos_id == kos_id if kos_id else True).group_by(Room.tipe).all() if kos_id else []
+    tipe_kamar = db.session.query(Room.tipe, db.func.count(Room.id)).filter(Room.id.in_(room_ids)).group_by(Room.tipe).all() if room_ids else []
 
     pemasukan_6bulan = []
-    booking_ids = [b.id for b in active_bookings]
     for i in range(5, -1, -1):
         m = date.today().month - i
         y = date.today().year
@@ -102,20 +90,25 @@ def admin():
         total = db.session.query(db.func.sum(Payment.jumlah)).filter(
             Payment.status == "lunas",
             Payment.booking_id.in_(booking_ids) if booking_ids else False,
-            db.func.strftime("%Y-%m", Payment.tanggal_bayar) == bulan_str
+            db.func.strftime("%Y-%m", Payment.tanggal_bayar) == bulan_str,
         ).scalar() or 0
         pemasukan_6bulan.append({"bulan": bulan_str, "total": total})
 
     pembayaran_terbaru = Payment.query.filter(Payment.booking_id.in_(booking_ids)).order_by(Payment.created_at.desc()).limit(5).all() if booking_ids else []
-    pengeluaran_terbaru = Expense.query.filter(Expense.kos_id == kos_id if kos_id else True).order_by(Expense.created_at.desc()).limit(5).all()
+    pengeluaran_terbaru_q = Expense.query
+    if kos_id:
+        pengeluaran_terbaru_q = pengeluaran_terbaru_q.filter(Expense.kos_id == kos_id)
+    pengeluaran_terbaru = pengeluaran_terbaru_q.order_by(Expense.created_at.desc()).limit(5).all()
+
     permintaan_maintenance = MaintenanceRequest.query.filter(
         MaintenanceRequest.room_id.in_(room_ids),
-        MaintenanceRequest.status.in_(["diajukan", "diproses"])
+        MaintenanceRequest.status.in_(["diajukan", "diproses"]),
     ).order_by(MaintenanceRequest.created_at.desc()).limit(5).all() if room_ids else []
 
-    komplain_baru = Complaint.query.filter(Complaint.kos_id == kos_id if kos_id else True, Complaint.status == "diajukan").count()
-
-    booking_audit = active_bookings[:5]
+    komplain_baru_q = Complaint.query.filter(Complaint.status == "diajukan")
+    if kos_id:
+        komplain_baru_q = komplain_baru_q.filter(Complaint.kos_id == kos_id)
+    komplain_baru = komplain_baru_q.count()
 
     return render_template("dashboard/admin.html",
         total_kamar=total_kamar, kamar_terisi=kamar_terisi_count,
@@ -123,19 +116,13 @@ def admin():
         penghuni=penghuni, pemasukan_bulan_ini=pemasukan_bulan_ini,
         pengeluaran_bulan_ini=pengeluaran_bulan_ini,
         tagihan_belum_dibayar=tagihan_belum_dibayar,
-        pembayaran_terbaru=pembayaran_terbaru,
-        pengeluaran_terbaru=pengeluaran_terbaru,
-        permintaan_maintenance=permintaan_maintenance,
-        komplain_baru=komplain_baru,
-        kamar_pending=kamar_pending,
-        kamar_maintenance=kamar_maintenance,
-        booking_pending=booking_pending,
-        unpaid_bookings=unpaid_bookings,
-        collection_rate=collection_rate,
-        occupancy_rate=occupancy_rate,
-        tipe_kamar=tipe_kamar,
-        pemasukan_6bulan=pemasukan_6bulan,
-        booking_audit=booking_audit)
+        pembayaran_terbaru=pembayaran_terbaru, pengeluaran_terbaru=pengeluaran_terbaru,
+        permintaan_maintenance=permintaan_maintenance, komplain_baru=komplain_baru,
+        kamar_pending=kamar_pending, kamar_maintenance=kamar_maintenance,
+        booking_pending=booking_pending, unpaid_bookings=unpaid_bookings,
+        collection_rate=collection_rate, occupancy_rate=occupancy_rate,
+        tipe_kamar=tipe_kamar, pemasukan_6bulan=pemasukan_6bulan,
+        booking_audit=active_bookings[:5])
 
 
 @dashboard_bp.route("/client")
@@ -157,23 +144,19 @@ def client():
 
 
 @dashboard_bp.route("/booking/<int:id>/approve", methods=["POST"])
-@login_required
+@admin_or_management
 def approve_booking(id):
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
-    booking = Booking.query.get_or_404(id)
+    booking = get_or_404(Booking, id)
     if booking.status != "pending":
         flash("Booking sudah diproses.", "warning")
         return redirect(url_for("dashboard.admin"))
     booking.status = "aktif"
     booking.room.status = "terisi"
-    notif = Notification(
+    db.session.add(Notification(
         user_id=booking.user_id,
         pesan=f"Permintaan sewa kamar {booking.room.nomor_kamar} telah DISETUJUI! Silakan check-in.",
         jenis="umum",
-    )
-    db.session.add(notif)
+    ))
     log_activity(current_user.id, "Setujui booking", f"Kamar {booking.room.nomor_kamar} - {booking.client.nama_lengkap}", "Booking")
     db.session.commit()
     flash(f"Booking kamar {booking.room.nomor_kamar} oleh {booking.client.nama_lengkap} disetujui.", "success")
@@ -181,61 +164,44 @@ def approve_booking(id):
 
 
 @dashboard_bp.route("/booking/<int:id>/tolak", methods=["POST"])
-@login_required
+@admin_or_management
 def tolak_booking(id):
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
-    booking = Booking.query.get_or_404(id)
+    booking = get_or_404(Booking, id)
     if booking.status != "pending":
         flash("Booking sudah diproses.", "warning")
         return redirect(url_for("dashboard.admin"))
-    notif = Notification(
+    db.session.add(Notification(
         user_id=booking.user_id,
         pesan=f"Permintaan sewa kamar {booking.room.nomor_kamar} telah DITOLAK. Silakan hubungi pengelola untuk detail.",
         jenis="umum",
-    )
-    db.session.add(notif)
-    db.session.delete(booking)
+    ))
     log_activity(current_user.id, "Tolak booking", f"Kamar {booking.room.nomor_kamar} - {booking.client.nama_lengkap}", "Booking")
+    db.session.delete(booking)
     db.session.commit()
     flash(f"Booking kamar {booking.room.nomor_kamar} oleh {booking.client.nama_lengkap} ditolak.", "info")
     return redirect(url_for("dashboard.admin"))
 
 
 @dashboard_bp.route("/auto-proses", methods=["POST"])
-@login_required
+@admin_or_management
 def auto_proses():
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
     today = date.today()
     count_selesai = 0
     count_notif = 0
 
-    bookings_selesai = Booking.query.filter(
-        Booking.status == "aktif",
-        Booking.tanggal_keluar < today
-    ).all()
-    for b in bookings_selesai:
+    for b in Booking.query.filter(Booking.status == "aktif", Booking.tanggal_keluar < today).all():
         b.status = "selesai"
         b.room.status = "tersedia"
-        notif = Notification(user_id=b.user_id,
+        db.session.add(Notification(user_id=b.user_id,
             pesan=f"Masa sewa kamar {b.room.nomor_kamar} telah berakhir per {b.tanggal_keluar.strftime('%d/%m/%Y')}.",
-            jenis="umum")
-        db.session.add(notif)
+            jenis="umum"))
         count_selesai += 1
 
-    bookings_7hari = Booking.query.filter(
-        Booking.status == "aktif",
-        Booking.tanggal_keluar >= today,
-        Booking.tanggal_keluar <= date(today.year, today.month, today.day + 7)
-    ).all()
-    for b in bookings_7hari:
-        notif = Notification(user_id=b.user_id,
+    for b in Booking.query.filter(Booking.status == "aktif", Booking.tanggal_keluar >= today,
+                                   Booking.tanggal_keluar <= date(today.year, today.month, today.day + 7)).all():
+        db.session.add(Notification(user_id=b.user_id,
             pesan=f"Pengingat: masa sewa kamar {b.room.nomor_kamar} akan berakhir {b.tanggal_keluar.strftime('%d/%m/%Y')}. Segera perpanjang jika ingin lanjut.",
-            jenis="umum")
-        db.session.add(notif)
+            jenis="umum"))
         count_notif += 1
 
     log_activity(current_user.id, "Auto-proses", f"{count_selesai} booking selesai, {count_notif} pengingat dikirim", "System")
@@ -247,7 +213,7 @@ def auto_proses():
 @dashboard_bp.route("/notifikasi/baca/<int:id>", methods=["POST"])
 @login_required
 def baca_notifikasi(id):
-    n = Notification.query.get_or_404(id)
+    n = get_or_404(Notification, id)
     if n.user_id != current_user.id:
         flash("Akses ditolak.", "danger")
         return redirect(url_for("dashboard.index"))

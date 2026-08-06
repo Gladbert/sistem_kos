@@ -4,6 +4,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db
 from models import Payment, Booking, Notification, Room
+from helpers import admin_or_management, get_or_404, kos_room_ids
 
 payments_bp = Blueprint("payments", __name__, url_prefix="/payments")
 
@@ -18,9 +19,9 @@ def index():
         query = Payment.query
 
         if kos_id:
-            kos_room_ids = [r.id for r in db.session.query(Room.id).filter_by(kos_id=kos_id).all()]
-            kos_booking_ids = [b.id for b in db.session.query(Booking.id).filter(Booking.room_id.in_(kos_room_ids)).all()] if kos_room_ids else []
-            query = query.filter(Payment.booking_id.in_(kos_booking_ids)) if kos_booking_ids else query.filter(False)
+            room_ids = kos_room_ids(kos_id)
+            booking_ids = [b.id for b in db.session.query(Booking.id).filter(Booking.room_id.in_(room_ids)).all()] if room_ids else []
+            query = query.filter(Payment.booking_id.in_(booking_ids)) if booking_ids else query.filter(False)
         if booking_id:
             query = query.filter_by(booking_id=booking_id)
         if status:
@@ -29,8 +30,8 @@ def index():
         payments = query.order_by(Payment.created_at.desc()).all()
         bookings_q = Booking.query.filter_by(status="aktif")
         if kos_id:
-            kos_room_ids = [r.id for r in db.session.query(Room.id).filter_by(kos_id=kos_id).all()]
-            bookings_q = bookings_q.filter(Booking.room_id.in_(kos_room_ids)) if kos_room_ids else bookings_q.filter(False)
+            room_ids = kos_room_ids(kos_id)
+            bookings_q = bookings_q.filter(Booking.room_id.in_(room_ids)) if room_ids else bookings_q.filter(False)
         bookings = bookings_q.all()
         return render_template("payments/index.html", payments=payments, bookings=bookings)
 
@@ -43,27 +44,21 @@ def index():
 
 
 @payments_bp.route("/tambah", methods=["GET", "POST"])
-@login_required
+@admin_or_management
 def tambah():
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
-
     if request.method == "POST":
         booking_id = request.form.get("booking_id", type=int)
         try:
             jumlah = float(request.form.get("jumlah", 0))
         except ValueError:
             flash("Jumlah harus angka.", "danger")
-            bookings = Booking.query.filter_by(status="aktif").all()
-            return render_template("payments/form.html", bookings=bookings)
+            return render_template("payments/form.html", bookings=Booking.query.filter_by(status="aktif").all())
 
         if jumlah <= 0:
             flash("Jumlah harus lebih dari 0.", "danger")
-            bookings = Booking.query.filter_by(status="aktif").all()
-            return render_template("payments/form.html", bookings=bookings)
+            return render_template("payments/form.html", bookings=Booking.query.filter_by(status="aktif").all())
 
-        booking = Booking.query.get(booking_id)
+        booking = db.session.get(Booking, booking_id)
         if not booking:
             flash("Booking tidak ditemukan.", "danger")
             return redirect(url_for("payments.index"))
@@ -80,29 +75,23 @@ def tambah():
         db.session.add(payment)
         db.session.commit()
 
-        notif = Notification(
+        db.session.add(Notification(
             user_id=booking.user_id,
             pesan=f"Pembayaran Rp{jumlah:,.0f} untuk bulan {payment.bulan_dibayar_untuk} telah diterima.",
             jenis="pembayaran",
-        )
-        db.session.add(notif)
+        ))
         db.session.commit()
 
         flash("Pembayaran berhasil dicatat.", "success")
         return redirect(url_for("payments.index"))
 
-    bookings = Booking.query.filter_by(status="aktif").all()
-    return render_template("payments/form.html", bookings=bookings)
+    return render_template("payments/form.html", bookings=Booking.query.filter_by(status="aktif").all())
 
 
 @payments_bp.route("/edit/<int:id>", methods=["GET", "POST"])
-@login_required
+@admin_or_management
 def edit(id):
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
-
-    payment = Payment.query.get_or_404(id)
+    payment = get_or_404(Payment, id)
 
     if request.method == "POST":
         try:
@@ -124,13 +113,9 @@ def edit(id):
 
 
 @payments_bp.route("/hapus/<int:id>", methods=["POST"])
-@login_required
+@admin_or_management
 def hapus(id):
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
-
-    payment = Payment.query.get_or_404(id)
+    payment = get_or_404(Payment, id)
     db.session.delete(payment)
     db.session.commit()
     flash("Pembayaran berhasil dihapus.", "success")
@@ -138,13 +123,9 @@ def hapus(id):
 
 
 @payments_bp.route("/resi/<int:payment_id>")
-@login_required
+@admin_or_management
 def kirim_resi(payment_id):
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
-
-    payment = Payment.query.get_or_404(payment_id)
+    payment = get_or_404(Payment, payment_id)
     booking = payment.booking
     if not booking.client.no_telepon:
         flash("Nomor telepon penghuni tidak tersedia.", "warning")
@@ -167,27 +148,21 @@ def kirim_resi(payment_id):
         pesan += f"\n\n*Sisa tagihan bulan ini: Rp{sisa:,.0f}*"
     pesan += "\n\nTerima kasih telah membayar tepat waktu."
 
-    notif = Notification(
+    db.session.add(Notification(
         user_id=payment.booking.user_id,
         pesan=f"Resi pembayaran Rp{payment.jumlah:,.0f} ({payment.bulan_dibayar_untuk}) dikirim via WA.",
         jenis="pembayaran",
         wa_sent=True,
-    )
-    db.session.add(notif)
+    ))
     db.session.commit()
 
-    wa_url = f"https://wa.me/{booking.client.no_telepon}?text={urllib.parse.quote(pesan)}"
-    return redirect(wa_url)
+    return redirect(f"https://wa.me/{booking.client.no_telepon}?text={urllib.parse.quote(pesan)}")
 
 
 @payments_bp.route("/notifikasi/<int:booking_id>")
-@login_required
+@admin_or_management
 def notifikasi_wa(booking_id):
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
-
-    booking = Booking.query.get_or_404(booking_id)
+    booking = get_or_404(Booking, booking_id)
     tagihan = booking.tagihan_bulan_ini
 
     pesan = f"Halo {booking.client.nama_lengkap}!"
@@ -196,14 +171,12 @@ def notifikasi_wa(booking_id):
     pesan += f"\n\nSilakan transfer ke:\nBank BCA - 1234567890\nA/N: Pengelola Kos"
     pesan += f"\n\n*Jangan lupa kirim bukti transfer ya!*"
 
-    notif = Notification(
+    db.session.add(Notification(
         user_id=booking.user_id,
         pesan=f"Pengingat pembayaran dikirim via WA untuk kamar {booking.room.nomor_kamar}",
         jenis="pembayaran",
         wa_sent=True,
-    )
-    db.session.add(notif)
+    ))
     db.session.commit()
 
-    wa_url = f"https://wa.me/{booking.client.no_telepon}?text={urllib.parse.quote(pesan)}"
-    return redirect(wa_url)
+    return redirect(f"https://wa.me/{booking.client.no_telepon}?text={urllib.parse.quote(pesan)}")

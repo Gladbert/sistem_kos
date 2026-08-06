@@ -1,28 +1,16 @@
-from functools import wraps
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session
 from flask_login import login_required, current_user
 from extensions import db
 from models import Kos
-from helpers import log_activity
+from helpers import log_activity, admin_or_management, get_or_404
 
 kos_bp = Blueprint("kos", __name__, url_prefix="/kos")
-
-
-def admin_or_management(f):
-    @wraps(f)
-    @login_required
-    def decorated(*args, **kwargs):
-        if current_user.role not in ("admin", "management"):
-            flash("Akses ditolak.", "danger")
-            return redirect(url_for("dashboard.index"))
-        return f(*args, **kwargs)
-    return decorated
 
 
 @kos_bp.route("/pilih/<int:id>", methods=["POST"])
 @login_required
 def pilih(id):
-    kos = Kos.query.get_or_404(id)
+    kos = get_or_404(Kos, id)
     if not kos.is_active:
         flash("Kos tidak aktif.", "danger")
         return redirect(request.referrer or url_for("dashboard.admin"))
@@ -64,7 +52,7 @@ def tambah():
 @kos_bp.route("/edit/<int:id>", methods=["GET", "POST"])
 @admin_or_management
 def edit(id):
-    kos = Kos.query.get_or_404(id)
+    kos = get_or_404(Kos, id)
 
     if request.method == "POST":
         nama = request.form.get("nama", "").strip()
@@ -90,7 +78,7 @@ def hapus(id):
         flash("Hanya admin yang bisa menghapus kos.", "danger")
         return redirect(url_for("kos.index"))
 
-    kos = Kos.query.get_or_404(id)
+    kos = get_or_404(Kos, id)
     if kos.rooms.count() > 0:
         flash(f'Tidak bisa hapus "{kos.nama}" — masih ada {kos.rooms.count()} kamar.', "danger")
         return redirect(url_for("kos.index"))

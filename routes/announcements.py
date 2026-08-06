@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, flash, url_for
 from flask_login import login_required, current_user
 from extensions import db
 from models import Announcement
-from helpers import log_activity
+from helpers import log_activity, admin_or_management, get_or_404
 
 announcement_bp = Blueprint("announcements", __name__, url_prefix="/pengumuman")
 
@@ -18,17 +18,15 @@ def index():
 
 
 @announcement_bp.route("/tambah", methods=["GET", "POST"])
-@login_required
+@admin_or_management
 def create():
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("announcements.index"))
     if request.method == "POST":
         a = Announcement(
-            judul=request.form["judul"], isi=request.form["isi"],
+            judul=request.form["judul"],
+            isi=request.form["isi"],
             prioritas=request.form.get("prioritas", "normal"),
             ditampilkan=request.form.get("ditampilkan") == "on",
-            created_by=current_user.id
+            created_by=current_user.id,
         )
         db.session.add(a)
         log_activity(current_user.id, "Buat pengumuman", f"Judul: {request.form['judul']}", "Announcement")
@@ -39,12 +37,9 @@ def create():
 
 
 @announcement_bp.route("/edit/<int:id>", methods=["GET", "POST"])
-@login_required
+@admin_or_management
 def edit(id):
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("announcements.index"))
-    a = Announcement.query.get_or_404(id)
+    a = get_or_404(Announcement, id)
     if request.method == "POST":
         a.judul = request.form["judul"]
         a.isi = request.form["isi"]
@@ -58,12 +53,9 @@ def edit(id):
 
 
 @announcement_bp.route("/hapus/<int:id>", methods=["POST"])
-@login_required
+@admin_or_management
 def delete(id):
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("announcements.index"))
-    a = Announcement.query.get_or_404(id)
+    a = get_or_404(Announcement, id)
     log_activity(current_user.id, "Hapus pengumuman", f"Judul: {a.judul}", "Announcement")
     db.session.delete(a)
     db.session.commit()

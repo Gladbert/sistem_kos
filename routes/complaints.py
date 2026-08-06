@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, flash, url_for,
 from flask_login import login_required, current_user
 from extensions import db
 from models import Complaint
-from helpers import log_activity
+from helpers import log_activity, admin_or_management, get_or_404
 
 complaint_bp = Blueprint("complaints", __name__, url_prefix="/komplain")
 
@@ -25,11 +25,12 @@ def index():
 @login_required
 def create():
     if request.method == "POST":
-        kos_id = session.get("kos_id")
         c = Complaint(
-            user_id=current_user.id, kos_id=kos_id, judul=request.form["judul"],
+            user_id=current_user.id,
+            kos_id=session.get("kos_id"),
+            judul=request.form["judul"],
             deskripsi=request.form["deskripsi"],
-            kategori=request.form.get("kategori", "umum")
+            kategori=request.form.get("kategori", "umum"),
         )
         db.session.add(c)
         log_activity(current_user.id, "Buat komplain", f"Judul: {request.form['judul']}", "Complaint")
@@ -40,12 +41,9 @@ def create():
 
 
 @complaint_bp.route("/tanggap/<int:id>", methods=["POST"])
-@login_required
+@admin_or_management
 def respond(id):
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("complaints.index"))
-    c = Complaint.query.get_or_404(id)
+    c = get_or_404(Complaint, id)
     c.tanggapan = request.form["tanggapan"]
     c.status = request.form.get("status", "ditindaklanjuti")
     c.ditanggapi_oleh = current_user.id

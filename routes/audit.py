@@ -1,8 +1,8 @@
-from datetime import date, datetime
 from flask import Blueprint, render_template, redirect, url_for, flash, request, make_response, jsonify
 from flask_login import login_required, current_user
 from extensions import db
 from models import RoomAudit, AuditItemResult, RoomItem, Booking, Notification
+from helpers import admin_or_management, get_or_404
 
 audit_bp = Blueprint("audit", __name__, url_prefix="/audit")
 
@@ -10,7 +10,7 @@ audit_bp = Blueprint("audit", __name__, url_prefix="/audit")
 @audit_bp.route("/check-in/<int:booking_id>", methods=["GET", "POST"])
 @login_required
 def check_in(booking_id):
-    booking = Booking.query.get_or_404(booking_id)
+    booking = get_or_404(Booking, booking_id)
     if booking.user_id != current_user.id and current_user.role not in ("admin", "management"):
         flash("Akses ditolak.", "danger")
         return redirect(url_for("dashboard.index"))
@@ -30,13 +30,14 @@ def check_in(booking_id):
 
         AuditItemResult.query.filter_by(audit_id=audit.id).delete()
         for item in items:
-            kondisi = request.form.get(f"kondisi_{item.id}", "baik")
-            catatan = request.form.get(f"catatan_{item.id}", "").strip()
-            db.session.add(AuditItemResult(audit_id=audit.id, item_id=item.id, kondisi=kondisi, catatan=catatan))
+            db.session.add(AuditItemResult(
+                audit_id=audit.id, item_id=item.id,
+                kondisi=request.form.get(f"kondisi_{item.id}", "baik"),
+                catatan=request.form.get(f"catatan_{item.id}", "").strip(),
+            ))
 
         if not existing:
-            notif = Notification(user_id=booking.user_id, pesan=f"Audit check-in kamar {booking.room.nomor_kamar} selesai.", jenis="umum")
-            db.session.add(notif)
+            db.session.add(Notification(user_id=booking.user_id, pesan=f"Audit check-in kamar {booking.room.nomor_kamar} selesai.", jenis="umum"))
         db.session.commit()
         flash("Audit check-in berhasil disimpan.", "success")
         return redirect(url_for("audit.detail", booking_id=booking_id))
@@ -45,13 +46,9 @@ def check_in(booking_id):
 
 
 @audit_bp.route("/check-out/<int:booking_id>", methods=["GET", "POST"])
-@login_required
+@admin_or_management
 def check_out(booking_id):
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
-
-    booking = Booking.query.get_or_404(booking_id)
+    booking = get_or_404(Booking, booking_id)
     existing = RoomAudit.query.filter_by(booking_id=booking_id, tipe="check_out").first()
     if existing:
         flash("Audit check-out sudah dilakukan.", "info")
@@ -66,12 +63,13 @@ def check_out(booking_id):
         db.session.flush()
 
         for item in items:
-            kondisi = request.form.get(f"kondisi_{item.id}", "baik")
-            catatan = request.form.get(f"catatan_{item.id}", "").strip()
-            db.session.add(AuditItemResult(audit_id=audit.id, item_id=item.id, kondisi=kondisi, catatan=catatan))
+            db.session.add(AuditItemResult(
+                audit_id=audit.id, item_id=item.id,
+                kondisi=request.form.get(f"kondisi_{item.id}", "baik"),
+                catatan=request.form.get(f"catatan_{item.id}", "").strip(),
+            ))
 
-        notif = Notification(user_id=booking.user_id, pesan=f"Audit check-out kamar {booking.room.nomor_kamar} selesai.", jenis="umum")
-        db.session.add(notif)
+        db.session.add(Notification(user_id=booking.user_id, pesan=f"Audit check-out kamar {booking.room.nomor_kamar} selesai.", jenis="umum"))
         db.session.commit()
         flash("Audit check-out berhasil disimpan.", "success")
         return redirect(url_for("audit.detail", booking_id=booking_id))
@@ -82,7 +80,7 @@ def check_out(booking_id):
 @audit_bp.route("/<int:booking_id>")
 @login_required
 def detail(booking_id):
-    booking = Booking.query.get_or_404(booking_id)
+    booking = get_or_404(Booking, booking_id)
     if booking.user_id != current_user.id and current_user.role not in ("admin", "management"):
         flash("Akses ditolak.", "danger")
         return redirect(url_for("dashboard.index"))
@@ -94,13 +92,9 @@ def detail(booking_id):
 
 
 @audit_bp.route("/edit/<int:audit_id>", methods=["GET", "POST"])
-@login_required
+@admin_or_management
 def edit(audit_id):
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
-
-    audit = RoomAudit.query.get_or_404(audit_id)
+    audit = get_or_404(RoomAudit, audit_id)
     booking = audit.booking
     items = RoomItem.query.filter_by(room_id=booking.room_id).order_by(RoomItem.nama).all()
 
@@ -125,35 +119,25 @@ def edit(audit_id):
 
 
 @audit_bp.route("/export/<int:booking_id>")
-@login_required
+@admin_or_management
 def export(booking_id):
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
-
-    booking = Booking.query.get_or_404(booking_id)
+    booking = get_or_404(Booking, booking_id)
     check_in = RoomAudit.query.filter_by(booking_id=booking_id, tipe="check_in").first()
     check_out = RoomAudit.query.filter_by(booking_id=booking_id, tipe="check_out").first()
 
     format_type = request.args.get("format", "csv")
 
     if format_type == "json":
-        if check_in:
-            ci_items = [
-                {"item_id": r.item_id, "item_nama": r.item.nama, "kondisi": r.kondisi, "catatan": r.catatan}
-                for r in check_in.audit_item_results
-            ]
-        else:
-            ci_items = []
-        if check_out:
-            co_items = [
-                {"item_id": r.item_id, "item_nama": r.item.nama, "kondisi": r.kondisi, "catatan": r.catatan}
-                for r in check_out.audit_item_results
-            ]
-        else:
-            co_items = []
+        ci_items = [
+            {"item_id": r.item_id, "item_nama": r.item.nama, "kondisi": r.kondisi, "catatan": r.catatan}
+            for r in check_in.audit_item_results
+        ] if check_in else []
+        co_items = [
+            {"item_id": r.item_id, "item_nama": r.item.nama, "kondisi": r.kondisi, "catatan": r.catatan}
+            for r in check_out.audit_item_results
+        ] if check_out else []
 
-        data = {
+        return jsonify({
             "booking_id": booking_id,
             "room": booking.room.nomor_kamar,
             "check_in": {
@@ -168,21 +152,13 @@ def export(booking_id):
                 "catatan": check_out.catatan if check_out else None,
                 "items": co_items,
             },
-        }
-        return jsonify(data)
+        })
 
-    lines = []
-    lines.append(f"Booking ID: {booking_id}")
-    lines.append(f"Kamar: {booking.room.nomor_kamar}")
-    lines.append("")
-
+    lines = [f"Booking ID: {booking_id}", f"Kamar: {booking.room.nomor_kamar}", ""]
     for label, audit in (("CHECK_IN", check_in), ("CHECK_OUT", check_out)):
         lines.append(f"=== {label} ===")
         if audit:
-            lines.append(f"Tanggal: {audit.created_at}")
-            lines.append(f"Oleh: {audit.created_by}")
-            lines.append(f"Catatan: {audit.catatan or ''}")
-            lines.append("ID Item,Nama Item,Kondisi,Catatan")
+            lines += [f"Tanggal: {audit.created_at}", f"Oleh: {audit.created_by}", f"Catatan: {audit.catatan or ''}", "ID Item,Nama Item,Kondisi,Catatan"]
             for item in audit.items:
                 lines.append(f"{item.item_id},{item.item.nama},{item.kondisi},{item.catatan or ''}")
         else:
@@ -196,17 +172,12 @@ def export(booking_id):
 
 
 @audit_bp.route("/delete/<int:audit_id>", methods=["GET", "POST"])
-@login_required
+@admin_or_management
 def delete(audit_id):
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
-
-    audit = RoomAudit.query.get_or_404(audit_id)
+    audit = get_or_404(RoomAudit, audit_id)
     booking_id = audit.booking_id
 
     if request.method == "POST":
-        # Clean up AuditItemResult records to avoid foreign key constraints
         AuditItemResult.query.filter_by(audit_id=audit_id).delete()
         db.session.delete(audit)
         db.session.commit()

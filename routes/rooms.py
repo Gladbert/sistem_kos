@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db
 from models import Room, Booking, MaintenanceRequest, Kos
+from helpers import admin_or_management, get_or_404
 
 rooms_bp = Blueprint("rooms", __name__, url_prefix="/rooms")
 
@@ -30,12 +31,8 @@ def index():
 
 
 @rooms_bp.route("/tambah", methods=["GET", "POST"])
-@login_required
+@admin_or_management
 def tambah():
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
-
     if request.method == "POST":
         nomor = request.form.get("nomor_kamar", "").strip()
         if not nomor:
@@ -74,13 +71,9 @@ def tambah():
 
 
 @rooms_bp.route("/edit/<int:id>", methods=["GET", "POST"])
-@login_required
+@admin_or_management
 def edit(id):
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
-
-    room = Room.query.get_or_404(id)
+    room = get_or_404(Room, id)
 
     if request.method == "POST":
         nomor = request.form.get("nomor_kamar", "").strip()
@@ -116,13 +109,9 @@ def edit(id):
 
 
 @rooms_bp.route("/hapus/<int:id>", methods=["POST"])
-@login_required
+@admin_or_management
 def hapus(id):
-    if current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
-        return redirect(url_for("dashboard.index"))
-
-    room = Room.query.get_or_404(id)
+    room = get_or_404(Room, id)
     if room.status == "terisi":
         flash("Kamar sedang terisi, tidak bisa dihapus.", "danger")
         return redirect(url_for("rooms.index"))
@@ -136,7 +125,7 @@ def hapus(id):
 @rooms_bp.route("/<int:id>")
 @login_required
 def detail(id):
-    room = Room.query.get_or_404(id)
+    room = get_or_404(Room, id)
     booking = room.booking_aktif
     maintenance = MaintenanceRequest.query.filter_by(room_id=id).order_by(MaintenanceRequest.created_at.desc()).all()
     return render_template("rooms/detail.html", room=room, booking=booking, maintenance=maintenance)
