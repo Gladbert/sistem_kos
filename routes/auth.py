@@ -33,7 +33,8 @@ def login():
         flash(f"Selamat datang, {user.nama_lengkap}!", "success")
 
         next_page = request.args.get("next")
-        if next_page:
+        # Prevent open redirect: only allow relative paths
+        if next_page and next_page.startswith("/") and not next_page.startswith("//"):
             return redirect(next_page)
         return redirect(url_for("dashboard.index"))
 

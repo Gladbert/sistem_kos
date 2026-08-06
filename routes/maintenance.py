@@ -1,10 +1,17 @@
+import urllib.parse
 from datetime import date, datetime
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, session
 from flask_login import login_required, current_user
 from extensions import db
 from models import MaintenanceRequest, Vendor, Room, Notification
 
 maintenance_bp = Blueprint("maintenance", __name__, url_prefix="/maintenance")
+
+
+def _kos_rooms():
+    """Return rooms filtered by current kos, or all rooms if no kos selected."""
+    kos_id = session.get("kos_id")
+    return Room.query.filter_by(kos_id=kos_id).all() if kos_id else Room.query.all()
 
 
 @maintenance_bp.route("/")
@@ -14,9 +21,13 @@ def index():
         flash("Akses ditolak.", "danger")
         return redirect(url_for("dashboard.index"))
 
+    kos_id = session.get("kos_id")
     status = request.args.get("status")
     query = MaintenanceRequest.query
 
+    if kos_id:
+        kos_room_ids = [r.id for r in db.session.query(Room.id).filter_by(kos_id=kos_id).all()]
+        query = query.filter(MaintenanceRequest.room_id.in_(kos_room_ids)) if kos_room_ids else query.filter(False)
     if status:
         query = query.filter_by(status=status)
 
@@ -37,9 +48,7 @@ def tambah():
 
         if not deskripsi:
             flash("Deskripsi wajib diisi.", "danger")
-            rooms = Room.query.all()
-            vendors = Vendor.query.order_by(Vendor.nama).all()
-            return render_template("maintenance/form.html", rooms=rooms, vendors=vendors)
+            return render_template("maintenance/form.html", rooms=_kos_rooms(), vendors=Vendor.query.order_by(Vendor.nama).all())
 
         mr = MaintenanceRequest(
             room_id=room_id,
@@ -67,9 +76,7 @@ def tambah():
         flash("Permintaan maintenance berhasil diajukan.", "success")
         return redirect(url_for("maintenance.index"))
 
-    rooms = Room.query.all()
-    vendors = Vendor.query.order_by(Vendor.nama).all()
-    return render_template("maintenance/form.html", rooms=rooms, vendors=vendors)
+    return render_template("maintenance/form.html", rooms=_kos_rooms(), vendors=Vendor.query.order_by(Vendor.nama).all())
 
 
 @maintenance_bp.route("/edit/<int:id>", methods=["GET", "POST"])
@@ -101,9 +108,7 @@ def edit(id):
         flash("Permintaan maintenance berhasil diperbarui.", "success")
         return redirect(url_for("maintenance.index"))
 
-    rooms = Room.query.all()
-    vendors = Vendor.query.order_by(Vendor.nama).all()
-    return render_template("maintenance/form.html", mr=mr, rooms=rooms, vendors=vendors)
+    return render_template("maintenance/form.html", mr=mr, rooms=_kos_rooms(), vendors=Vendor.query.order_by(Vendor.nama).all())
 
 
 @maintenance_bp.route("/hapus/<int:id>", methods=["POST"])
@@ -191,7 +196,7 @@ def vendor_hapus(id):
     vendor = Vendor.query.get_or_404(id)
     db.session.delete(vendor)
     db.session.commit()
-    flash(f"Vendor berhasil dihapus.", "success")
+    flash("Vendor berhasil dihapus.", "success")
     return redirect(url_for("maintenance.vendor_index"))
 
 
@@ -203,10 +208,8 @@ def vendor_wa(id):
         return redirect(url_for("dashboard.index"))
 
     vendor = Vendor.query.get_or_404(id)
-    import urllib.parse
     pesan = f"Halo {vendor.nama}, kami dari pengelola kos ingin menghubungi Anda terkait pekerjaan maintenance."
-    wa_url = f"https://wa.me/{vendor.no_telepon}?text={urllib.parse.quote(pesan)}"
-    return redirect(wa_url)
+    return redirect(f"https://wa.me/{vendor.no_telepon}?text={urllib.parse.quote(pesan)}")
 
 
 @maintenance_bp.route("/vendor/hubungi/<int:mr_id>")
@@ -221,7 +224,6 @@ def vendor_hubungi(mr_id):
         flash("Tidak ada vendor yang ditugaskan.", "warning")
         return redirect(url_for("maintenance.edit", id=mr_id))
 
-    import urllib.parse
     pesan = f"Halo {mr.vendor.nama}!"
     pesan += f"\n\nAda permintaan maintenance untuk kamar {mr.room.nomor_kamar}:"
     pesan += f"\n{mr.deskripsi}"
@@ -230,8 +232,7 @@ def vendor_hubungi(mr_id):
         pesan += f"\nBiaya: Rp{mr.biaya:,.0f}"
     pesan += f"\n\nMohon segera ditindaklanjuti. Terima kasih."
 
-    wa_url = f"https://wa.me/{mr.vendor.no_telepon}?text={urllib.parse.quote(pesan)}"
-    return redirect(wa_url)
+    return redirect(f"https://wa.me/{mr.vendor.no_telepon}?text={urllib.parse.quote(pesan)}")
 
 
 @maintenance_bp.route("/notif-penghuni/<int:mr_id>")
@@ -247,7 +248,6 @@ def notif_penghuni(mr_id):
         flash("Tidak ada penghuni aktif di kamar ini.", "warning")
         return redirect(url_for("maintenance.index"))
 
-    import urllib.parse
     pesan = f"Halo {booking.client.nama_lengkap}!"
     pesan += f"\n\nMaintenance untuk kamar {mr.room.nomor_kamar} telah selesai."
     pesan += f"\nDeskripsi: {mr.deskripsi}"
@@ -264,5 +264,4 @@ def notif_penghuni(mr_id):
     db.session.add(notif)
     db.session.commit()
 
-    wa_url = f"https://wa.me/{booking.client.no_telepon}?text={urllib.parse.quote(pesan)}"
-    return redirect(wa_url)
+    return redirect(f"https://wa.me/{booking.client.no_telepon}?text={urllib.parse.quote(pesan)}")

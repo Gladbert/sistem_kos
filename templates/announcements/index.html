@@ -45,10 +45,13 @@
                         <a href="{{ url_for('announcements.edit', id=a.id) }}" class="btn btn-sm btn-outline-primary">
                             <i class="bi bi-pencil"></i>
                         </a>
-                        <a href="{{ url_for('announcements.delete', id=a.id) }}" class="btn btn-sm btn-outline-danger"
-                           onclick="return confirm('Hapus pengumuman ini?')">
-                            <i class="bi bi-trash"></i>
-                        </a>
+                        <form method="POST" action="{{ url_for('announcements.delete', id=a.id) }}" style="display:inline"
+                              onsubmit="return confirm('Hapus pengumuman ini?')">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
                     </div>
                     {% endif %}
                 </div>

@@ -50,10 +50,13 @@
                         <a href="{{ url_for('inventory.edit_item', id=i.id) }}" class="btn btn-sm btn-outline-primary btn-icon">
                             <i class="bi bi-pencil"></i>
                         </a>
-                        <a href="{{ url_for('inventory.delete_item', id=i.id) }}" class="btn btn-sm btn-outline-danger btn-icon"
-                           onclick="return confirm('Hapus {{ i.nama }}?')">
-                            <i class="bi bi-trash"></i>
-                        </a>
+                        <form method="POST" action="{{ url_for('inventory.delete_item', id=i.id) }}" style="display:inline"
+                              onsubmit="return confirm('Hapus {{ i.nama }}?')">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger btn-icon">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>

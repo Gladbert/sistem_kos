@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, flash, url_for
+from flask import Blueprint, render_template, request, redirect, flash, url_for, session
 from flask_login import login_required, current_user
 from extensions import db
 from models import Room, RoomItem
@@ -12,7 +12,11 @@ inventory_bp = Blueprint("inventory", __name__, url_prefix="/inventaris")
 def index():
     if current_user.role not in ("admin", "management"):
         return redirect(url_for("dashboard.index"))
-    rooms = Room.query.order_by(Room.nomor_kamar).all()
+    kos_id = session.get("kos_id")
+    query = Room.query
+    if kos_id:
+        query = query.filter_by(kos_id=kos_id)
+    rooms = query.order_by(Room.nomor_kamar).all()
     return render_template("inventory/index.html", rooms=rooms)
 
 
@@ -37,7 +41,7 @@ def add_item(room_id):
             room_id=room_id, nama=request.form["nama"],
             jumlah=int(request.form.get("jumlah", 1)),
             kondisi=request.form.get("kondisi", "baik"),
-            catatan=request.form.get("catatan", "")
+            catatan=request.form.get("catatan", ""),
         )
         db.session.add(i)
         log_activity(current_user.id, "Tambah barang", f"{request.form['nama']} di {room.nomor_kamar}", "RoomItem")
@@ -65,7 +69,7 @@ def edit_item(id):
     return render_template("inventory/form.html", item=i, room=i.room)
 
 
-@inventory_bp.route("/hapus/<int:id>")
+@inventory_bp.route("/hapus/<int:id>", methods=["POST"])
 @login_required
 def delete_item(id):
     if current_user.role not in ("admin", "management"):

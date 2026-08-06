@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from calendar import monthrange
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, session
 from flask_login import login_required, current_user
 from extensions import db
 from models import User, Room, Booking, Payment, Notification
@@ -10,13 +10,21 @@ onboarding_bp = Blueprint("onboarding", __name__, url_prefix="/onboarding")
 
 @onboarding_bp.route("/")
 def index():
-    rooms = Room.query.filter_by(status="tersedia").order_by(Room.lantai, Room.nomor_kamar).all()
+    query = Room.query.filter_by(status="tersedia")
+    kos_id = session.get("kos_id")
+    if kos_id:
+        query = query.filter_by(kos_id=kos_id)
+    rooms = query.order_by(Room.lantai, Room.nomor_kamar).all()
     return render_template("onboarding/index.html", rooms=rooms)
 
 
 @onboarding_bp.route("/kamar")
 def lihat_kamar():
-    rooms = Room.query.filter_by(status="tersedia").order_by(Room.harga_per_bulan).all()
+    query = Room.query.filter_by(status="tersedia")
+    kos_id = session.get("kos_id")
+    if kos_id:
+        query = query.filter_by(kos_id=kos_id)
+    rooms = query.order_by(Room.harga_per_bulan).all()
     return render_template("onboarding/kamar.html", rooms=rooms)
 
 

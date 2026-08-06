@@ -1,3 +1,4 @@
+import urllib.parse
 from datetime import date, datetime
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session
 from flask_login import login_required, current_user
@@ -149,7 +150,6 @@ def kirim_resi(payment_id):
         flash("Nomor telepon penghuni tidak tersedia.", "warning")
         return redirect(url_for("payments.index"))
 
-    import urllib.parse
     pesan = f"Halo {booking.client.nama_lengkap}!"
     pesan += f"\n\nTerima kasih atas pembayaran kos Anda."
     pesan += f"\n\n*── RESI PEMBAYARAN ──*"
@@ -205,6 +205,5 @@ def notifikasi_wa(booking_id):
     db.session.add(notif)
     db.session.commit()
 
-    import urllib.parse
     wa_url = f"https://wa.me/{booking.client.no_telepon}?text={urllib.parse.quote(pesan)}"
     return redirect(wa_url)

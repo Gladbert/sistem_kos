@@ -57,7 +57,7 @@ def edit(id):
     return render_template("announcements/form.html", announcement=a)
 
 
-@announcement_bp.route("/hapus/<int:id>")
+@announcement_bp.route("/hapus/<int:id>", methods=["POST"])
 @login_required
 def delete(id):
     if current_user.role not in ("admin", "management"):
