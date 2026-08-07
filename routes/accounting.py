@@ -5,6 +5,7 @@ from flask_login import login_required, current_user
 from extensions import db
 from models import Payment, Expense, Booking, Vendor
 from helpers import admin_or_management, admin_only, get_or_404, parse_amount, kos_expense_query, kos_room_ids, safe_commit
+from sqlalchemy.orm import joinedload
 
 accounting_bp = Blueprint("accounting", __name__, url_prefix="/accounting")
 
@@ -64,7 +65,10 @@ def index():
 
     laba_rugi = pemasukan - pengeluaran
 
-    daftar_pemasukan = Payment.query.filter(
+    daftar_pemasukan = Payment.query.options(
+        joinedload(Payment.booking).joinedload(Booking.client),
+        joinedload(Payment.booking).joinedload(Booking.room),
+    ).filter(
         Payment.status == "lunas",
         Payment.tanggal_bayar >= start_date,
         Payment.tanggal_bayar <= end_date,
@@ -263,7 +267,10 @@ def export_csv():
     if jenis in ("semua", "pemasukan"):
         w.writerow(["PEMASUKAN"])
         w.writerow(["Tanggal", "Penghuni", "Kamar", "Bulan", "Jumlah", "Metode", "Status"])
-        q = Payment.query.join(Payment.booking).join(Booking.client).filter(Payment.status == "lunas", bookings_filter)
+        q = Payment.query.options(
+            joinedload(Payment.booking).joinedload(Booking.client),
+            joinedload(Payment.booking).joinedload(Booking.room),
+        ).join(Payment.booking).join(Booking.client).filter(Payment.status == "lunas", bookings_filter)
         if bulan:
             s, e = get_month_range(tahun, bulan)
             q = q.filter(Payment.tanggal_bayar >= s, Payment.tanggal_bayar <= e)
