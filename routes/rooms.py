@@ -55,10 +55,15 @@ def tambah():
             flash(err, "danger")
             return render_template("rooms/form.html")
 
+        lantai = int(request.form.get("lantai", 1))
+        if lantai < 1:
+            flash("Lantai harus minimal 1.", "danger")
+            return render_template("rooms/form.html")
+
         room = Room(
             kos_id=kos_id,
             nomor_kamar=nomor,
-            lantai=int(request.form.get("lantai", 1)),
+            lantai=lantai,
             tipe=request.form.get("tipe", "Reguler"),
             harga_per_bulan=harga,
             ukuran=request.form.get("ukuran"),
@@ -102,8 +107,13 @@ def edit(id):
             flash(err, "danger")
             return render_template("rooms/form.html", room=room)
 
+        lantai = int(request.form.get("lantai", 1))
+        if lantai < 1:
+            flash("Lantai harus minimal 1.", "danger")
+            return render_template("rooms/form.html", room=room)
+
         room.nomor_kamar = nomor
-        room.lantai = int(request.form.get("lantai", 1))
+        room.lantai = lantai
         room.tipe = request.form.get("tipe", "Reguler")
         room.harga_per_bulan = harga
         room.ukuran = request.form.get("ukuran")

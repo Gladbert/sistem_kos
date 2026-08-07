@@ -33,7 +33,7 @@
                     <td>{{ v.no_telepon if v.no_telepon else '-' }}</td>
                     <td>{{ v.alamat|truncate(30) if v.alamat else '-' }}</td>
                     <td class="text-end">
-                        <a href="{{ url_for('maintenance.vendor_edit', id=v.id) }}" class="btn btn-sm btn-outline-primary btn-icon" title="Edit">
+                        <a href="{{ url_for('maintenance.vendor_edit', id=v.id) }}" class="btn btn-sm btn-outline-primary btn-icon" title="Edit" aria-label="Edit {{ v.nama }}">
                             <i class="bi bi-pencil"></i>
                         </a>
                         <form method="POST" action="{{ url_for('maintenance.vendor_hapus', id=v.id) }}" class="d-inline" onsubmit="return confirm('Yakin hapus vendor {{ v.nama }}?')">

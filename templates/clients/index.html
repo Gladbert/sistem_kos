@@ -63,10 +63,10 @@
                         {% endif %}
                     </td>
                     <td class="text-end">
-                        <a href="{{ url_for('clients.detail', id=client.id) }}" class="btn btn-sm btn-outline-secondary btn-icon" title="Detail">
+                        <a href="{{ url_for('clients.detail', id=client.id) }}" class="btn btn-sm btn-outline-secondary btn-icon" title="Detail" aria-label="Detail {{ client.nama_lengkap }}">
                             <i class="bi bi-eye"></i>
                         </a>
-                        <a href="{{ url_for('clients.edit', id=client.id) }}" class="btn btn-sm btn-outline-primary btn-icon" title="Edit">
+                        <a href="{{ url_for('clients.edit', id=client.id) }}" class="btn btn-sm btn-outline-primary btn-icon" title="Edit" aria-label="Edit {{ client.nama_lengkap }}">
                             <i class="bi bi-pencil"></i>
                         </a>
                         <form method="POST" action="{{ url_for('clients.nonaktifkan', id=client.id) }}" class="d-inline" onsubmit="return confirm('{{ 'Nonaktifkan' if client.is_active else 'Aktifkan' }} akun {{ client.nama_lengkap }}?')">
