@@ -4,7 +4,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db
 from models import User, Room, Booking, Payment, Notification
-from helpers import create_notification, safe_commit
+from helpers import create_notification, get_or_404, safe_commit
 
 onboarding_bp = Blueprint("onboarding", __name__, url_prefix="/onboarding")
 
@@ -31,13 +31,13 @@ def lihat_kamar():
 
 @onboarding_bp.route("/kamar/<int:id>")
 def detail_kamar(id):
-    room = Room.query.get_or_404(id)
+    room = get_or_404(Room, id)
     return render_template("onboarding/detail_kamar.html", room=room)
 
 
 @onboarding_bp.route("/daftar/<int:room_id>", methods=["GET", "POST"])
 def daftar(room_id):
-    room = Room.query.get_or_404(room_id)
+    room = get_or_404(Room, room_id)
 
     if room.status != "tersedia":
         flash("Kamar sudah tidak tersedia.", "warning")

@@ -18,7 +18,7 @@ def create_app():
 
     @login_manager.user_loader
     def load_user(user_id):
-        return User.query.get(int(user_id))
+        return db.session.get(User, int(user_id))
 
     @app.context_processor
     def inject_now():
@@ -39,7 +39,7 @@ def create_app():
         kos_id = session.get("kos_id")
         current_kos = None
         if kos_id:
-            current_kos = Kos.query.get(kos_id)
+            current_kos = db.session.get(Kos, kos_id)
         if not current_kos and all_kos:
             current_kos = all_kos[0]
             session["kos_id"] = current_kos.id

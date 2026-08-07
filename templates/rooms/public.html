@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "macros/pagination.html" import render_pagination %}
 {% block title %}Kamar Tersedia - Sistem Kos{% endblock %}
 
 {% block content %}
@@ -70,4 +71,6 @@
     <p class="text-muted">Saat ini belum ada kamar yang tersedia. Silakan cek kembali nanti.</p>
 </div>
 {% endif %}
+
+{{ render_pagination(pagination, 'rooms.index', request.args) }}
 {% endblock %}
