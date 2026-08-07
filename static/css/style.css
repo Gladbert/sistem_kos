@@ -64,7 +64,7 @@ body {
     font-size: 0.875rem;
     font-weight: 500;
     padding: 0.625rem 0.875rem !important;
-    color: var(--gray-500) !important;
+    color: var(--gray-700) !important;
     border-radius: var(--radius-sm);
     transition: color 0.15s, background 0.15s;
 }
@@ -303,6 +303,13 @@ body {
 .btn-secondary:hover .badge-secondary {
     background: var(--gray-200);
     color: var(--gray-700);
+}
+
+/* Fix: text inside buttons must be visible on hover */
+.btn:hover .text-muted,
+.btn:hover .opacity-75 {
+    color: inherit !important;
+    opacity: 1 !important;
 }
 
 .btn-success {
