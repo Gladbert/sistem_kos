@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Fasilitas Umum - {{ session.get('kos_nama', 'Sistem Kos') }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Fasilitas Umum</h1>
+        <p>Kelola fasilitas bersama kos</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('fasilitas.kategori_index') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-tags me-1"></i>Kategori
+        </a>
+        <a href="{{ url_for('fasilitas.tambah') }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i>Tambah
+        </a>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="stat-card text-center">
+            <div class="stat-value">{{ total }}</div>
+            <div class="stat-label">Total</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card text-center">
+            <div class="stat-value text-success">{{ baik }}</div>
+            <div class="stat-label">Baik</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card text-center">
+            <div class="stat-value text-warning">{{ rusak }}</div>
+            <div class="stat-label">Rusak</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card text-center">
+            <div class="stat-value text-info">{{ maintenance }}</div>
+            <div class="stat-label">Maintenance</div>
+        </div>
+    </div>
+</div>
+
+<div class="d-flex gap-2 mb-3 flex-wrap">
+    <a href="{{ url_for('fasilitas.index') }}" class="btn btn-sm {% if not kategori_filter %}btn-primary{% else %}btn-outline-secondary{% endif %}">Semua</a>
+    {% for k in kategori_list %}
+    <a href="{{ url_for('fasilitas.index', kategori=k.nama) }}" class="btn btn-sm {% if kategori_filter == k.nama %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+        <i class="bi {{ k.icon }} me-1"></i>{{ k.nama|replace('_', ' ')|title }}
+    </a>
+    {% endfor %}
+</div>
+
+<div class="row g-3">
+    {% for item in items %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card border-0 h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <h6 class="mb-0">{{ item.nama }}</h6>
+                        <small class="text-muted"><i class="bi bi-geo-alt me-1"></i>{{ item.lokasi or '-' }}</small>
+                    </div>
+                    <span class="badge {% if item.kondisi == 'baik' %}badge-success{% elif item.kondisi == 'maintenance' %}badge-info{% else %}badge-warning{% endif %}">
+                        {{ item.kondisi|replace('_', ' ')|title }}
+                    </span>
+                </div>
+                {% if item.deskripsi %}
+                <p class="text-muted small mb-2">{{ item.deskripsi[:100] }}{% if item.deskripsi|length > 100 %}...{% endif %}</p>
+                {% endif %}
+                <div class="d-flex gap-1">
+                    <a href="{{ url_for('fasilitas.edit', id=item.id) }}" class="btn btn-sm btn-outline-primary flex-fill"><i class="bi bi-pencil"></i></a>
+                    {% if item.kondisi == 'baik' %}
+                    <form method="POST" action="{{ url_for('fasilitas.laporkan_rusak', id=item.id) }}" class="flex-fill">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button class="btn btn-sm btn-outline-warning w-100"><i class="bi bi-exclamation-triangle"></i></button>
+                    </form>
+                    {% endif %}
+                    <form method="POST" action="{{ url_for('fasilitas.hapus', id=item.id) }}" class="flex-fill" onsubmit="return confirm('Hapus {{ item.nama }}?')">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button class="btn btn-sm btn-outline-danger w-100"><i class="bi bi-trash"></i></button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12">
+        <div class="empty-state">
+            <i class="bi bi-building"></i>
+            <h5>Belum ada fasilitas</h5>
+            <a href="{{ url_for('fasilitas.tambah') }}" class="btn btn-primary mt-2">Tambah Fasilitas</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if item else 'Tambah' }} Fasilitas - Sistem Kos{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{{ 'Edit' if item else 'Tambah' }} Fasilitas</h1>
+        <p>{{ item.nama if item else 'Tambah fasilitas umum baru' }}</p>
+    </div>
+</div>
+
+<div class="card border-0" style="max-width:600px">
+    <div class="card-body">
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-3">
+                <label class="form-label">Nama *</label>
+                <input type="text" name="nama" class="form-control" required value="{{ item.nama if item else '' }}" placeholder="Toilet Lantai 1">
+            </div>
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Kategori</label>
+                    <select name="kategori" class="form-select">
+                        {% for k in kategori_list %}
+                        <option value="{{ k.nama }}" {% if item and item.kategori == k.nama %}selected{% endif %}>
+                            {{ k.nama|replace('_', ' ')|title }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Lokasi</label>
+                    <input type="text" name="lokasi" class="form-control" value="{{ item.lokasi if item else '' }}" placeholder="Lantai 1">
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Kondisi</label>
+                <select name="kondisi" class="form-select">
+                    {% for k in kondisi_list %}
+                    <option value="{{ k }}" {% if item and item.kondisi == k %}selected{% endif %}>{{ k|replace('_', ' ')|title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Deskripsi</label>
+                <textarea name="deskripsi" class="form-control" rows="2">{{ item.deskripsi if item else '' }}</textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Catatan</label>
+                <textarea name="catatan" class="form-control" rows="2">{{ item.catatan if item else '' }}</textarea>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Simpan</button>
+                <a href="{{ url_for('fasilitas.index') }}" class="btn btn-secondary">Batal</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

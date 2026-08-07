@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Kategori Fasilitas - Sistem Kos{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Kategori Fasilitas</h1>
+        <p>Kelola kategori fasilitas umum</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('fasilitas.index') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Kembali
+        </a>
+        <a href="{{ url_for('fasilitas.kategori_tambah') }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i>Tambah
+        </a>
+    </div>
+</div>
+
+<div class="row g-3">
+    {% for item in items %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card border-0 h-100">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="stat-icon stat-icon-primary">
+                    <i class="bi {{ item.icon }}"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <h6 class="mb-0">{{ item.nama|replace('_', ' ')|title }}</h6>
+                    <small class="text-muted">{{ item.deskripsi or '-' }}</small>
+                </div>
+                <span class="badge {% if item.is_active %}badge-success{% else %}badge-secondary{% endif %}">
+                    {% if item.is_active %}Aktif{% else %}Nonaktif{% endif %}
+                </span>
+            </div>
+            <div class="card-footer bg-transparent border-top-0 pt-0">
+                <div class="d-flex gap-1">
+                    <a href="{{ url_for('fasilitas.kategori_edit', id=item.id) }}" class="btn btn-sm btn-outline-primary flex-fill"><i class="bi bi-pencil me-1"></i>Edit</a>
+                    <form method="POST" action="{{ url_for('fasilitas.kategori_hapus', id=item.id) }}" class="flex-fill" onsubmit="return confirm('Hapus kategori {{ item.nama }}?')">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button class="btn btn-sm btn-outline-danger w-100"><i class="bi bi-trash me-1"></i>Hapus</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12">
+        <div class="empty-state">
+            <i class="bi bi-tags"></i>
+            <h5>Belum ada kategori</h5>
+            <a href="{{ url_for('fasilitas.kategori_tambah') }}" class="btn btn-primary mt-2">Tambah Kategori</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

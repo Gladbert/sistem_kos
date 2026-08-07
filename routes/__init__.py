@@ -12,7 +12,7 @@ from .activity_log import activity_bp
 from .inventory import inventory_bp
 from .audit import audit_bp
 from .kos import kos_bp
-
+from .fasilitas import fasilitas_bp
 
 def register_routes(app):
     app.register_blueprint(kos_bp)
@@ -29,3 +29,4 @@ def register_routes(app):
     app.register_blueprint(activity_bp)
     app.register_blueprint(inventory_bp)
     app.register_blueprint(audit_bp)
+    app.register_blueprint(fasilitas_bp)

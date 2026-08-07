@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if item else 'Tambah' }} Kategori - Sistem Kos{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{{ 'Edit' if item else 'Tambah' }} Kategori</h1>
+        <p>{{ item.nama|replace('_', ' ')|title if item else 'Tambah kategori baru' }}</p>
+    </div>
+</div>
+
+<div class="card border-0" style="max-width:500px">
+    <div class="card-body">
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-3">
+                <label class="form-label">Nama *</label>
+                <input type="text" name="nama" class="form-control" required value="{{ item.nama if item else '' }}" placeholder="toilet">
+                <small class="text-muted">Gunakan underscore untuk spasi (contoh: ruang_cuci)</small>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Icon</label>
+                <input type="text" name="icon" class="form-control" value="{{ item.icon if item else 'bi-box' }}" placeholder="bi-box">
+                <small class="text-muted">Bootstrap Icons class (contoh: bi-toilet, bi-shower, bi-cup-hot)</small>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Deskripsi</label>
+                <textarea name="deskripsi" class="form-control" rows="2">{{ item.deskripsi if item else '' }}</textarea>
+            </div>
+            {% if item %}
+            <div class="mb-3 form-check">
+                <input type="checkbox" name="is_active" class="form-check-input" id="is_active" {% if item.is_active %}checked{% endif %}>
+                <label class="form-check-label" for="is_active">Aktif</label>
+            </div>
+            {% endif %}
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Simpan</button>
+                <a href="{{ url_for('fasilitas.kategori_index') }}" class="btn btn-secondary">Batal</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

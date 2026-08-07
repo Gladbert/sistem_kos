@@ -1,8 +1,8 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session, current_app
 from flask_login import login_required, current_user
 from extensions import db
-from models import FasilitasUmum, FasilitasKategori, Expense
-from helpers import admin_or_management, get_or_404, kos_expense_query, safe_commit, log_activity
+from models import FasilitasUmum, FasilitasKategori
+from helpers import admin_or_management, get_or_404, safe_commit, log_activity
 
 fasilitas_bp = Blueprint("fasilitas", __name__, url_prefix="/fasilitas")
 
