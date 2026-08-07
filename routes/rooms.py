@@ -1,8 +1,9 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, session, current_app
+from flask import Blueprint, render_template, redirect, url_for, flash, request, session, current_app, g
 from flask_login import login_required, current_user
 from extensions import db
 from models import Room, Booking, MaintenanceRequest, Kos
 from helpers import admin_or_management, get_or_404, parse_amount, safe_commit
+from sqlalchemy.orm import joinedload
 
 rooms_bp = Blueprint("rooms", __name__, url_prefix="/rooms")
 
@@ -27,7 +28,15 @@ def index():
         if q:
             query = query.filter(Room.nomor_kamar.ilike(f"%{q}%"))
         pagination = query.order_by(Room.lantai, Room.nomor_kamar).paginate(page=page, per_page=per_page, error_out=False)
-        return render_template("rooms/index.html", pagination=pagination, rooms=pagination.items, search=q)
+        rooms = pagination.items
+        # Preload active bookings — avoids N+1 for room.booking_aktif in template
+        if rooms:
+            active = Booking.query.filter(
+                Booking.room_id.in_([r.id for r in rooms]),
+                Booking.status == "aktif"
+            ).options(joinedload(Booking.client)).all()
+            g._booking_aktif_cache = {b.room_id: b for b in active}
+        return render_template("rooms/index.html", pagination=pagination, rooms=rooms, search=q)
     query = Room.query.filter_by(status="tersedia")
     if kos_id:
         query = query.filter_by(kos_id=kos_id)

@@ -4,6 +4,7 @@ from flask_login import login_required, current_user
 from extensions import db
 from models import User, Room, Booking, Payment, Expense, Notification, MaintenanceRequest, Complaint, Kos
 from helpers import log_activity, admin_or_management, get_or_404, kos_room_ids, create_notification, kos_expense_query, safe_commit
+from sqlalchemy.orm import joinedload, subqueryload
 
 dashboard_bp = Blueprint("dashboard", __name__, url_prefix="/dashboard")
 
@@ -37,15 +38,19 @@ def admin():
     kamar_tersedia = room_q.filter_by(status="tersedia").count()
     kamar_maintenance = room_q.filter_by(status="maintenance").count()
 
-    active_bookings = Booking.query.filter(Booking.room_id.in_(room_ids), Booking.status == "aktif").all() if room_ids else []
+    # Eager load relationships to avoid N+1 in template loops
+    active_bookings = Booking.query.options(
+        joinedload(Booking.room), joinedload(Booking.client), subqueryload(Booking.audits)
+    ).filter(Booking.room_id.in_(room_ids), Booking.status == "aktif").all() if room_ids else []
     kamar_pending = Booking.query.filter(Booking.room_id.in_(room_ids), Booking.status == "pending").count() if room_ids else 0
     total_penghuni = len(set(b.user_id for b in active_bookings))
 
+    # Precompute penghuni from already-loaded relationships
     penghuni = [{
-        "id": u.id, "nama_lengkap": u.nama_lengkap, "username": u.username,
-        "no_telepon": u.no_telepon, "is_active": u.is_active,
+        "id": b.client.id, "nama_lengkap": b.client.nama_lengkap, "username": b.client.username,
+        "no_telepon": b.client.no_telepon, "is_active": b.client.is_active,
         "nomor_kamar": b.room.nomor_kamar, "kamar_id": b.room_id,
-    } for b in active_bookings for u in [b.client]]
+    } for b in active_bookings]
 
     booking_ids = [b.id for b in active_bookings]
     bulan_ini = date.today().strftime("%Y-%m")
@@ -78,7 +83,9 @@ def admin():
                 tagihan_belum_dibayar += 1
                 unpaid_bookings.append(b)
 
-    booking_pending = Booking.query.filter(Booking.room_id.in_(room_ids), Booking.status == "pending").order_by(Booking.created_at.asc()).all() if room_ids else []
+    booking_pending = Booking.query.options(
+        joinedload(Booking.room), joinedload(Booking.client)
+    ).filter(Booking.room_id.in_(room_ids), Booking.status == "pending").order_by(Booking.created_at.asc()).all() if room_ids else []
 
     total_tagihan = len(active_bookings)
     # Collection rate: paid / (paid + unpaid) per-booking, capped at 100
@@ -120,10 +127,14 @@ def admin():
         bulan_str = f"{y:04d}-{m:02d}"
         pemasukan_6bulan.append({"bulan": bulan_str, "total": row_map.get(bulan_str, 0)})
 
-    pembayaran_terbaru = Payment.query.filter(Payment.booking_id.in_(booking_ids)).order_by(Payment.created_at.desc()).limit(5).all() if booking_ids else []
+    pembayaran_terbaru = Payment.query.options(
+        joinedload(Payment.booking).joinedload(Booking.client)
+    ).filter(Payment.booking_id.in_(booking_ids)).order_by(Payment.created_at.desc()).limit(5).all() if booking_ids else []
     pengeluaran_terbaru = kos_expense_query(Expense.query).order_by(Expense.created_at.desc()).limit(5).all()
 
-    permintaan_maintenance = MaintenanceRequest.query.filter(
+    permintaan_maintenance = MaintenanceRequest.query.options(
+        joinedload(MaintenanceRequest.room)
+    ).filter(
         MaintenanceRequest.room_id.in_(room_ids),
         MaintenanceRequest.status.in_(["diajukan", "diproses"]),
     ).order_by(MaintenanceRequest.created_at.desc()).limit(5).all() if room_ids else []

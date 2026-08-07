@@ -110,13 +110,23 @@ def get_or_404(model, id):
 
 
 def kos_room_ids(kos_id=None):
-    """Return list of room IDs for the given kos (or session kos). Empty list if none."""
+    """Return list of room IDs for the given kos (or session kos). Empty list if none.
+
+    Cached in flask.g per request — called multiple times across route handlers.
+    """
     from models import Room
+    from flask import g
     if kos_id is None:
         kos_id = session.get("kos_id")
     if not kos_id:
         return []
-    return [r.id for r in db.session.query(Room.id).filter_by(kos_id=kos_id).all()]
+    cache = g.get("_kos_room_ids")
+    if cache is not None:
+        return cache.get(kos_id, [])
+    g._kos_room_ids = {}
+    result = [r.id for r in db.session.query(Room.id).filter_by(kos_id=kos_id).all()]
+    g._kos_room_ids[kos_id] = result
+    return result
 
 
 def kos_rooms(kos_id=None):

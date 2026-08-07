@@ -145,6 +145,10 @@ class Room(db.Model):
 
     @property
     def booking_aktif(self):
+        from flask import g
+        cache = g.get("_booking_aktif_cache")
+        if cache is not None:
+            return cache.get(self.id)
         return Booking.query.filter_by(room_id=self.id, status="aktif").first()
 
 class Booking(db.Model):

@@ -1,6 +1,6 @@
 import csv, io
 from datetime import date, datetime, timedelta
-from flask import Blueprint, render_template, redirect, url_for, flash, request, Response, session, current_app
+from flask import Blueprint, render_template, redirect, url_for, flash, request, Response, session, current_app, g
 from flask_login import login_required, current_user
 from extensions import db
 from models import Payment, Expense, Booking, Vendor
@@ -10,15 +10,27 @@ accounting_bp = Blueprint("accounting", __name__, url_prefix="/accounting")
 
 
 def _kos_payment_filter():
-    """Return Payment.booking_id filter scoped to current kos, or db.false() if none."""
+    """Return Payment.booking_id subquery filter scoped to current kos, or db.false().
+
+    Uses flask.g to cache the subquery per request — called multiple times in index,
+    laporan, and export_csv.
+    """
+    cached = g.get("_kos_payment_filter")
+    if cached is not None:
+        return cached
     kos_id = session.get("kos_id")
     if not kos_id:
-        return db.false()
+        g._kos_payment_filter = db.false()
+        return g._kos_payment_filter
     room_ids = kos_room_ids(kos_id)
     if not room_ids:
-        return db.false()
-    booking_ids = [b.id for b in db.session.query(Booking.id).filter(Booking.room_id.in_(room_ids)).all()]
-    return Payment.booking_id.in_(booking_ids) if booking_ids else db.false()
+        g._kos_payment_filter = db.false()
+        return g._kos_payment_filter
+    # Use subquery instead of collecting IDs — single round trip, scales better
+    from sqlalchemy import select
+    sub = select(Booking.id).where(Booking.room_id.in_(room_ids)).subquery()
+    g._kos_payment_filter = Payment.booking_id.in_(sub)
+    return g._kos_payment_filter
 
 def get_month_range(year, month):
     if month == 12:
