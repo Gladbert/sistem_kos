@@ -28,7 +28,7 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Jumlah (Rp)</label>
-                            <input type="number" name="jumlah" class="form-control" value="{{ expense.jumlah if expense else '' }}" min="0" step="0.01" required>
+                            <input type="text" name="jumlah" class="form-control" data-rupiah value="{{ expense.jumlah|int if expense else '' }}" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Tanggal</label>

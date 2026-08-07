@@ -29,7 +29,7 @@
                         {% endif %}
                         <div class="col-md-6">
                             <label class="form-label">Jumlah (Rp)</label>
-                            <input type="number" name="jumlah" class="form-control" value="{{ payment.jumlah if payment else '' }}" min="0" step="0.01" required>
+                            <input type="text" name="jumlah" class="form-control" data-rupiah value="{{ payment.jumlah|int if payment else '' }}" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Tanggal Bayar</label>

@@ -33,7 +33,7 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Harga per Bulan (Rp)</label>
-                            <input type="number" name="harga_per_bulan" class="form-control" value="{{ room.harga_per_bulan if room else '' }}" min="0" required>
+                            <input type="text" name="harga_per_bulan" class="form-control" data-rupiah value="{{ room.harga_per_bulan|int if room else '' }}" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Ukuran</label>

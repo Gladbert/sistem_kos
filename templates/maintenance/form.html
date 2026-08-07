@@ -54,7 +54,7 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Biaya (Rp)</label>
-                            <input type="number" name="biaya" class="form-control" value="{{ mr.biaya if mr and mr.biaya else '' }}" min="0" step="0.01">
+                            <input type="text" name="biaya" class="form-control" data-rupiah value="{{ mr.biaya|int if mr and mr.biaya else '' }}">
                         </div>
                         <div class="col-12">
                             <label class="form-label">Deskripsi <span class="text-danger">*</span></label>
