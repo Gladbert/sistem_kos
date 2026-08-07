@@ -72,5 +72,5 @@
 </div>
 {% endif %}
 
-{{ render_pagination(pagination, 'rooms.index', request.args) }}
+{{ render_pagination(pagination, 'rooms.index', request.args|reject_page) }}
 {% endblock %}

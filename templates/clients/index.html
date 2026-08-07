@@ -90,5 +90,5 @@
 </div>
 {% endif %}
 
-{{ render_pagination(pagination, 'clients.index', request.args) }}
+{{ render_pagination(pagination, 'clients.index', request.args|reject_page) }}
 {% endblock %}

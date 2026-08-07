@@ -50,6 +50,11 @@ def create_app():
         except Exception:
             return {"all_kos": [], "current_kos": None}
 
+    # Jinja filter: strip 'page' from request.args to avoid duplicate kwarg in pagination
+    @app.template_filter('reject_page')
+    def reject_page(d):
+        return {k: v for k, v in d.items() if k != 'page'}
+
     from routes import register_routes
     register_routes(app)
 

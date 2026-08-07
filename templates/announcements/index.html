@@ -68,5 +68,5 @@
 </div>
 {% endif %}
 
-{{ render_pagination(pagination, 'announcements.index', request.args) }}
+{{ render_pagination(pagination, 'announcements.index', request.args|reject_page) }}
 {% endblock %}

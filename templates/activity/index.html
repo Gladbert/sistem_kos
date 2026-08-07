@@ -57,5 +57,5 @@
     </div>
 </div>
 
-{{ render_pagination(pagination, 'activity.index', request.args) }}
+{{ render_pagination(pagination, 'activity.index', request.args|reject_page) }}
 {% endblock %}
