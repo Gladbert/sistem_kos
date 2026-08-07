@@ -34,36 +34,38 @@ def create_app():
         from flask_login import current_user
         if not current_user.is_authenticated:
             return {"all_kos": [], "current_kos": None}
-        all_kos = Kos.query.filter_by(is_active=True).order_by(Kos.nama).all()
-        kos_id = session.get("kos_id")
-        current_kos = None
-        if kos_id:
-            current_kos = db.session.get(Kos, kos_id)
-            # Validate session kos_id is still active
-            if current_kos and not current_kos.is_active:
-                current_kos = None
-                session.pop("kos_id", None)
-        if not current_kos and all_kos:
-            current_kos = all_kos[0]
-            session["kos_id"] = current_kos.id
-        return {"all_kos": all_kos, "current_kos": current_kos}
+        try:
+            all_kos = Kos.query.filter_by(is_active=True).order_by(Kos.nama).all()
+            kos_id = session.get("kos_id")
+            current_kos = None
+            if kos_id:
+                current_kos = db.session.get(Kos, kos_id)
+                if current_kos and not current_kos.is_active:
+                    current_kos = None
+                    session.pop("kos_id", None)
+            if not current_kos and all_kos:
+                current_kos = all_kos[0]
+                session["kos_id"] = current_kos.id
+            return {"all_kos": all_kos, "current_kos": current_kos}
+        except Exception:
+            return {"all_kos": [], "current_kos": None}
 
     from routes import register_routes
     register_routes(app)
 
-    # Error handlers
+    # Error handlers — use minimal templates to avoid DB queries
     @app.errorhandler(404)
     def not_found(e):
-        return render_template("errors/404.html"), 404
+        return "<h1>404 — Halaman tidak ditemukan</h1><p><a href='/'>Kembali</a></p>", 404
 
     @app.errorhandler(500)
     def server_error(e):
         app.logger.exception("Internal server error")
-        return render_template("errors/500.html"), 500
+        return "<h1>500 — Terjadi kesalahan</h1><p><a href='/'>Kembali</a></p>", 500
 
     @app.errorhandler(403)
     def forbidden(e):
-        return render_template("errors/403.html"), 403
+        return "<h1>403 — Akses ditolak</h1><p><a href='/'>Kembali</a></p>", 403
 
     # Create tables for local dev only (Vercel uses Supabase migrations)
     if app.config["SQLALCHEMY_DATABASE_URI"].startswith("sqlite"):
