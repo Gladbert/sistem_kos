@@ -10,7 +10,18 @@ dashboard_bp = Blueprint("dashboard", __name__, url_prefix="/dashboard")
 @dashboard_bp.route("/")
 @login_required
 def index():
-    if current_user.role in ("admin", "management"):
+    # Check per-kos role first, fall back to global role
+    kos_role = None
+    kos_id = session.get("kos_id")
+    if kos_id:
+        from models import UserKos
+        uk = UserKos.query.filter_by(user_id=current_user.id, kos_id=kos_id).first()
+        if uk:
+            kos_role = uk.role
+    
+    effective_role = kos_role or current_user.role
+    
+    if effective_role in ("admin", "management"):
         return redirect(url_for("dashboard.admin"))
     return redirect(url_for("dashboard.client"))
 
