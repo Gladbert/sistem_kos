@@ -68,7 +68,7 @@
                         <a href="{{ url_for('clients.edit', id=client.id) }}" class="btn btn-sm btn-outline-primary btn-icon" title="Edit">
                             <i class="bi bi-pencil"></i>
                         </a>
-                        <form method="POST" action="{{ url_for('clients.nonaktifkan', id=client.id) }}" class="d-inline">
+                        <form method="POST" action="{{ url_for('clients.nonaktifkan', id=client.id) }}" class="d-inline" onsubmit="return confirm('{{ 'Nonaktifkan' if client.is_active else 'Aktifkan' }} akun {{ client.nama_lengkap }}?')">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn btn-sm btn-outline-{{ 'warning' if client.is_active else 'success' }} btn-icon" title="{{ 'Nonaktifkan' if client.is_active else 'Aktifkan' }}">
                                 <i class="bi bi-{{ 'pause-circle' if client.is_active else 'play-circle' }}"></i>
