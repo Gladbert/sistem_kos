@@ -16,6 +16,7 @@ def index():
     if current_user.role in ("admin", "management"):
         lantai = request.args.get("lantai", type=int)
         status = request.args.get("status")
+        q = request.args.get("q", "").strip()
         query = Room.query
         if kos_id:
             query = query.filter_by(kos_id=kos_id)
@@ -23,8 +24,10 @@ def index():
             query = query.filter_by(lantai=lantai)
         if status:
             query = query.filter_by(status=status)
+        if q:
+            query = query.filter(Room.nomor_kamar.ilike(f"%{q}%"))
         pagination = query.order_by(Room.lantai, Room.nomor_kamar).paginate(page=page, per_page=per_page, error_out=False)
-        return render_template("rooms/index.html", pagination=pagination, rooms=pagination.items)
+        return render_template("rooms/index.html", pagination=pagination, rooms=pagination.items, search=q)
     query = Room.query.filter_by(status="tersedia")
     if kos_id:
         query = query.filter_by(kos_id=kos_id)

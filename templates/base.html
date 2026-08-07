@@ -200,7 +200,7 @@
 
         document.querySelectorAll('input[data-rupiah]').forEach(function(input) {
             input.setAttribute('inputmode', 'numeric');
-            input.setAttribute('pattern', '[0-9.]*');
+            input.setAttribute('pattern', '[0-9.]+');
             
             // Format on input
             input.addEventListener('input', function() { formatRupiah(this); });

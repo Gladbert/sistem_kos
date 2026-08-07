@@ -16,7 +16,7 @@
     <div class="filter-bar">
         <select name="tipe" class="form-select">
             <option value="">Semua Tipe</option>
-            {% for t in rooms|map(attribute='tipe')|unique|list|sort %}
+            {% for t in all_types %}
             <option value="{{ t }}" {% if request.args.get('tipe') == t %}selected{% endif %}>{{ t }}</option>
             {% endfor %}
         </select>
@@ -64,7 +64,7 @@
 {% if search %}
     {% set ns = namespace(filtered=[]) %}
     {% for r in filtered %}
-    {% if search in r.nomor_kamar.lower() or (r.fasilitas and search in r.fasilitas.lower()) %}
+    {% if search in r.nomor_kamar.lower() or search in r.tipe.lower() or (r.fasilitas and search in r.fasilitas.lower()) %}
     {% set ns.filtered = ns.filtered + [r] %}
     {% endif %}
     {% endfor %}

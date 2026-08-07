@@ -75,7 +75,7 @@ def require_kos_role(*roles):
                 return redirect(url_for("dashboard.index"))
             
             if kos_role not in roles:
-                flash("Akses ditolak.", "danger")
+                flash(f"Akses ditolak. Hanya role {', '.join(roles)} yang diizinkan.", "danger")
                 return redirect(url_for("dashboard.index"))
             
             return f(*args, **kwargs)
@@ -87,6 +87,11 @@ def require_kos_role(*roles):
 def admin_or_management(f):
     """Decorator: require login + admin/management role (per-kos or global)."""
     return require_kos_role("admin", "management")(f)
+
+
+def admin_only(f):
+    """Decorator: require login + admin role (per-kos or global)."""
+    return require_kos_role("admin")(f)
 
 
 def get_or_404(model, id):

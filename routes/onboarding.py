@@ -26,7 +26,13 @@ def index():
 @onboarding_bp.route("/kamar")
 def lihat_kamar():
     rooms = _available_rooms().order_by(Room.harga_per_bulan).all()
-    return render_template("onboarding/kamar.html", rooms=rooms)
+    # All types from DB for filter dropdown (even if no available rooms of that type)
+    kos_id = session.get("kos_id")
+    type_query = db.session.query(Room.tipe).distinct()
+    if kos_id:
+        type_query = type_query.filter_by(kos_id=kos_id)
+    all_types = sorted([t[0] for t in type_query.all()])
+    return render_template("onboarding/kamar.html", rooms=rooms, all_types=all_types)
 
 
 @onboarding_bp.route("/kamar/<int:id>")
