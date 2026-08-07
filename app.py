@@ -1,4 +1,4 @@
-from flask import Flask, session, render_template
+from flask import Flask, session, render_template, redirect, url_for
 from extensions import db, login_manager, csrf, limiter
 
 def create_app():
@@ -52,6 +52,11 @@ def create_app():
 
     from routes import register_routes
     register_routes(app)
+
+    @app.route("/")
+    def root():
+        return redirect(url_for("dashboard.index"))
+
 
     # Error handlers — use minimal templates to avoid DB queries
     @app.errorhandler(404)
