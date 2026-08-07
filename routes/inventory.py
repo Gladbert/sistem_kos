@@ -41,6 +41,7 @@ def add_item(room_id):
         try:
             safe_commit()
         except Exception:
+            current_app.logger.exception("Database operation failed")
             db.session.rollback()
             flash("Terjadi kesalahan saat menyimpan data.", "danger")
             return redirect(request.referrer or url_for("dashboard.index"))
@@ -62,6 +63,7 @@ def edit_item(id):
         try:
             safe_commit()
         except Exception:
+            current_app.logger.exception("Database operation failed")
             db.session.rollback()
             flash("Terjadi kesalahan saat menyimpan data.", "danger")
             return redirect(request.referrer or url_for("dashboard.index"))
@@ -80,6 +82,7 @@ def delete_item(id):
     try:
         safe_commit()
     except Exception:
+        current_app.logger.exception("Database operation failed")
         db.session.rollback()
         flash("Terjadi kesalahan saat menyimpan data.", "danger")
         return redirect(request.referrer or url_for("dashboard.index"))

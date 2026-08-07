@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
 from flask_login import login_required, current_user
 from extensions import db
 from sqlalchemy import or_
@@ -60,6 +60,7 @@ def nonaktifkan(id):
     try:
         safe_commit()
     except Exception:
+        current_app.logger.exception("Database operation failed")
         db.session.rollback()
         flash("Terjadi kesalahan saat menyimpan data.", "danger")
         return redirect(request.referrer or url_for("dashboard.index"))
@@ -89,6 +90,7 @@ def edit(id):
         try:
             safe_commit()
         except Exception:
+            current_app.logger.exception("Database operation failed")
             db.session.rollback()
             flash("Terjadi kesalahan saat menyimpan data.", "danger")
             return redirect(request.referrer or url_for("dashboard.index"))

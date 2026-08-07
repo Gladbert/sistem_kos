@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, make_response, jsonify
+from flask import Blueprint, render_template, redirect, url_for, flash, request, make_response, jsonify, current_app
 from flask_login import login_required, current_user
 from extensions import db
 from models import RoomAudit, AuditItemResult, RoomItem, Booking, Notification
@@ -45,6 +45,7 @@ def check_in(booking_id):
         try:
             safe_commit()
         except Exception:
+            current_app.logger.exception("Database operation failed")
             db.session.rollback()
             flash("Terjadi kesalahan saat menyimpan data.", "danger")
             return redirect(request.referrer or url_for("dashboard.index"))
@@ -77,6 +78,7 @@ def check_out(booking_id):
         try:
             safe_commit()
         except Exception:
+            current_app.logger.exception("Database operation failed")
             db.session.rollback()
             flash("Terjadi kesalahan saat menyimpan data.", "danger")
             return redirect(request.referrer or url_for("dashboard.index"))
@@ -122,6 +124,7 @@ def edit(audit_id):
         try:
             safe_commit()
         except Exception:
+            current_app.logger.exception("Database operation failed")
             db.session.rollback()
             flash("Terjadi kesalahan saat menyimpan data.", "danger")
             return redirect(request.referrer or url_for("dashboard.index"))
@@ -197,6 +200,7 @@ def delete(audit_id):
         try:
             safe_commit()
         except Exception:
+            current_app.logger.exception("Database operation failed")
             db.session.rollback()
             flash("Terjadi kesalahan saat menyimpan data.", "danger")
             return redirect(request.referrer or url_for("dashboard.index"))

@@ -1,6 +1,5 @@
-from flask import Flask, session
+from flask import Flask, session, render_template
 from extensions import db, login_manager, csrf, limiter
-
 
 def create_app():
     app = Flask(__name__)
@@ -40,6 +39,10 @@ def create_app():
         current_kos = None
         if kos_id:
             current_kos = db.session.get(Kos, kos_id)
+            # Validate session kos_id is still active
+            if current_kos and not current_kos.is_active:
+                current_kos = None
+                session.pop("kos_id", None)
         if not current_kos and all_kos:
             current_kos = all_kos[0]
             session["kos_id"] = current_kos.id
@@ -47,6 +50,20 @@ def create_app():
 
     from routes import register_routes
     register_routes(app)
+
+    # Error handlers
+    @app.errorhandler(404)
+    def not_found(e):
+        return render_template("errors/404.html"), 404
+
+    @app.errorhandler(500)
+    def server_error(e):
+        app.logger.exception("Internal server error")
+        return render_template("errors/500.html"), 500
+
+    @app.errorhandler(403)
+    def forbidden(e):
+        return render_template("errors/403.html"), 403
 
     # Create tables for local dev only (Vercel uses Supabase migrations)
     if app.config["SQLALCHEMY_DATABASE_URI"].startswith("sqlite"):

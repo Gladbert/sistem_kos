@@ -1,6 +1,6 @@
 import csv, io
 from datetime import date, datetime, timedelta
-from flask import Blueprint, render_template, redirect, url_for, flash, request, Response, session
+from flask import Blueprint, render_template, redirect, url_for, flash, request, Response, session, current_app
 from flask_login import login_required, current_user
 from extensions import db
 from models import Payment, Expense, Booking, Vendor
@@ -8,15 +8,10 @@ from helpers import admin_or_management, get_or_404, parse_amount, kos_expense_q
 
 accounting_bp = Blueprint("accounting", __name__, url_prefix="/accounting")
 
-
 def get_month_range(year, month):
     if month == 12:
         return date(year, month, 1), date(year + 1, 1, 1) - timedelta(days=1)
     return date(year, month, 1), date(year + 1, month, 1) - timedelta(days=1)
-
-
-
-
 
 @accounting_bp.route("/")
 @admin_or_management
@@ -51,20 +46,40 @@ def index():
         Expense.query.filter(Expense.tanggal >= start_date, Expense.tanggal <= end_date)
     ).order_by(Expense.tanggal.desc()).all()
 
+    # Batch: 12-month chart data in 2 queries instead of 24
+    year_start = date(tahun, 1, 1)
+    year_end = date(tahun, 12, 31)
+
+    income_rows = db.session.query(
+        db.func.to_char(Payment.tanggal_bayar, 'YYYY-MM').label('bulan'),
+        db.func.sum(Payment.jumlah).label('total')
+    ).filter(
+        Payment.status == "lunas",
+        Payment.tanggal_bayar >= year_start,
+        Payment.tanggal_bayar <= year_end,
+    ).group_by('bulan').all()
+    income_map = {r.bulan: float(r.total) for r in income_rows}
+
+    kos_id = session.get("kos_id")
+    expense_q = db.session.query(
+        db.func.to_char(Expense.tanggal, 'YYYY-MM').label('bulan'),
+        db.func.sum(Expense.jumlah).label('total')
+    ).filter(
+        Expense.tanggal >= year_start,
+        Expense.tanggal <= year_end,
+    )
+    if kos_id:
+        expense_q = expense_q.filter(Expense.kos_id == kos_id)
+    expense_rows = expense_q.group_by('bulan').all()
+    expense_map = {r.bulan: float(r.total) for r in expense_rows}
+
     bulan_names = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
     pemasukan_chart = []
     pengeluaran_chart = []
-
     for m in range(1, 13):
-        s, e = get_month_range(tahun, m)
-        p = db.session.query(db.func.sum(Payment.jumlah)).filter(
-            Payment.status == "lunas", Payment.tanggal_bayar >= s, Payment.tanggal_bayar <= e,
-        ).scalar() or 0
-        pe = kos_expense_query(
-            db.session.query(db.func.sum(Expense.jumlah)).filter(Expense.tanggal >= s, Expense.tanggal <= e)
-        ).scalar() or 0
-        pemasukan_chart.append(float(p))
-        pengeluaran_chart.append(float(pe))
+        key = f"{tahun}-{m:02d}"
+        pemasukan_chart.append(income_map.get(key, 0))
+        pengeluaran_chart.append(expense_map.get(key, 0))
 
     return render_template("accounting/index.html",
         tahun=tahun, bulan=bulan,
@@ -73,7 +88,6 @@ def index():
         bulan_names=bulan_names,
         pemasukan_chart=pemasukan_chart, pengeluaran_chart=pengeluaran_chart,
         selected_bulan=date(tahun, bulan, 1).strftime("%B"))
-
 
 @accounting_bp.route("/pengeluaran/tambah", methods=["GET", "POST"])
 @admin_or_management
@@ -96,6 +110,7 @@ def tambah_pengeluaran():
         try:
             safe_commit()
         except Exception:
+            current_app.logger.exception("Failed to add expense")
             db.session.rollback()
             flash("Terjadi kesalahan saat menyimpan data.", "danger")
             return redirect(request.referrer or url_for("dashboard.index"))
@@ -103,7 +118,6 @@ def tambah_pengeluaran():
         return redirect(url_for("accounting.index"))
 
     return render_template("accounting/expense_form.html", vendors=Vendor.query.order_by(Vendor.nama).all())
-
 
 @accounting_bp.route("/pengeluaran/edit/<int:id>", methods=["GET", "POST"])
 @admin_or_management
@@ -124,6 +138,7 @@ def edit_pengeluaran(id):
         try:
             safe_commit()
         except Exception:
+            current_app.logger.exception("Failed to update expense %s", id)
             db.session.rollback()
             flash("Terjadi kesalahan saat menyimpan data.", "danger")
             return redirect(request.referrer or url_for("dashboard.index"))
@@ -131,7 +146,6 @@ def edit_pengeluaran(id):
         return redirect(url_for("accounting.index"))
 
     return render_template("accounting/expense_form.html", expense=expense, vendors=Vendor.query.order_by(Vendor.nama).all())
-
 
 @accounting_bp.route("/pengeluaran/hapus/<int:id>", methods=["POST"])
 @admin_or_management
@@ -141,43 +155,65 @@ def hapus_pengeluaran(id):
     try:
         safe_commit()
     except Exception:
+        current_app.logger.exception("Failed to delete expense %s", id)
         db.session.rollback()
         flash("Terjadi kesalahan saat menyimpan data.", "danger")
         return redirect(request.referrer or url_for("dashboard.index"))
     flash("Pengeluaran berhasil dihapus.", "success")
     return redirect(url_for("accounting.index"))
 
-
 @accounting_bp.route("/laporan")
 @admin_or_management
 def laporan():
     tahun = request.args.get("tahun", date.today().year, type=int)
+
+    # Batch: 12-month report in 2 queries instead of 24
+    year_start = date(tahun, 1, 1)
+    year_end = date(tahun, 12, 31)
+
+    income_rows = db.session.query(
+        db.func.to_char(Payment.tanggal_bayar, 'YYYY-MM').label('bulan'),
+        db.func.sum(Payment.jumlah).label('total')
+    ).filter(
+        Payment.status == "lunas",
+        Payment.tanggal_bayar >= year_start,
+        Payment.tanggal_bayar <= year_end,
+    ).group_by('bulan').all()
+    income_map = {r.bulan: float(r.total) for r in income_rows}
+
+    kos_id = session.get("kos_id")
+    expense_q = db.session.query(
+        db.func.to_char(Expense.tanggal, 'YYYY-MM').label('bulan'),
+        db.func.sum(Expense.jumlah).label('total')
+    ).filter(
+        Expense.tanggal >= year_start,
+        Expense.tanggal <= year_end,
+    )
+    if kos_id:
+        expense_q = expense_q.filter(Expense.kos_id == kos_id)
+    expense_rows = expense_q.group_by('bulan').all()
+    expense_map = {r.bulan: float(r.total) for r in expense_rows}
+
     bulanan = []
     total_pemasukan = 0
     total_pengeluaran = 0
-
     for m in range(1, 13):
-        s, e = get_month_range(tahun, m)
-        p = db.session.query(db.func.sum(Payment.jumlah)).filter(
-            Payment.status == "lunas", Payment.tanggal_bayar >= s, Payment.tanggal_bayar <= e,
-        ).scalar() or 0
-        pe = kos_expense_query(
-            db.session.query(db.func.sum(Expense.jumlah)).filter(Expense.tanggal >= s, Expense.tanggal <= e)
-        ).scalar() or 0
+        key = f"{tahun}-{m:02d}"
+        p = income_map.get(key, 0)
+        pe = expense_map.get(key, 0)
         bulanan.append({
             "bulan": date(tahun, m, 1).strftime("%B"),
-            "pemasukan": float(p),
-            "pengeluaran": float(pe),
-            "laba": float(p - pe),
+            "pemasukan": p,
+            "pengeluaran": pe,
+            "laba": p - pe,
         })
-        total_pemasukan += float(p)
-        total_pengeluaran += float(pe)
+        total_pemasukan += p
+        total_pengeluaran += pe
 
     return render_template("accounting/laporan.html",
         tahun=tahun, bulanan=bulanan,
         total_pemasukan=total_pemasukan, total_pengeluaran=total_pengeluaran,
         total_laba=total_pemasukan - total_pengeluaran)
-
 
 @accounting_bp.route("/export/csv")
 @admin_or_management

@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, session
+from flask import Blueprint, render_template, redirect, url_for, flash, request, session, current_app
 from flask_login import login_required, current_user
 from extensions import db
 from models import Kos
@@ -44,6 +44,7 @@ def tambah():
         try:
             safe_commit()
         except Exception:
+            current_app.logger.exception("Database operation failed")
             db.session.rollback()
             flash("Terjadi kesalahan saat menyimpan data.", "danger")
             return redirect(request.referrer or url_for("dashboard.index"))
@@ -71,6 +72,7 @@ def edit(id):
         try:
             safe_commit()
         except Exception:
+            current_app.logger.exception("Database operation failed")
             db.session.rollback()
             flash("Terjadi kesalahan saat menyimpan data.", "danger")
             return redirect(request.referrer or url_for("dashboard.index"))
@@ -84,7 +86,7 @@ def edit(id):
 @kos_bp.route("/hapus/<int:id>", methods=["POST"])
 @login_required
 def hapus(id):
-    if current_user.role != "admin":
+    if current_user.role not in ("admin", "management"):
         flash("Hanya admin yang bisa menghapus kos.", "danger")
         return redirect(url_for("kos.index"))
 
@@ -98,6 +100,7 @@ def hapus(id):
     try:
         safe_commit()
     except Exception:
+        current_app.logger.exception("Database operation failed")
         db.session.rollback()
         flash("Terjadi kesalahan saat menyimpan data.", "danger")
         return redirect(request.referrer or url_for("dashboard.index"))

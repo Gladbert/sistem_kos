@@ -1,5 +1,5 @@
-from datetime import date
-from flask import Blueprint, render_template, redirect, flash, url_for, request, session
+from datetime import date, timedelta
+from flask import Blueprint, render_template, redirect, flash, url_for, request, session, current_app
 from flask_login import login_required, current_user
 from extensions import db
 from models import User, Room, Booking, Payment, Expense, Notification, MaintenanceRequest, Complaint, Kos
@@ -7,14 +7,12 @@ from helpers import log_activity, admin_or_management, get_or_404, kos_room_ids,
 
 dashboard_bp = Blueprint("dashboard", __name__, url_prefix="/dashboard")
 
-
 @dashboard_bp.route("/")
 @login_required
 def index():
     if current_user.role in ("admin", "management"):
         return redirect(url_for("dashboard.admin"))
     return redirect(url_for("dashboard.client"))
-
 
 @dashboard_bp.route("/admin")
 @admin_or_management
@@ -44,28 +42,37 @@ def admin():
     pemasukan_bulan_ini = db.session.query(db.func.sum(Payment.jumlah)).filter(
         Payment.status == "lunas",
         Payment.booking_id.in_(booking_ids) if booking_ids else False,
-        db.func.strftime("%Y-%m", Payment.tanggal_bayar) == bulan_ini,
+        db.func.to_char(Payment.tanggal_bayar, 'YYYY-MM') == bulan_ini,
     ).scalar() or 0
 
     pengeluaran_bulan_ini = kos_expense_query(
         db.session.query(db.func.sum(Expense.jumlah)).filter(
-            db.func.strftime("%Y-%m", Expense.tanggal) == bulan_ini,
+            db.func.to_char(Expense.tanggal, 'YYYY-MM') == bulan_ini,
         )
     ).scalar() or 0
 
+    # Batch: check all unpaid bookings at once
     tagihan_belum_dibayar = 0
     unpaid_bookings = []
-    for b in active_bookings:
-        if b.tagihan_bulan_ini:
-            tagihan_belum_dibayar += 1
-            unpaid_bookings.append(b)
+    if booking_ids:
+        paid_this_month = set(
+            r[0] for r in db.session.query(Payment.booking_id).filter(
+                Payment.booking_id.in_(booking_ids),
+                Payment.bulan_dibayar_untuk == bulan_ini,
+                Payment.status == "lunas"
+            ).all()
+        )
+        for b in active_bookings:
+            if b.id not in paid_this_month:
+                tagihan_belum_dibayar += 1
+                unpaid_bookings.append(b)
 
     booking_pending = Booking.query.filter(Booking.room_id.in_(room_ids), Booking.status == "pending").order_by(Booking.created_at.asc()).all() if room_ids else []
 
     pembayaran_bulan_ini = Payment.query.filter(
         Payment.status == "lunas",
         Payment.booking_id.in_(booking_ids) if booking_ids else False,
-        db.func.strftime("%Y-%m", Payment.tanggal_bayar) == bulan_ini,
+        db.func.to_char(Payment.tanggal_bayar, 'YYYY-MM') == bulan_ini,
     ).count()
 
     total_tagihan = len(active_bookings)
@@ -74,10 +81,26 @@ def admin():
 
     tipe_kamar = db.session.query(Room.tipe, db.func.count(Room.id)).filter(Room.id.in_(room_ids)).group_by(Room.tipe).all() if room_ids else []
 
+    # Batch: 6-month income in one query
+    today = date.today()
+    six_months_ago = (today.replace(day=1) - timedelta(days=155)).replace(day=1)
     pemasukan_6bulan = []
+    if booking_ids:
+        rows = db.session.query(
+            db.func.to_char(Payment.tanggal_bayar, 'YYYY-MM').label('bulan'),
+            db.func.sum(Payment.jumlah).label('total')
+        ).filter(
+            Payment.status == "lunas",
+            Payment.booking_id.in_(booking_ids),
+            Payment.tanggal_bayar >= six_months_ago,
+        ).group_by('bulan').all()
+        row_map = {r.bulan: float(r.total) for r in rows}
+    else:
+        row_map = {}
+
     for i in range(5, -1, -1):
-        m = date.today().month - i
-        y = date.today().year
+        m = today.month - i
+        y = today.year
         while m < 1:
             m += 12
             y -= 1
@@ -85,12 +108,7 @@ def admin():
             m -= 12
             y += 1
         bulan_str = f"{y:04d}-{m:02d}"
-        total = db.session.query(db.func.sum(Payment.jumlah)).filter(
-            Payment.status == "lunas",
-            Payment.booking_id.in_(booking_ids) if booking_ids else False,
-            db.func.strftime("%Y-%m", Payment.tanggal_bayar) == bulan_str,
-        ).scalar() or 0
-        pemasukan_6bulan.append({"bulan": bulan_str, "total": total})
+        pemasukan_6bulan.append({"bulan": bulan_str, "total": row_map.get(bulan_str, 0)})
 
     pembayaran_terbaru = Payment.query.filter(Payment.booking_id.in_(booking_ids)).order_by(Payment.created_at.desc()).limit(5).all() if booking_ids else []
     pengeluaran_terbaru = kos_expense_query(Expense.query).order_by(Expense.created_at.desc()).limit(5).all()
@@ -119,7 +137,6 @@ def admin():
         tipe_kamar=tipe_kamar, pemasukan_6bulan=pemasukan_6bulan,
         booking_audit=active_bookings[:5])
 
-
 @dashboard_bp.route("/client")
 @login_required
 def client():
@@ -136,7 +153,6 @@ def client():
         riwayat=riwayat, pembayaran=pembayaran,
         notifikasi=notifikasi, notif_belum_dibaca=notif_belum_dibaca,
         date_today=date.today())
-
 
 @dashboard_bp.route("/booking/<int:id>/approve", methods=["POST"])
 @admin_or_management
@@ -155,7 +171,6 @@ def approve_booking(id):
     flash(f"Booking kamar {booking.room.nomor_kamar} oleh {booking.client.nama_lengkap} disetujui.", "success")
     return redirect(url_for("dashboard.admin"))
 
-
 @dashboard_bp.route("/booking/<int:id>/tolak", methods=["POST"])
 @admin_or_management
 def tolak_booking(id):
@@ -172,12 +187,12 @@ def tolak_booking(id):
     try:
         safe_commit()
     except Exception:
+        current_app.logger.exception("Failed to reject booking %s", id)
         db.session.rollback()
         flash("Terjadi kesalahan saat menyimpan data.", "danger")
         return redirect(request.referrer or url_for("dashboard.index"))
     flash(f"Booking kamar {booking.room.nomor_kamar} oleh {booking.client.nama_lengkap} ditolak.", "info")
     return redirect(url_for("dashboard.admin"))
-
 
 @dashboard_bp.route("/auto-proses", methods=["POST"])
 @admin_or_management
@@ -205,12 +220,12 @@ def auto_proses():
     try:
         safe_commit()
     except Exception:
+        current_app.logger.exception("Failed auto-proses")
         db.session.rollback()
         flash("Terjadi kesalahan saat menyimpan data.", "danger")
         return redirect(request.referrer or url_for("dashboard.index"))
     flash(f"Proses otomatis selesai: {count_selesai} booking diakhiri, {count_notif} pengingat dikirim.", "success")
     return redirect(url_for("dashboard.admin"))
-
 
 @dashboard_bp.route("/notifikasi/baca/<int:id>", methods=["POST"])
 @login_required
@@ -223,11 +238,11 @@ def baca_notifikasi(id):
     try:
         safe_commit()
     except Exception:
+        current_app.logger.exception("Failed to mark notification read")
         db.session.rollback()
         flash("Terjadi kesalahan saat menyimpan data.", "danger")
         return redirect(request.referrer or url_for("dashboard.index"))
     return redirect(url_for("dashboard.client"))
-
 
 @dashboard_bp.route("/notifikasi/baca-semua", methods=["POST"])
 @login_required
@@ -236,6 +251,7 @@ def baca_semua_notif():
     try:
         safe_commit()
     except Exception:
+        current_app.logger.exception("Failed to mark all notifications read")
         db.session.rollback()
         flash("Terjadi kesalahan saat menyimpan data.", "danger")
         return redirect(request.referrer or url_for("dashboard.index"))

@@ -32,7 +32,7 @@ CREATE TABLE rooms (
     nomor_kamar VARCHAR(10) NOT NULL,
     lantai INTEGER DEFAULT 1,
     tipe VARCHAR(50) DEFAULT 'Reguler',
-    harga_per_bulan FLOAT NOT NULL,
+    harga_per_bulan NUMERIC(12,2) NOT NULL,
     ukuran VARCHAR(50),
     fasilitas TEXT,
     status VARCHAR(20) DEFAULT 'tersedia',
@@ -62,7 +62,7 @@ CREATE TABLE bookings (
     tanggal_masuk DATE NOT NULL,
     tanggal_keluar DATE,
     status VARCHAR(20) DEFAULT 'aktif',
-    deposit FLOAT DEFAULT 0,
+    deposit NUMERIC(12,2) DEFAULT 0,
     catatan TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -74,7 +74,7 @@ CREATE INDEX idx_bookings_room_id ON bookings(room_id);
 CREATE TABLE payments (
     id SERIAL PRIMARY KEY,
     booking_id INTEGER NOT NULL REFERENCES bookings(id),
-    jumlah FLOAT NOT NULL,
+    jumlah NUMERIC(12,2) NOT NULL,
     tanggal_bayar DATE DEFAULT CURRENT_DATE,
     bulan_dibayar_untuk VARCHAR(20),
     metode_bayar VARCHAR(20) DEFAULT 'transfer',
@@ -91,7 +91,7 @@ CREATE TABLE expenses (
     id SERIAL PRIMARY KEY,
     kos_id INTEGER REFERENCES kos(id),
     kategori VARCHAR(50) NOT NULL,
-    jumlah FLOAT NOT NULL,
+    jumlah NUMERIC(12,2) NOT NULL,
     tanggal DATE DEFAULT CURRENT_DATE,
     deskripsi TEXT,
     vendor_id INTEGER REFERENCES vendors(id),
@@ -111,7 +111,7 @@ CREATE TABLE maintenance_requests (
     tanggal_masuk DATE DEFAULT CURRENT_DATE,
     tanggal_selesai DATE,
     status VARCHAR(20) DEFAULT 'diajukan',
-    biaya FLOAT DEFAULT 0,
+    biaya NUMERIC(12,2) DEFAULT 0,
     catatan TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );

@@ -82,9 +82,11 @@ def kos_rooms(kos_id=None):
 
 def safe_commit():
     """Commit with rollback on error. Returns True on success."""
+    from flask import current_app
     try:
         db.session.commit()
         return True
     except Exception:
+        current_app.logger.exception("Database commit failed")
         db.session.rollback()
         raise

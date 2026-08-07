@@ -1,5 +1,5 @@
 from datetime import date
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
 from extensions import db
 from models import MaintenanceRequest, Vendor, Room
 from helpers import admin_or_management, get_or_404, kos_rooms, kos_room_ids, create_notification, wa_redirect, safe_commit
@@ -50,6 +50,7 @@ def tambah():
         try:
             safe_commit()
         except Exception:
+            current_app.logger.exception("Database operation failed")
             db.session.rollback()
             flash("Terjadi kesalahan saat menyimpan data.", "danger")
             return redirect(request.referrer or url_for("dashboard.index"))
@@ -94,6 +95,7 @@ def edit(id):
         try:
             safe_commit()
         except Exception:
+            current_app.logger.exception("Database operation failed")
             db.session.rollback()
             flash("Terjadi kesalahan saat menyimpan data.", "danger")
             return redirect(request.referrer or url_for("dashboard.index"))
@@ -111,6 +113,7 @@ def hapus(id):
     try:
         safe_commit()
     except Exception:
+        current_app.logger.exception("Database operation failed")
         db.session.rollback()
         flash("Terjadi kesalahan saat menyimpan data.", "danger")
         return redirect(request.referrer or url_for("dashboard.index"))
@@ -145,6 +148,7 @@ def vendor_tambah():
         try:
             safe_commit()
         except Exception:
+            current_app.logger.exception("Database operation failed")
             db.session.rollback()
             flash("Terjadi kesalahan saat menyimpan data.", "danger")
             return redirect(request.referrer or url_for("dashboard.index"))
@@ -168,6 +172,7 @@ def vendor_edit(id):
         try:
             safe_commit()
         except Exception:
+            current_app.logger.exception("Database operation failed")
             db.session.rollback()
             flash("Terjadi kesalahan saat menyimpan data.", "danger")
             return redirect(request.referrer or url_for("dashboard.index"))
@@ -185,6 +190,7 @@ def vendor_hapus(id):
     try:
         safe_commit()
     except Exception:
+        current_app.logger.exception("Database operation failed")
         db.session.rollback()
         flash("Terjadi kesalahan saat menyimpan data.", "danger")
         return redirect(request.referrer or url_for("dashboard.index"))

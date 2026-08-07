@@ -21,51 +21,10 @@
                 </div>
                 <button type="submit" class="btn btn-primary w-100">Masuk</button>
             </form>
-
-            <div class="divider"><span>demo</span></div>
-
-            <form method="POST" class="mb-2">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="hidden" name="username" value="admin">
-                <input type="hidden" name="password" value="admin123">
-                <button type="submit" class="btn btn-secondary w-100">
-                    <i class="bi bi-shield-lock me-1"></i>Login sebagai Admin
-                </button>
-            </form>
-            <form method="POST">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="hidden" name="username" value="budi">
-                <input type="hidden" name="password" value="client123">
-                <button type="submit" class="btn btn-secondary w-100">
-                    <i class="bi bi-person me-1"></i>Login sebagai Client
-                </button>
-            </form>
         </div>
         <div class="auth-footer">
             Belum punya akun? <a href="{{ url_for('auth.register') }}">Daftar di sini</a>
         </div>
     </div>
 </div>
-
-<style>
-    .divider {
-        display: flex;
-        align-items: center;
-        margin: 1.25rem 0;
-        color: var(--gray-400);
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-    .divider::before,
-    .divider::after {
-        content: '';
-        flex: 1;
-        height: 1px;
-        background: var(--gray-200);
-    }
-    .divider span {
-        padding: 0 0.75rem;
-    }
-</style>
 {% endblock %}

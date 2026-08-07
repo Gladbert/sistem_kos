@@ -17,6 +17,12 @@ def seed():
         admin.set_password("admin123")
         db.session.add(admin)
 
+        # Management
+        mgmt = User(username="management", email="management@kos.com", role="management",
+                     nama_lengkap="Manajer Kos", no_telepon="08123456780")
+        mgmt.set_password("mgmt123")
+        db.session.add(mgmt)
+
         # Kos
         kos1 = Kos(nama="Kos Melati", alamat="Jl. Melati No. 10", deskripsi="Kos putra/putri strategis dekat kampus")
         kos2 = Kos(nama="Kos Anggrek", alamat="Jl. Anggrek No. 25", deskripsi="Kos eksklusif dengan fasilitas lengkap")
@@ -191,6 +197,7 @@ def seed():
         print("Seed data created successfully!")
         print("\nLogin credentials:")
         print("  Admin: admin / admin123")
+        print("  Management: management / mgmt123")
         print("  Clients: budi, siti, agus, dewi, eko / client123")
 
 

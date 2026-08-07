@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, session
+from flask import Blueprint, render_template, redirect, url_for, flash, request, session, current_app
 from flask_login import login_required, current_user
 from extensions import db
 from models import Room, Booking, MaintenanceRequest, Kos
@@ -13,7 +13,7 @@ def index():
     page = request.args.get("page", 1, type=int)
     per_page = 20
     kos_id = session.get("kos_id")
-    if current_user.role == "admin":
+    if current_user.role in ("admin", "management"):
         lantai = request.args.get("lantai", type=int)
         status = request.args.get("status")
         query = Room.query
@@ -67,6 +67,7 @@ def tambah():
         try:
             safe_commit()
         except Exception:
+            current_app.logger.exception("Database operation failed")
             db.session.rollback()
             flash("Terjadi kesalahan saat menyimpan data.", "danger")
             return redirect(request.referrer or url_for("dashboard.index"))
@@ -109,6 +110,7 @@ def edit(id):
         try:
             safe_commit()
         except Exception:
+            current_app.logger.exception("Database operation failed")
             db.session.rollback()
             flash("Terjadi kesalahan saat menyimpan data.", "danger")
             return redirect(request.referrer or url_for("dashboard.index"))
@@ -130,6 +132,7 @@ def hapus(id):
     try:
         safe_commit()
     except Exception:
+        current_app.logger.exception("Database operation failed")
         db.session.rollback()
         flash("Terjadi kesalahan saat menyimpan data.", "danger")
         return redirect(request.referrer or url_for("dashboard.index"))
