@@ -20,6 +20,40 @@
 </div>
 {% endif %}
 
+{% if notifikasi %}
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="card border-0">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-bell me-2 text-primary"></i>Notifikasi {% if notif_belum_dibaca > 0 %}<span class="badge bg-danger">{{ notif_belum_dibaca }}</span>{% endif %}</span>
+                {% if notifikasi|length > 3 %}
+                <span class="text-muted small">{{ notifikasi|length }} pesan</span>
+                {% endif %}
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for n in notifikasi %}
+                    <div class="list-group-item d-flex align-items-start gap-2 {% if not n.dibaca %}bg-primary-light{% endif %}">
+                        <i class="bi bi-{% if n.jenis == 'pembayaran' %}credit-card{% elif n.jenis == 'maintenance' %}tools{% elif n.jenis == 'pengingat' %}clock{% elif n.jenis == 'booking' %}calendar-check{% else %}info-circle{% endif %} mt-1 text-primary"></i>
+                        <div class="flex-grow-1">
+                            <p class="mb-0 {% if not n.dibaca %}fw-medium{% endif %}">{{ n.pesan }}</p>
+                            <small class="text-muted">{{ n.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
+                        </div>
+                        {% if not n.dibaca %}
+                        <form method="POST" action="{{ url_for('dashboard.baca_notifikasi', id=n.id) }}" style="display:inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button class="btn btn-sm btn-outline-secondary" title="Tandai dibaca"><i class="bi bi-check"></i></button>
+                        </form>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 {% if booking_aktif %}
 <div class="row g-3 mb-4">
     <div class="col-md-4">
@@ -50,9 +84,29 @@
         </div>
     </div>
 </div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="card border-0 h-100">
+            <div class="card-body text-center">
+                <div class="stat-icon stat-icon-primary mx-auto mb-3" style="width:48px;height:48px;">
+                    <i class="bi bi-info-circle"></i>
+                </div>
                 <h5 class="card-title">{% if booking_aktif.tagihan_bulan_ini %}Belum Lunas{% else %}Lancar{% endif %}</h5>
                 <p class="text-muted mb-0">Status Pembayaran</p>
                 <p class="text-muted">Per {{ date_today.strftime('%d/%m/%Y') }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card border-0 h-100">
+            <div class="card-body text-center">
+                <div class="stat-icon stat-icon-success mx-auto mb-3" style="width:48px;height:48px;">
+                    <i class="bi bi-shield-check"></i>
+                </div>
+                <h5 class="card-title">Status Kamar</h5>
+                <p class="text-muted mb-0">{{ booking_aktif.room.status|title }}</p>
+                <p class="text-muted">{{ booking_aktif.room.fasilitas[:50] }}{% if booking_aktif.room.fasilitas|length > 50 %}...{% endif %}</p>
             </div>
         </div>
     </div>
@@ -116,37 +170,6 @@
                     </table>
                 </div>
                 {% else %}<div class="empty-state"><i class="bi bi-inbox"></i><h5>Belum ada pembayaran</h5></div>{% endif %}
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row g-3 mb-4">
-    <div class="col-12">
-        <div class="card border-0">
-            <div class="card-header">
-                <span><i class="bi bi-bell me-2 text-primary"></i>Notifikasi {% if notif_belum_dibaca > 0 %}<span class="badge bg-danger">{{ notif_belum_dibaca }}</span>{% endif %}</span>
-            </div>
-            <div class="card-body p-0">
-                {% if notifikasi %}
-                <div class="list-group list-group-flush">
-                    {% for n in notifikasi %}
-                    <div class="list-group-item d-flex align-items-start gap-2 {% if not n.dibaca %}bg-primary-light{% endif %}">
-                        <i class="bi bi-{% if n.jenis == 'pembayaran' %}credit-card{% elif n.jenis == 'maintenance' %}tools{% else %}info-circle{% endif %} mt-1 text-primary"></i>
-                        <div class="flex-grow-1">
-                            <p class="mb-0">{{ n.pesan }}</p>
-                            <small class="text-muted">{{ n.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
-                        </div>
-                        {% if not n.dibaca %}
-                        <form method="POST" action="{{ url_for('dashboard.baca_notifikasi', id=n.id) }}" style="display:inline">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button class="btn btn-sm btn-outline-secondary" title="Tandai dibaca"><i class="bi bi-check"></i></button>
-                        </form>
-                        {% endif %}
-                    </div>
-                    {% endfor %}
-                </div>
-                {% else %}<div class="empty-state"><i class="bi bi-bell-slash"></i><h5>Tidak ada notifikasi</h5></div>{% endif %}
             </div>
         </div>
     </div>

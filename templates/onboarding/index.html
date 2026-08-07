@@ -127,7 +127,11 @@
                         <li><i class="bi bi-tag"></i>{{ room.tipe }}</li>
                         <li><i class="bi bi-layers"></i>Lantai {{ room.lantai }}</li>
                         {% if room.fasilitas %}
-                        <li><i class="bi bi-check-circle text-success"></i>{{ room.fasilitas[:60] }}{% if room.fasilitas|length > 60 %}...{% endif %}</li>
+                        <li class="fasilitas-item">
+                            <i class="bi bi-check-circle text-success"></i>
+                            <span class="fasilitas-text" data-full="{{ room.fasilitas }}">{{ room.fasilitas[:60] }}{% if room.fasilitas|length > 60 %}...{% endif %}</span>
+                            {% if room.fasilitas|length > 60 %}<button class="btn btn-link btn-sm p-0 ms-1 fasilitas-toggle" onclick="toggleFasilitas(this)">Lihat semua</button>{% endif %}
+                        </li>
                         {% endif %}
                     </ul>
                     {% if room.deskripsi %}
@@ -177,5 +181,18 @@ document.getElementById('heroSearchInput')?.addEventListener('keydown', function
         btn.click();
     }
 });
+
+function toggleFasilitas(btn) {
+    const span = btn.previousElementSibling;
+    const full = span.getAttribute('data-full');
+    const isExpanded = btn.textContent === 'Sembunyikan';
+    if (isExpanded) {
+        span.textContent = full.substring(0, 60) + '...';
+        btn.textContent = 'Lihat semua';
+    } else {
+        span.textContent = full;
+        btn.textContent = 'Sembunyikan';
+    }
+}
 </script>
 {% endblock %}

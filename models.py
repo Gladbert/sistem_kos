@@ -264,3 +264,35 @@ class AuditItemResult(db.Model):
 
     audit = db.relationship("RoomAudit", backref="items")
     item = db.relationship("RoomItem", backref="audit_results")
+
+
+class FasilitasUmum(db.Model):
+    __tablename__ = "fasilitas_umum"
+
+    id = db.Column(db.Integer, primary_key=True)
+    kos_id = db.Column(db.Integer, db.ForeignKey("kos.id", name="fk_fasilitas_kos"), nullable=False, index=True)
+    nama = db.Column(db.String(150), nullable=False)
+    kategori = db.Column(db.String(50), default="toilet")  # toilet, shower, dapur, ruang_cuci, ruang_tamu, parkir, lainnya
+    lokasi = db.Column(db.String(100))  # Lantai 1, Area Belakang, etc
+    kondisi = db.Column(db.String(20), default="baik")  # baik, rusak_ringan, rusak_berat, maintenance
+    deskripsi = db.Column(db.Text)
+    catatan = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    kos = db.relationship("Kos", backref="fasilitas_umum")
+
+    @property
+    def is_usable(self):
+        return self.kondisi == "baik"
+
+
+class FasilitasKategori(db.Model):
+    __tablename__ = "fasilitas_kategori"
+
+    id = db.Column(db.Integer, primary_key=True)
+    nama = db.Column(db.String(50), unique=True, nullable=False)
+    icon = db.Column(db.String(30), default="bi-box")
+    deskripsi = db.Column(db.String(200))
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
