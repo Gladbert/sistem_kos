@@ -86,7 +86,38 @@
     <div class="col-lg-4">
         <div class="card border-0 h-100">
             <div class="card-header"><span><i class="bi bi-pie-chart me-2 text-primary"></i>Hunian</span></div>
-            <div class="card-body"><canvas id="occupancyChart" height="80"></canvas></div>
+            <div class="card-body">
+                <div class="occupancy-chart-container">
+                    <canvas id="occupancyChart"></canvas>
+                    <div class="occupancy-center">
+                        <div class="occupancy-rate">{{ occupancy_rate }}%</div>
+                        <div class="occupancy-label">Terisi</div>
+                    </div>
+                </div>
+                <div class="occupancy-legend">
+                    <div class="legend-item">
+                        <span class="legend-dot bg-success"></span>
+                        <div>
+                            <div class="legend-value">{{ kamar_terisi }}</div>
+                            <div class="legend-label">Terisi</div>
+                        </div>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-dot bg-warning"></span>
+                        <div>
+                            <div class="legend-value">{{ kamar_tersedia }}</div>
+                            <div class="legend-label">Tersedia</div>
+                        </div>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-dot bg-danger"></span>
+                        <div>
+                            <div class="legend-value">{{ kamar_maintenance }}</div>
+                            <div class="legend-label">Maintenance</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -344,10 +375,85 @@ const occupancyChart = new Chart(document.getElementById('occupancyChart'), {
         labels: ['Terisi', 'Tersedia', 'Maintenance'],
         datasets: [{
             data: [{{ kamar_terisi }}, {{ kamar_tersedia }}, {{ kamar_maintenance }}],
-            backgroundColor: ['#22c55e', '#f59e0b', '#ef4444']
+            backgroundColor: ['#22c55e', '#f59e0b', '#ef4444'],
+            borderWidth: 0,
+            cutout: '72%',
+            borderRadius: 4,
+            spacing: 2
         }]
     },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                backgroundColor: 'rgba(0,0,0,0.8)',
+                padding: 12,
+                titleFont: { size: 14, weight: '600' },
+                bodyFont: { size: 13 },
+                callbacks: {
+                    label: ctx => {
+                        const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                        const pct = total > 0 ? Math.round(ctx.raw / total * 100) : 0;
+                        return ` ${ctx.label}: ${ctx.raw} kamar (${pct}%)`;
+                    }
+                }
+            }
+        }
+    }
 });
+</script>
+<style>
+.occupancy-chart-container {
+    position: relative;
+    max-width: 220px;
+    margin: 0 auto 1.5rem;
+}
+.occupancy-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+}
+.occupancy-rate {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--gray-800);
+    line-height: 1;
+}
+.occupancy-label {
+    font-size: 0.75rem;
+    color: var(--gray-500);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.occupancy-legend {
+    display: flex;
+    justify-content: space-around;
+    gap: 0.5rem;
+}
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.legend-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+    line-height: 1.2;
+}
+.legend-label {
+    font-size: 0.7rem;
+    color: var(--gray-500);
+}
+</style>
 </script>
 {% endblock %}
