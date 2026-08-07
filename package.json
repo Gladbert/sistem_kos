@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "pire-browser": "^0.2.35"
+  },
+  "allowScripts": {
+    "pire-browser@0.2.35": true
+  }
+}

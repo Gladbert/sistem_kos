@@ -9,7 +9,12 @@ venv/
 .codegraph/
 opencode.json
 test_all.py
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
 supabase/seed.sql
+dogfood-output/
 seed.py
 seed_production.py
 # AGENTS.md is intentionally tracked despite this ignore list
