@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 from extensions import db
 from models import RoomAudit, AuditItemResult, RoomItem, Booking, Notification
 from helpers import admin_or_management, get_or_404, safe_commit
+from sqlalchemy.orm import joinedload
 
 audit_bp = Blueprint("audit", __name__, url_prefix="/audit")
 
@@ -102,8 +103,12 @@ def detail(booking_id):
         flash("Akses ditolak.", "danger")
         return redirect(url_for("dashboard.index"))
 
-    check_in = RoomAudit.query.filter_by(booking_id=booking_id, tipe="check_in").first()
-    check_out = RoomAudit.query.filter_by(booking_id=booking_id, tipe="check_out").first()
+    check_in = RoomAudit.query.options(
+        joinedload(RoomAudit.items).joinedload(AuditItemResult.item)
+    ).filter_by(booking_id=booking_id, tipe="check_in").first()
+    check_out = RoomAudit.query.options(
+        joinedload(RoomAudit.items).joinedload(AuditItemResult.item)
+    ).filter_by(booking_id=booking_id, tipe="check_out").first()
     items = RoomItem.query.filter_by(room_id=booking.room_id).order_by(RoomItem.nama).all()
     return render_template("audit/detail.html", booking=booking, items=items, check_in=check_in, check_out=check_out)
 
@@ -117,7 +122,9 @@ def edit(audit_id):
 
     if request.method == "POST":
         audit.catatan = request.form.get("catatan", "")
-        existing_ids = {r.item_id: r for r in AuditItemResult.query.filter_by(audit_id=audit.id).all()}
+        existing_ids = {r.item_id: r for r in AuditItemResult.query.options(
+            joinedload(AuditItemResult.item)
+        ).filter_by(audit_id=audit.id).all()}
         for item in items:
             kondisi = request.form.get(f"kondisi_{item.id}", "baik")
             catatan = request.form.get(f"catatan_{item.id}", "").strip()
@@ -137,7 +144,9 @@ def edit(audit_id):
         flash("Audit berhasil diperbarui.", "success")
         return redirect(url_for("audit.detail", booking_id=booking.id))
 
-    results = {r.item_id: r for r in AuditItemResult.query.filter_by(audit_id=audit.id).all()}
+    results = {r.item_id: r for r in AuditItemResult.query.options(
+        joinedload(AuditItemResult.item)
+    ).filter_by(audit_id=audit.id).all()}
     return render_template("audit/edit.html", audit=audit, booking=booking, items=items, results=results)
 
 
@@ -145,8 +154,12 @@ def edit(audit_id):
 @admin_or_management
 def export(booking_id):
     booking = get_or_404(Booking, booking_id)
-    check_in = RoomAudit.query.filter_by(booking_id=booking_id, tipe="check_in").first()
-    check_out = RoomAudit.query.filter_by(booking_id=booking_id, tipe="check_out").first()
+    check_in = RoomAudit.query.options(
+        joinedload(RoomAudit.items).joinedload(AuditItemResult.item)
+    ).filter_by(booking_id=booking_id, tipe="check_in").first()
+    check_out = RoomAudit.query.options(
+        joinedload(RoomAudit.items).joinedload(AuditItemResult.item)
+    ).filter_by(booking_id=booking_id, tipe="check_out").first()
 
     format_type = request.args.get("format", "csv")
 

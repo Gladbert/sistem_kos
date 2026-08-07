@@ -4,6 +4,8 @@ from flask_login import login_required, current_user
 from extensions import db
 from models import Payment, Booking, Room
 from helpers import admin_or_management, get_or_404, kos_room_ids, parse_amount, create_notification, wa_redirect, safe_commit
+from sqlalchemy.orm import joinedload
+from sqlalchemy import select
 
 payments_bp = Blueprint("payments", __name__, url_prefix="/payments")
 
@@ -22,15 +24,24 @@ def index():
 
         if kos_id:
             room_ids = kos_room_ids(kos_id)
-            booking_ids = [b.id for b in db.session.query(Booking.id).filter(Booking.room_id.in_(room_ids)).all()] if room_ids else []
-            query = query.filter(Payment.booking_id.in_(booking_ids)) if booking_ids else query.filter(False)
+            if not room_ids:
+                query = query.filter(False)
+            else:
+                # Use subquery instead of collecting IDs — single round trip
+                sub = select(Booking.id).where(Booking.room_id.in_(room_ids)).subquery()
+                query = query.filter(Payment.booking_id.in_(sub))
         if booking_id:
             query = query.filter_by(booking_id=booking_id)
         if status:
             query = query.filter_by(status=status)
 
-        pagination = query.order_by(Payment.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
-        bookings_q = Booking.query.filter_by(status="aktif")
+        pagination = query.options(
+            joinedload(Payment.booking).joinedload(Booking.client),
+            joinedload(Payment.booking).joinedload(Booking.room),
+        ).order_by(Payment.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+        bookings_q = Booking.query.options(
+            joinedload(Booking.client), joinedload(Booking.room)
+        ).filter_by(status="aktif")
         if kos_id:
             room_ids = kos_room_ids(kos_id)
             bookings_q = bookings_q.filter(Booking.room_id.in_(room_ids)) if room_ids else bookings_q.filter(False)
@@ -95,9 +106,11 @@ def tambah():
 
 
 def _scoped_bookings():
-    """Active bookings filtered by current kos."""
+    """Active bookings filtered by current kos, with client+room eager loaded."""
     kos_id = session.get("kos_id")
-    q = Booking.query.filter_by(status="aktif")
+    q = Booking.query.options(
+        joinedload(Booking.client), joinedload(Booking.room)
+    ).filter_by(status="aktif")
     if kos_id:
         room_ids = kos_room_ids(kos_id)
         q = q.filter(Booking.room_id.in_(room_ids)) if room_ids else q.filter(False)

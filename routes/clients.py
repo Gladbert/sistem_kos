@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db
 from sqlalchemy import or_
+from sqlalchemy.orm import joinedload
 from models import User, Booking, Payment, Notification, Room
 from helpers import admin_or_management, get_or_404, kos_room_ids, safe_commit
 
@@ -44,8 +45,12 @@ def detail(id):
         return redirect(url_for("dashboard.index"))
 
     client = get_or_404(User, id)
-    bookings = Booking.query.filter_by(user_id=id).order_by(Booking.created_at.desc()).all()
-    payments = Payment.query.join(Booking).filter(
+    bookings = Booking.query.options(
+        joinedload(Booking.room)
+    ).filter_by(user_id=id).order_by(Booking.created_at.desc()).all()
+    payments = Payment.query.options(
+        joinedload(Payment.booking).joinedload(Booking.room)
+    ).join(Booking).filter(
         Booking.user_id == id
     ).order_by(Payment.created_at.desc()).all()
 

@@ -3,6 +3,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from extensions import db
 from models import MaintenanceRequest, Vendor, Room
 from helpers import admin_or_management, get_or_404, kos_rooms, kos_room_ids, create_notification, wa_redirect, safe_commit, sanitize
+from sqlalchemy.orm import joinedload
 
 maintenance_bp = Blueprint("maintenance", __name__, url_prefix="/maintenance")
 
@@ -23,7 +24,9 @@ def index():
     if status:
         query = query.filter_by(status=status)
 
-    pagination = query.order_by(MaintenanceRequest.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    pagination = query.options(
+        joinedload(MaintenanceRequest.room), joinedload(MaintenanceRequest.vendor)
+    ).order_by(MaintenanceRequest.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
     return render_template("maintenance/index.html", pagination=pagination, requests=pagination.items)
 
 
