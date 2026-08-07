@@ -10,4 +10,6 @@ venv/
 opencode.json
 test_all.py
 supabase/seed.sql
+seed.py
+seed_production.py
 # AGENTS.md is intentionally tracked despite this ignore list
