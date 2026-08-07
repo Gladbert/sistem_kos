@@ -33,6 +33,7 @@ def index():
 
     start_date, end_date = get_month_range(tahun, bulan)
 
+    kos_id = session.get("kos_id")
     bookings_filter = _kos_payment_filter()
 
     pemasukan = db.session.query(db.func.sum(Payment.jumlah)).filter(
