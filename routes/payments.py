@@ -11,6 +11,9 @@ payments_bp = Blueprint("payments", __name__, url_prefix="/payments")
 @payments_bp.route("/")
 @login_required
 def index():
+    page = request.args.get("page", 1, type=int)
+    per_page = 20
+
     if current_user.role in ("admin", "management"):
         kos_id = session.get("kos_id")
         booking_id = request.args.get("booking_id", type=int)
@@ -26,20 +29,20 @@ def index():
         if status:
             query = query.filter_by(status=status)
 
-        payments = query.order_by(Payment.created_at.desc()).all()
+        pagination = query.order_by(Payment.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
         bookings_q = Booking.query.filter_by(status="aktif")
         if kos_id:
             room_ids = kos_room_ids(kos_id)
             bookings_q = bookings_q.filter(Booking.room_id.in_(room_ids)) if room_ids else bookings_q.filter(False)
         bookings = bookings_q.all()
-        return render_template("payments/index.html", payments=payments, bookings=bookings)
+        return render_template("payments/index.html", pagination=pagination, payments=pagination.items, bookings=bookings)
 
     booking = Booking.query.filter_by(user_id=current_user.id, status="aktif").first()
     if not booking:
         flash("Anda belum memiliki kamar.", "warning")
         return redirect(url_for("dashboard.client"))
-    payments = Payment.query.filter_by(booking_id=booking.id).order_by(Payment.created_at.desc()).all()
-    return render_template("payments/index.html", payments=payments, booking=booking)
+    pagination = Payment.query.filter_by(booking_id=booking.id).order_by(Payment.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    return render_template("payments/index.html", pagination=pagination, payments=pagination.items, booking=booking)
 
 
 @payments_bp.route("/tambah", methods=["GET", "POST"])

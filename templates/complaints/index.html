@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "macros/pagination.html" import render_pagination %}
 {% block title %}Komplain - Sistem Kos{% endblock %}
 {% block content %}
 <div class="page-header d-flex flex-wrap justify-content-between align-items-center">
@@ -83,4 +84,6 @@
     <h5>Belum ada komplain</h5>
 </div>
 {% endif %}
+
+{{ render_pagination(pagination, 'complaints.index') }}
 {% endblock %}

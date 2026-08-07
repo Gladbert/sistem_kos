@@ -11,6 +11,8 @@ clients_bp = Blueprint("clients", __name__, url_prefix="/clients")
 @clients_bp.route("/")
 @admin_or_management
 def index():
+    page = request.args.get("page", 1, type=int)
+    per_page = 20
     search = request.args.get("search", "").strip()
     query = User.query.filter_by(role="client")
 
@@ -24,14 +26,14 @@ def index():
             )
         )
 
-    clients = query.order_by(User.created_at.desc()).all()
+    pagination = query.order_by(User.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
     room_ids = kos_room_ids()
     aktif_q = Booking.query.filter_by(status="aktif")
     if room_ids:
         aktif_q = aktif_q.filter(Booking.room_id.in_(room_ids))
     aktif_ids = [b.user_id for b in aktif_q.all()]
 
-    return render_template("clients/index.html", clients=clients, aktif_ids=aktif_ids)
+    return render_template("clients/index.html", pagination=pagination, clients=pagination.items, aktif_ids=aktif_ids)
 
 
 @clients_bp.route("/<int:id>")

@@ -10,6 +10,8 @@ maintenance_bp = Blueprint("maintenance", __name__, url_prefix="/maintenance")
 @maintenance_bp.route("/")
 @admin_or_management
 def index():
+    page = request.args.get("page", 1, type=int)
+    per_page = 20
     status = request.args.get("status")
     query = MaintenanceRequest.query
 
@@ -21,8 +23,8 @@ def index():
     if status:
         query = query.filter_by(status=status)
 
-    requests = query.order_by(MaintenanceRequest.created_at.desc()).all()
-    return render_template("maintenance/index.html", requests=requests)
+    pagination = query.order_by(MaintenanceRequest.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    return render_template("maintenance/index.html", pagination=pagination, requests=pagination.items)
 
 
 @maintenance_bp.route("/tambah", methods=["GET", "POST"])

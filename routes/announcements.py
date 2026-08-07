@@ -10,11 +10,13 @@ announcement_bp = Blueprint("announcements", __name__, url_prefix="/pengumuman")
 @announcement_bp.route("/")
 @login_required
 def index():
+    page = request.args.get("page", 1, type=int)
+    per_page = 20
     if current_user.role in ("admin", "management"):
-        anns = Announcement.query.order_by(Announcement.created_at.desc()).all()
+        pagination = Announcement.query.order_by(Announcement.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
     else:
-        anns = Announcement.query.filter_by(ditampilkan=True).order_by(Announcement.created_at.desc()).all()
-    return render_template("announcements/index.html", announcements=anns)
+        pagination = Announcement.query.filter_by(ditampilkan=True).order_by(Announcement.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    return render_template("announcements/index.html", pagination=pagination, announcements=pagination.items)
 
 
 @announcement_bp.route("/tambah", methods=["GET", "POST"])

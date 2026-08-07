@@ -10,6 +10,8 @@ rooms_bp = Blueprint("rooms", __name__, url_prefix="/rooms")
 @rooms_bp.route("/")
 @login_required
 def index():
+    page = request.args.get("page", 1, type=int)
+    per_page = 20
     kos_id = session.get("kos_id")
     if current_user.role == "admin":
         lantai = request.args.get("lantai", type=int)
@@ -21,13 +23,13 @@ def index():
             query = query.filter_by(lantai=lantai)
         if status:
             query = query.filter_by(status=status)
-        rooms = query.order_by(Room.lantai, Room.nomor_kamar).all()
-        return render_template("rooms/index.html", rooms=rooms)
+        pagination = query.order_by(Room.lantai, Room.nomor_kamar).paginate(page=page, per_page=per_page, error_out=False)
+        return render_template("rooms/index.html", pagination=pagination, rooms=pagination.items)
     query = Room.query.filter_by(status="tersedia")
     if kos_id:
         query = query.filter_by(kos_id=kos_id)
-    rooms = query.order_by(Room.lantai, Room.nomor_kamar).all()
-    return render_template("rooms/public.html", rooms=rooms)
+    pagination = query.order_by(Room.lantai, Room.nomor_kamar).paginate(page=page, per_page=per_page, error_out=False)
+    return render_template("rooms/public.html", pagination=pagination, rooms=pagination.items)
 
 
 @rooms_bp.route("/tambah", methods=["GET", "POST"])

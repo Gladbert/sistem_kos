@@ -10,15 +10,17 @@ complaint_bp = Blueprint("complaints", __name__, url_prefix="/komplain")
 @complaint_bp.route("/")
 @login_required
 def index():
+    page = request.args.get("page", 1, type=int)
+    per_page = 20
     kos_id = session.get("kos_id")
     if current_user.role in ("admin", "management"):
         q = Complaint.query
         if kos_id:
             q = q.filter(Complaint.kos_id == kos_id)
-        c = q.order_by(Complaint.created_at.desc()).all()
+        pagination = q.order_by(Complaint.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
     else:
-        c = Complaint.query.filter_by(user_id=current_user.id).order_by(Complaint.created_at.desc()).all()
-    return render_template("complaints/index.html", complaints=c)
+        pagination = Complaint.query.filter_by(user_id=current_user.id).order_by(Complaint.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    return render_template("complaints/index.html", pagination=pagination, complaints=pagination.items)
 
 
 @complaint_bp.route("/tambah", methods=["GET", "POST"])
