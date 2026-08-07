@@ -148,7 +148,7 @@
                 <td>{{ room.tipe }}</td>
                 <td>{{ room.lantai }}</td>
                 <td>Rp{{ "{:,.0f}".format(room.harga_per_bulan) }}</td>
-                <td class="small text-muted">{{ room.fasilitas[:50] }}{% if room.fasilitas and room.fasilitas|length > 50 %}...{% endif %}</td>
+                <td class="small text-muted">{{ (room.fasilitas or '')[:50] }}{% if room.fasilitas and room.fasilitas|length > 50 %}...{% endif %}</td>
                 <td>
                     <span class="badge {% if room.status == 'tersedia' %}badge-success{% else %}badge-danger{% endif %}">
                         {{ room.status|title }}

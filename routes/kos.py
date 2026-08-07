@@ -39,9 +39,14 @@ def index():
 def tambah():
     if request.method == "POST":
         nama = request.form.get("nama", "").strip()
+        submitted = {
+            "nama": nama,
+            "alamat": request.form.get("alamat", ""),
+            "deskripsi": request.form.get("deskripsi", ""),
+        }
         if not nama:
             flash("Nama kos wajib diisi.", "danger")
-            return render_template("kos/form.html", kos=None)
+            return render_template("kos/form.html", kos=None, submitted=submitted)
 
         kos = Kos(
             nama=sanitize(nama),

@@ -97,7 +97,7 @@
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="bi bi-three-dots me-1"></i>Lainnya
                         </a>
-                        <ul class="dropdown-menu">
+                        <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="{{ url_for('maintenance.index') }}"><i class="bi bi-tools"></i>Maintenance</a></li>
                             <li><a class="dropdown-item" href="{{ url_for('maintenance.vendor_index') }}"><i class="bi bi-truck"></i>Vendor</a></li>
                             <li><hr class="dropdown-divider"></li>
@@ -202,8 +202,20 @@
             input.setAttribute('inputmode', 'numeric');
             input.setAttribute('pattern', '[0-9.]+');
             
-            // Format on input
-            input.addEventListener('input', function() { formatRupiah(this); });
+            // Format on input — reject minus sign
+            input.addEventListener('input', function() {
+                if (this.value.includes('-')) {
+                    this.value = this.value.replace(/-/g, '');
+                    this.style.borderColor = '#dc3545';
+                    var self = this;
+                    setTimeout(function() { self.style.borderColor = ''; }, 2000);
+                    this.setCustomValidity('Jumlah tidak boleh negatif.');
+                    this.reportValidity();
+                } else {
+                    this.setCustomValidity('');
+                }
+                formatRupiah(this);
+            });
             
             // Format on blur if has value
             input.addEventListener('blur', function() { if (this.value) formatRupiah(this); });
@@ -283,9 +295,32 @@
             el.removeAttribute('onclick');
             el.addEventListener('click', function(e) {
                 e.preventDefault();
-                confirmAction(message, function() { /* no-op for buttons */ });
+                const form = el.closest('form');
+                confirmAction(message, function() {
+                    if (form) form.submit();
+                });
             });
         }
+    });
+    </script>
+    <script>
+    // Responsive tables: label each cell with its column header on mobile
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.table-responsive table').forEach(function (table) {
+            if (table.dataset.labeled) return;
+            const headers = [];
+            table.querySelectorAll('thead th').forEach(function (th, i) { headers[i] = th.textContent.trim(); });
+            table.querySelectorAll('tbody tr').forEach(function (tr) {
+                let col = 0;
+                tr.querySelectorAll('td').forEach(function (td) {
+                    const span = parseInt(td.getAttribute('colspan') || '1', 10);
+                    if (span > 1) { col += span; return; }
+                    td.setAttribute('data-label', headers[col] || '');
+                    col += 1;
+                });
+            });
+            table.dataset.labeled = '1';
+        });
     });
     </script>
 </body>

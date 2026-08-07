@@ -16,11 +16,11 @@
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label">Nomor Kamar</label>
-                            <input type="text" name="nomor_kamar" class="form-control" value="{{ room.nomor_kamar if room else '' }}" required>
+                            <input type="text" name="nomor_kamar" class="form-control" value="{{ (room.nomor_kamar or '') if room else '' }}" required>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Lantai</label>
-                            <input type="number" name="lantai" class="form-control" value="{{ room.lantai if room else '' }}" min="1" required>
+                            <input type="number" name="lantai" class="form-control" value="{{ room.lantai if room else 1 }}" min="1" required>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Tipe</label>
@@ -37,7 +37,7 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Ukuran</label>
-                            <input type="text" name="ukuran" class="form-control" value="{{ room.ukuran if room else '' }}" placeholder="Contoh: 4x5 m&sup2;">
+                            <input type="text" name="ukuran" class="form-control" value="{{ (room.ukuran or '') if room else '' }}" placeholder="Contoh: 4x5 m&sup2;">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Status</label>
@@ -49,11 +49,11 @@
                         </div>
                         <div class="col-12">
                             <label class="form-label">Fasilitas</label>
-                            <textarea name="fasilitas" class="form-control" placeholder="AC, Kasur, Lemari, Kamar Mandi Dalam, dll">{{ room.fasilitas if room else '' }}</textarea>
+                            <textarea name="fasilitas" class="form-control" placeholder="AC, Kasur, Lemari, Kamar Mandi Dalam, dll">{{ (room.fasilitas or '') if room else '' }}</textarea>
                         </div>
                         <div class="col-12">
                             <label class="form-label">Deskripsi</label>
-                            <textarea name="deskripsi" class="form-control" placeholder="Informasi tambahan tentang kamar">{{ room.deskripsi if room else '' }}</textarea>
+                            <textarea name="deskripsi" class="form-control" placeholder="Informasi tambahan tentang kamar">{{ (room.deskripsi or '') if room else '' }}</textarea>
                         </div>
                     </div>
                     <div class="d-flex gap-2 mt-4">

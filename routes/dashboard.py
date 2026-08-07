@@ -80,14 +80,13 @@ def admin():
 
     booking_pending = Booking.query.filter(Booking.room_id.in_(room_ids), Booking.status == "pending").order_by(Booking.created_at.asc()).all() if room_ids else []
 
-    pembayaran_bulan_ini = Payment.query.filter(
-        Payment.status == "lunas",
-        Payment.booking_id.in_(booking_ids) if booking_ids else False,
-        db.func.to_char(Payment.tanggal_bayar, 'YYYY-MM') == bulan_ini,
-    ).count()
-
     total_tagihan = len(active_bookings)
-    collection_rate = round((pembayaran_bulan_ini / total_tagihan * 100) if total_tagihan > 0 else 0)
+    # Collection rate: paid / (paid + unpaid) per-booking, capped at 100
+    if total_tagihan > 0:
+        paid_count = total_tagihan - tagihan_belum_dibayar
+        collection_rate = min(round((paid_count / total_tagihan * 100)), 100)
+    else:
+        collection_rate = 0
     occupancy_rate = round((kamar_terisi_count / total_kamar * 100) if total_kamar > 0 else 0)
 
     tipe_kamar = db.session.query(Room.tipe, db.func.count(Room.id)).filter(Room.id.in_(room_ids)).group_by(Room.tipe).all() if room_ids else []
@@ -200,10 +199,12 @@ def tolak_booking(id):
     if booking.status != "pending":
         flash("Booking sudah diproses.", "warning")
         return redirect(url_for("dashboard.admin"))
-    log_activity(current_user.id, "Tolak booking", f"Kamar {booking.room.nomor_kamar} - {booking.client.nama_lengkap}", "Booking")
+    room_no = booking.room.nomor_kamar
+    client_name = booking.client.nama_lengkap
+    log_activity(current_user.id, "Tolak booking", f"Kamar {room_no} - {client_name}", "Booking")
     create_notification(
         booking.user_id,
-        f"Permintaan sewa kamar {booking.room.nomor_kamar} telah DITOLAK. Silakan hubungi pengelola untuk detail.",
+        f"Permintaan sewa kamar {room_no} telah DITOLAK. Silakan hubungi pengelola untuk detail.",
     )
     db.session.delete(booking)
     try:
@@ -213,7 +214,7 @@ def tolak_booking(id):
         db.session.rollback()
         flash("Terjadi kesalahan saat menyimpan data.", "danger")
         return redirect(request.referrer or url_for("dashboard.index"))
-    flash(f"Booking kamar {booking.room.nomor_kamar} oleh {booking.client.nama_lengkap} ditolak.", "info")
+    flash(f"Booking kamar {room_no} oleh {client_name} ditolak.", "info")
     return redirect(url_for("dashboard.admin"))
 
 @dashboard_bp.route("/auto-proses", methods=["POST"])

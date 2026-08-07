@@ -16,11 +16,11 @@
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label">Nama <span class="text-danger">*</span></label>
-                            <input type="text" name="nama" class="form-control" value="{{ vendor.nama if vendor else '' }}" required>
+                            <input type="text" name="nama" class="form-control" value="{{ (vendor.nama or '') if vendor else '' }}" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">No. Telepon</label>
-                            <input type="text" name="no_telepon" class="form-control" value="{{ vendor.no_telepon if vendor else '' }}" placeholder="08xxxxxxxxxx">
+                            <input type="text" name="no_telepon" class="form-control" value="{{ (vendor.no_telepon or '') if vendor else '' }}" placeholder="08xxxxxxxxxx">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Kategori</label>
@@ -34,11 +34,11 @@
                         </div>
                         <div class="col-12">
                             <label class="form-label">Alamat</label>
-                            <textarea name="alamat" class="form-control" placeholder="Alamat vendor">{{ vendor.alamat if vendor else '' }}</textarea>
+                            <textarea name="alamat" class="form-control" placeholder="Alamat vendor">{{ (vendor.alamat or '') if vendor else '' }}</textarea>
                         </div>
                         <div class="col-12">
                             <label class="form-label">Catatan</label>
-                            <textarea name="catatan" class="form-control" placeholder="Catatan tambahan tentang vendor">{{ vendor.catatan if vendor else '' }}</textarea>
+                            <textarea name="catatan" class="form-control" placeholder="Catatan tambahan tentang vendor">{{ (vendor.catatan or '') if vendor else '' }}</textarea>
                         </div>
                     </div>
                     <div class="d-flex gap-2 mt-4">

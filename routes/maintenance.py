@@ -47,6 +47,11 @@ def tambah():
             catatan=request.form.get("catatan"),
         )
         db.session.add(mr)
+        # Update room status to maintenance
+        if room_id:
+            room = db.session.get(Room, room_id)
+            if room and room.status == "tersedia":
+                room.status = "maintenance"
         try:
             safe_commit()
         except Exception:
@@ -86,6 +91,14 @@ def edit(id):
 
         if mr.status == "selesai" and not mr.tanggal_selesai:
             mr.tanggal_selesai = date.today()
+            # Restore room status if no other active maintenance
+            active_count = MaintenanceRequest.query.filter_by(
+                room_id=mr.room_id
+            ).filter(MaintenanceRequest.status.in_(["diajukan", "diproses"])).count()
+            if active_count == 0:
+                room = db.session.get(Room, mr.room_id)
+                if room and room.status == "maintenance":
+                    room.status = "tersedia"
 
         try:
             mr.biaya = float(request.form.get("biaya", 0))

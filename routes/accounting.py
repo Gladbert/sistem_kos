@@ -4,9 +4,21 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db
 from models import Payment, Expense, Booking, Vendor
-from helpers import admin_or_management, admin_only, get_or_404, parse_amount, kos_expense_query, safe_commit
+from helpers import admin_or_management, admin_only, get_or_404, parse_amount, kos_expense_query, kos_room_ids, safe_commit
 
 accounting_bp = Blueprint("accounting", __name__, url_prefix="/accounting")
+
+
+def _kos_payment_filter():
+    """Return Payment.booking_id filter scoped to current kos, or db.false() if none."""
+    kos_id = session.get("kos_id")
+    if not kos_id:
+        return db.false()
+    room_ids = kos_room_ids(kos_id)
+    if not room_ids:
+        return db.false()
+    booking_ids = [b.id for b in db.session.query(Booking.id).filter(Booking.room_id.in_(room_ids)).all()]
+    return Payment.booking_id.in_(booking_ids) if booking_ids else db.false()
 
 def get_month_range(year, month):
     if month == 12:
@@ -21,10 +33,13 @@ def index():
 
     start_date, end_date = get_month_range(tahun, bulan)
 
+    bookings_filter = _kos_payment_filter()
+
     pemasukan = db.session.query(db.func.sum(Payment.jumlah)).filter(
         Payment.status == "lunas",
         Payment.tanggal_bayar >= start_date,
         Payment.tanggal_bayar <= end_date,
+        bookings_filter,
     ).scalar() or 0
 
     pengeluaran = kos_expense_query(
@@ -40,6 +55,7 @@ def index():
         Payment.status == "lunas",
         Payment.tanggal_bayar >= start_date,
         Payment.tanggal_bayar <= end_date,
+        bookings_filter,
     ).order_by(Payment.tanggal_bayar.desc()).all()
 
     daftar_pengeluaran = kos_expense_query(
@@ -50,17 +66,17 @@ def index():
     year_start = date(tahun, 1, 1)
     year_end = date(tahun, 12, 31)
 
-    income_rows = db.session.query(
+    income_q = db.session.query(
         db.func.to_char(Payment.tanggal_bayar, 'YYYY-MM').label('bulan'),
         db.func.sum(Payment.jumlah).label('total')
     ).filter(
         Payment.status == "lunas",
         Payment.tanggal_bayar >= year_start,
         Payment.tanggal_bayar <= year_end,
+        bookings_filter,
     ).group_by('bulan').all()
-    income_map = {r.bulan: float(r.total) for r in income_rows}
+    income_map = {r.bulan: float(r.total) for r in income_q}
 
-    kos_id = session.get("kos_id")
     expense_q = db.session.query(
         db.func.to_char(Expense.tanggal, 'YYYY-MM').label('bulan'),
         db.func.sum(Expense.jumlah).label('total')
@@ -171,15 +187,18 @@ def laporan():
     year_start = date(tahun, 1, 1)
     year_end = date(tahun, 12, 31)
 
-    income_rows = db.session.query(
+    bookings_filter = _kos_payment_filter()
+
+    income_q = db.session.query(
         db.func.to_char(Payment.tanggal_bayar, 'YYYY-MM').label('bulan'),
         db.func.sum(Payment.jumlah).label('total')
     ).filter(
         Payment.status == "lunas",
         Payment.tanggal_bayar >= year_start,
         Payment.tanggal_bayar <= year_end,
+        bookings_filter,
     ).group_by('bulan').all()
-    income_map = {r.bulan: float(r.total) for r in income_rows}
+    income_map = {r.bulan: float(r.total) for r in income_q}
 
     kos_id = session.get("kos_id")
     expense_q = db.session.query(
@@ -221,7 +240,7 @@ def export_csv():
     tahun = request.args.get("tahun", date.today().year, type=int)
     bulan = request.args.get("bulan", 0, type=int)
     jenis = request.args.get("jenis", "semua")
-    kos_id = session.get("kos_id")
+    bookings_filter = _kos_payment_filter()
 
     out = io.StringIO()
     w = csv.writer(out)
@@ -231,7 +250,7 @@ def export_csv():
     if jenis in ("semua", "pemasukan"):
         w.writerow(["PEMASUKAN"])
         w.writerow(["Tanggal", "Penghuni", "Kamar", "Bulan", "Jumlah", "Metode", "Status"])
-        q = Payment.query.join(Payment.booking).join(Booking.client).filter(Payment.status == "lunas")
+        q = Payment.query.join(Payment.booking).join(Booking.client).filter(Payment.status == "lunas", bookings_filter)
         if bulan:
             s, e = get_month_range(tahun, bulan)
             q = q.filter(Payment.tanggal_bayar >= s, Payment.tanggal_bayar <= e)

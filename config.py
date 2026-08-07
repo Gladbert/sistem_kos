@@ -9,10 +9,7 @@ class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY", "sistem-kos-secret-key-2024")
     
     # Supabase/Postgres: fix postgres:// to postgresql://
-    _db_url = os.environ.get("DATABASE_URL", "sqlite:///kos.db")
-    if _db_url.startswith("postgres://"):
-        _db_url = _db_url.replace("postgres://", "postgresql://", 1)
-    SQLALCHEMY_DATABASE_URI = _db_url
+    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL")
     
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     UPLOAD_FOLDER = os.path.join(BASE_DIR, "static", "uploads")

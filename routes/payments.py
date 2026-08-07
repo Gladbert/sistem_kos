@@ -53,18 +53,22 @@ def tambah():
         jumlah, err = parse_amount(request.form.get("jumlah"))
         if err:
             flash(err, "danger")
-            return render_template("payments/form.html", bookings=Booking.query.filter_by(status="aktif").all())
+            return render_template("payments/form.html", bookings=_scoped_bookings())
 
         booking = db.session.get(Booking, booking_id)
         if not booking:
             flash("Booking tidak ditemukan.", "danger")
             return redirect(url_for("payments.index"))
 
+        bulan = request.form.get("bulan_dibayar_untuk", "").strip()
+        if not bulan:
+            bulan = date.today().strftime("%Y-%m")
+
         payment = Payment(
             booking_id=booking_id,
             jumlah=jumlah,
             tanggal_bayar=date.today(),
-            bulan_dibayar_untuk=request.form.get("bulan_dibayar_untuk", date.today().strftime("%Y-%m")),
+            bulan_dibayar_untuk=bulan,
             metode_bayar=request.form.get("metode_bayar", "transfer"),
             status="lunas",
             catatan=request.form.get("catatan"),
@@ -80,14 +84,24 @@ def tambah():
 
         create_notification(
             booking.user_id,
-            f"Pembayaran Rp{jumlah:,.0f} untuk bulan {payment.bulan_dibayar_untuk} telah diterima.",
+            f"Pembayaran Rp{jumlah:,.0f} untuk bulan {bulan} telah diterima.",
             jenis="pembayaran",
         )
 
         flash("Pembayaran berhasil dicatat.", "success")
         return redirect(url_for("payments.index"))
 
-    return render_template("payments/form.html", bookings=Booking.query.filter_by(status="aktif").all())
+    return render_template("payments/form.html", bookings=_scoped_bookings())
+
+
+def _scoped_bookings():
+    """Active bookings filtered by current kos."""
+    kos_id = session.get("kos_id")
+    q = Booking.query.filter_by(status="aktif")
+    if kos_id:
+        room_ids = kos_room_ids(kos_id)
+        q = q.filter(Booking.room_id.in_(room_ids)) if room_ids else q.filter(False)
+    return q.all()
 
 
 @payments_bp.route("/edit/<int:id>", methods=["GET", "POST"])

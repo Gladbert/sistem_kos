@@ -57,6 +57,10 @@ def create_app():
     def root():
         return redirect(url_for("dashboard.index"))
 
+    @app.route("/finance")
+    def finance_redirect():
+        return redirect(url_for("accounting.index"))
+
 
     # Error handlers — use minimal templates to avoid DB queries
     @app.errorhandler(404)
@@ -71,11 +75,6 @@ def create_app():
     @app.errorhandler(403)
     def forbidden(e):
         return "<h1>403 — Akses ditolak</h1><p><a href='/'>Kembali</a></p>", 403
-
-    # Create tables for local dev only (Vercel uses Supabase migrations)
-    if app.config["SQLALCHEMY_DATABASE_URI"].startswith("sqlite"):
-        with app.app_context():
-            db.create_all()
 
     return app
 

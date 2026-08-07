@@ -762,6 +762,61 @@ textarea.form-control {
     .navbar {
         padding: 0 1rem;
     }
+
+    /* Stacked responsive tables: each row becomes a labelled card */
+    .table-responsive .table,
+    .table-responsive .table thead,
+    .table-responsive .table tbody,
+    .table-responsive .table tr,
+    .table-responsive .table td {
+        display: block;
+        width: 100%;
+    }
+
+    .table-responsive .table thead {
+        display: none;
+    }
+
+    .table-responsive .table tr {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        margin-bottom: 0.75rem;
+        overflow: hidden;
+    }
+
+    .table-responsive .table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        text-align: right;
+        padding: 0.625rem 0.875rem;
+        border-bottom: 1px solid var(--gray-100);
+    }
+
+    .table-responsive .table td:last-child {
+        border-bottom: none;
+    }
+
+    .table-responsive .table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--gray-500);
+        text-align: left;
+        white-space: nowrap;
+    }
+
+    .table-responsive .table td[colspan] {
+        justify-content: flex-start;
+        text-align: left;
+    }
+
+    .table-responsive .table td[colspan]::before {
+        display: none;
+    }
 }
 
 /* ==========================================

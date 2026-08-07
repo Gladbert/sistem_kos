@@ -10,9 +10,12 @@ audit_bp = Blueprint("audit", __name__, url_prefix="/audit")
 def _save_audit_items(audit, items):
     """Upsert AuditItemResult rows from form data."""
     for item in items:
+        kondisi = request.form.get(f"kondisi_{item.id}", "baik")
+        if kondisi not in ("baik", "rusak"):
+            kondisi = "baik"
         db.session.add(AuditItemResult(
             audit_id=audit.id, item_id=item.id,
-            kondisi=request.form.get(f"kondisi_{item.id}", "baik"),
+            kondisi=kondisi,
             catatan=request.form.get(f"catatan_{item.id}", "").strip(),
         ))
 
@@ -65,6 +68,9 @@ def check_out(booking_id):
         return redirect(url_for("audit.detail", booking_id=booking_id))
 
     check_in = RoomAudit.query.filter_by(booking_id=booking_id, tipe="check_in").first()
+    if not check_in:
+        flash("Audit check-in harus dilakukan terlebih dahulu sebelum check-out.", "warning")
+        return redirect(url_for("audit.detail", booking_id=booking_id))
     items = RoomItem.query.filter_by(room_id=booking.room_id).order_by(RoomItem.nama).all()
 
     if request.method == "POST":
@@ -147,11 +153,11 @@ def export(booking_id):
     if format_type == "json":
         ci_items = [
             {"item_id": r.item_id, "item_nama": r.item.nama, "kondisi": r.kondisi, "catatan": r.catatan}
-            for r in check_in.audit_item_results
+            for r in check_in.items
         ] if check_in else []
         co_items = [
             {"item_id": r.item_id, "item_nama": r.item.nama, "kondisi": r.kondisi, "catatan": r.catatan}
-            for r in check_out.audit_item_results
+            for r in check_out.items
         ] if check_out else []
 
         return jsonify({

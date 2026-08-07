@@ -55,7 +55,11 @@ def tambah():
             flash(err, "danger")
             return render_template("rooms/form.html")
 
-        lantai = int(request.form.get("lantai", 1))
+        try:
+            lantai = int(request.form.get("lantai", 1))
+        except (ValueError, TypeError):
+            flash("Lantai harus berupa angka.", "danger")
+            return render_template("rooms/form.html")
         if lantai < 1:
             flash("Lantai harus minimal 1.", "danger")
             return render_template("rooms/form.html")
@@ -107,7 +111,11 @@ def edit(id):
             flash(err, "danger")
             return render_template("rooms/form.html", room=room)
 
-        lantai = int(request.form.get("lantai", 1))
+        try:
+            lantai = int(request.form.get("lantai", 1))
+        except (ValueError, TypeError):
+            flash("Lantai harus berupa angka.", "danger")
+            return render_template("rooms/form.html", room=room)
         if lantai < 1:
             flash("Lantai harus minimal 1.", "danger")
             return render_template("rooms/form.html", room=room)
