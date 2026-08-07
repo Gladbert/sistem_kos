@@ -3,51 +3,56 @@
 {% block content %}
 <div class="page-header d-flex flex-wrap justify-content-between align-items-center">
     <div>
-        <h1>Dashboard Saya</h1>
-        <p>Selamat datang, {{ current_user.nama_lengkap }}</p>
+        <h1><i class="bi bi-person-circle me-2 text-primary"></i>Dashboard Saya</h1>
+        <p>Selamat datang, {{ current_user.nama_lengkap }} 👋</p>
     </div>
     {% if notif_belum_dibaca > 0 %}
     <form method="POST" action="{{ url_for('dashboard.baca_semua_notif') }}" style="display:inline">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button class="btn btn-sm btn-outline-primary"><i class="bi bi-check-all me-1"></i>Tandai Semua Dibaca</button>
+        <button class="btn btn-sm btn-primary"><i class="bi bi-check-all me-1"></i>Tandai Semua Dibaca <span class="badge bg-white text-primary ms-1">{{ notif_belum_dibaca }}</span></button>
     </form>
     {% endif %}
 </div>
 
 {% if booking_pending %}
 <div class="alert alert-warning" role="alert">
-    <i class="bi bi-hourglass-split me-1"></i>Permintaan sewa kamar <strong>{{ booking_pending.room.nomor_kamar }}</strong> sedang menunggu persetujuan pengelola.
+    <i class="bi bi-hourglass-split me-2"></i>Permintaan sewa kamar <strong>{{ booking_pending.room.nomor_kamar }}</strong> sedang menunggu persetujuan pengelola.
 </div>
 {% endif %}
 
 {% if booking_aktif %}
-<div class="row g-3 mb-4">
+<div class="row g-3 mb-4 stagger-children">
     <div class="col-md-4">
-        <div class="card border-0 h-100">
-            <div class="card-body text-center">
-                <i class="bi bi-door-open fs-1 text-primary mb-2 d-block"></i>
-                <h5 class="card-title">Kamar {{ booking_aktif.room.nomor_kamar }}</h5>
-                <p class="text-muted mb-0">{{ booking_aktif.room.tipe }}</p>
-                <p class="text-muted">Lantai {{ booking_aktif.room.lantai }}</p>
+        <div class="stat-card h-100 text-center">
+            <div class="stat-icon stat-icon-primary mx-auto mb-3" style="width:64px;height:64px;border-radius:18px;">
+                <i class="bi bi-door-open fs-3"></i>
             </div>
+            <h5 class="fw-bold mb-1">Kamar {{ booking_aktif.room.nomor_kamar }}</h5>
+            <p class="text-muted mb-0">{{ booking_aktif.room.tipe }} • Lantai {{ booking_aktif.room.lantai }}</p>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card border-0 h-100">
-            <div class="card-body text-center">
-                <i class="bi bi-calendar-check fs-1 text-success mb-2 d-block"></i>
-                <h5 class="card-title">{{ booking_aktif.tanggal_masuk.strftime('%d/%m/%Y') }}</h5>
-                <p class="text-muted mb-0">Check-in</p>
-                {% if booking_aktif.tanggal_keluar %}
-                <p class="text-muted">Sampai {{ booking_aktif.tanggal_keluar.strftime('%d/%m/%Y') }}</p>
-                {% endif %}
+        <div class="stat-card h-100 text-center">
+            <div class="stat-icon stat-icon-success mx-auto mb-3" style="width:64px;height:64px;border-radius:18px;">
+                <i class="bi bi-calendar-check fs-3"></i>
             </div>
+            <h5 class="fw-bold mb-1">{{ booking_aktif.tanggal_masuk.strftime('%d/%m/%Y') }}</h5>
+            <p class="text-muted mb-0">Check-in</p>
+            {% if booking_aktif.tanggal_keluar %}
+            <p class="text-muted small">Sampai {{ booking_aktif.tanggal_keluar.strftime('%d/%m/%Y') }}</p>
+            {% endif %}
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card border-0 h-100">
-            <div class="card-body text-center">
-                <i class="bi bi-{% if booking_aktif.tagihan_bulan_ini %}exclamation-circle text-warning{% else %}check-circle text-success{% endif %} fs-1 mb-2 d-block"></i>
+        <div class="stat-card h-100 text-center">
+            <div class="stat-icon {% if booking_aktif.tagihan_bulan_ini %}stat-icon-warning{% else %}stat-icon-success{% endif %} mx-auto mb-3" style="width:64px;height:64px;border-radius:18px;">
+                <i class="bi bi-{% if booking_aktif.tagihan_bulan_ini %}exclamation-circle{% else %}check-circle{% endif %} fs-3"></i>
+            </div>
+            <h5 class="fw-bold mb-1">{% if booking_aktif.tagihan_bulan_ini %}Belum Dibayar{% else %}Lunas{% endif %}</h5>
+            <p class="text-muted mb-0">Tagihan bulan ini</p>
+        </div>
+    </div>
+</div>
                 <h5 class="card-title">{% if booking_aktif.tagihan_bulan_ini %}Belum Lunas{% else %}Lancar{% endif %}</h5>
                 <p class="text-muted mb-0">Status Pembayaran</p>
                 <p class="text-muted">Per {{ date_today.strftime('%d/%m/%Y') }}</p>
