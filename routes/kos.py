@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db
 from models import Kos
-from helpers import log_activity, admin_or_management, get_or_404
+from helpers import log_activity, admin_or_management, get_or_404, safe_commit
 
 kos_bp = Blueprint("kos", __name__, url_prefix="/kos")
 
@@ -41,7 +41,12 @@ def tambah():
             deskripsi=request.form.get("deskripsi", "").strip(),
         )
         db.session.add(kos)
-        db.session.commit()
+        try:
+            safe_commit()
+        except Exception:
+            db.session.rollback()
+            flash("Terjadi kesalahan saat menyimpan data.", "danger")
+            return redirect(request.referrer or url_for("dashboard.index"))
         log_activity(current_user.id, "Tambah kos", f"Nama: {nama}", "Kos")
         flash(f'Kos "{nama}" berhasil ditambahkan.', "success")
         return redirect(url_for("kos.index"))
@@ -63,7 +68,12 @@ def edit(id):
         kos.nama = nama
         kos.alamat = request.form.get("alamat", "").strip()
         kos.deskripsi = request.form.get("deskripsi", "").strip()
-        db.session.commit()
+        try:
+            safe_commit()
+        except Exception:
+            db.session.rollback()
+            flash("Terjadi kesalahan saat menyimpan data.", "danger")
+            return redirect(request.referrer or url_for("dashboard.index"))
         log_activity(current_user.id, "Edit kos", f"Nama: {nama}", "Kos")
         flash(f'Kos "{nama}" berhasil diperbarui.', "success")
         return redirect(url_for("kos.index"))
@@ -85,6 +95,11 @@ def hapus(id):
 
     nama = kos.nama
     db.session.delete(kos)
-    db.session.commit()
+    try:
+        safe_commit()
+    except Exception:
+        db.session.rollback()
+        flash("Terjadi kesalahan saat menyimpan data.", "danger")
+        return redirect(request.referrer or url_for("dashboard.index"))
     flash(f'Kos "{nama}" berhasil dihapus.', "success")
     return redirect(url_for("kos.index"))

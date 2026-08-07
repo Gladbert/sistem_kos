@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, flash, url_for
 from flask_login import current_user
 from extensions import db
 from models import Room, RoomItem
-from helpers import log_activity, admin_or_management, get_or_404, kos_rooms
+from helpers import log_activity, admin_or_management, get_or_404, kos_rooms, safe_commit
 
 inventory_bp = Blueprint("inventory", __name__, url_prefix="/inventaris")
 
@@ -38,7 +38,12 @@ def add_item(room_id):
         )
         db.session.add(i)
         log_activity(current_user.id, "Tambah barang", f"{request.form['nama']} di {room.nomor_kamar}", "RoomItem")
-        db.session.commit()
+        try:
+            safe_commit()
+        except Exception:
+            db.session.rollback()
+            flash("Terjadi kesalahan saat menyimpan data.", "danger")
+            return redirect(request.referrer or url_for("dashboard.index"))
         flash("Barang ditambahkan.", "success")
         return redirect(url_for("inventory.room_items", room_id=room_id))
     return render_template("inventory/form.html", room=room)
@@ -54,7 +59,12 @@ def edit_item(id):
         i.kondisi = request.form.get("kondisi", "baik")
         i.catatan = request.form.get("catatan", "")
         log_activity(current_user.id, "Edit barang", f"{i.nama} di {i.room.nomor_kamar}", "RoomItem")
-        db.session.commit()
+        try:
+            safe_commit()
+        except Exception:
+            db.session.rollback()
+            flash("Terjadi kesalahan saat menyimpan data.", "danger")
+            return redirect(request.referrer or url_for("dashboard.index"))
         flash("Barang diperbarui.", "success")
         return redirect(url_for("inventory.room_items", room_id=i.room_id))
     return render_template("inventory/form.html", item=i, room=i.room)
@@ -67,6 +77,11 @@ def delete_item(id):
     room_id = i.room_id
     log_activity(current_user.id, "Hapus barang", f"{i.nama} dari {i.room.nomor_kamar}", "RoomItem")
     db.session.delete(i)
-    db.session.commit()
+    try:
+        safe_commit()
+    except Exception:
+        db.session.rollback()
+        flash("Terjadi kesalahan saat menyimpan data.", "danger")
+        return redirect(request.referrer or url_for("dashboard.index"))
     flash("Barang dihapus.", "success")
     return redirect(url_for("inventory.room_items", room_id=room_id))

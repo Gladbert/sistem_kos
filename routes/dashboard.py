@@ -3,7 +3,7 @@ from flask import Blueprint, render_template, redirect, flash, url_for, request,
 from flask_login import login_required, current_user
 from extensions import db
 from models import User, Room, Booking, Payment, Expense, Notification, MaintenanceRequest, Complaint, Kos
-from helpers import log_activity, admin_or_management, get_or_404, kos_room_ids, create_notification, kos_expense_query
+from helpers import log_activity, admin_or_management, get_or_404, kos_room_ids, create_notification, kos_expense_query, safe_commit
 
 dashboard_bp = Blueprint("dashboard", __name__, url_prefix="/dashboard")
 
@@ -169,7 +169,12 @@ def tolak_booking(id):
         f"Permintaan sewa kamar {booking.room.nomor_kamar} telah DITOLAK. Silakan hubungi pengelola untuk detail.",
     )
     db.session.delete(booking)
-    db.session.commit()
+    try:
+        safe_commit()
+    except Exception:
+        db.session.rollback()
+        flash("Terjadi kesalahan saat menyimpan data.", "danger")
+        return redirect(request.referrer or url_for("dashboard.index"))
     flash(f"Booking kamar {booking.room.nomor_kamar} oleh {booking.client.nama_lengkap} ditolak.", "info")
     return redirect(url_for("dashboard.admin"))
 
@@ -197,7 +202,12 @@ def auto_proses():
         count_notif += 1
 
     log_activity(current_user.id, "Auto-proses", f"{count_selesai} booking selesai, {count_notif} pengingat dikirim", "System")
-    db.session.commit()
+    try:
+        safe_commit()
+    except Exception:
+        db.session.rollback()
+        flash("Terjadi kesalahan saat menyimpan data.", "danger")
+        return redirect(request.referrer or url_for("dashboard.index"))
     flash(f"Proses otomatis selesai: {count_selesai} booking diakhiri, {count_notif} pengingat dikirim.", "success")
     return redirect(url_for("dashboard.admin"))
 
@@ -210,7 +220,12 @@ def baca_notifikasi(id):
         flash("Akses ditolak.", "danger")
         return redirect(url_for("dashboard.index"))
     n.dibaca = True
-    db.session.commit()
+    try:
+        safe_commit()
+    except Exception:
+        db.session.rollback()
+        flash("Terjadi kesalahan saat menyimpan data.", "danger")
+        return redirect(request.referrer or url_for("dashboard.index"))
     return redirect(url_for("dashboard.client"))
 
 
@@ -218,6 +233,11 @@ def baca_notifikasi(id):
 @login_required
 def baca_semua_notif():
     Notification.query.filter_by(user_id=current_user.id, dibaca=False).update({"dibaca": True})
-    db.session.commit()
+    try:
+        safe_commit()
+    except Exception:
+        db.session.rollback()
+        flash("Terjadi kesalahan saat menyimpan data.", "danger")
+        return redirect(request.referrer or url_for("dashboard.index"))
     flash("Semua notifikasi ditandai sudah dibaca.", "success")
     return redirect(url_for("dashboard.client"))

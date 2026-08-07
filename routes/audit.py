@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db
 from models import RoomAudit, AuditItemResult, RoomItem, Booking, Notification
-from helpers import admin_or_management, get_or_404
+from helpers import admin_or_management, get_or_404, safe_commit
 
 audit_bp = Blueprint("audit", __name__, url_prefix="/audit")
 
@@ -42,7 +42,12 @@ def check_in(booking_id):
 
         if not existing:
             db.session.add(Notification(user_id=booking.user_id, pesan=f"Audit check-in kamar {booking.room.nomor_kamar} selesai.", jenis="umum"))
-        db.session.commit()
+        try:
+            safe_commit()
+        except Exception:
+            db.session.rollback()
+            flash("Terjadi kesalahan saat menyimpan data.", "danger")
+            return redirect(request.referrer or url_for("dashboard.index"))
         flash("Audit check-in berhasil disimpan.", "success")
         return redirect(url_for("audit.detail", booking_id=booking_id))
 
@@ -69,7 +74,12 @@ def check_out(booking_id):
         _save_audit_items(audit, items)
 
         db.session.add(Notification(user_id=booking.user_id, pesan=f"Audit check-out kamar {booking.room.nomor_kamar} selesai.", jenis="umum"))
-        db.session.commit()
+        try:
+            safe_commit()
+        except Exception:
+            db.session.rollback()
+            flash("Terjadi kesalahan saat menyimpan data.", "danger")
+            return redirect(request.referrer or url_for("dashboard.index"))
         flash("Audit check-out berhasil disimpan.", "success")
         return redirect(url_for("audit.detail", booking_id=booking_id))
 
@@ -109,7 +119,12 @@ def edit(audit_id):
                 r.catatan = catatan
             else:
                 db.session.add(AuditItemResult(audit_id=audit.id, item_id=item.id, kondisi=kondisi, catatan=catatan))
-        db.session.commit()
+        try:
+            safe_commit()
+        except Exception:
+            db.session.rollback()
+            flash("Terjadi kesalahan saat menyimpan data.", "danger")
+            return redirect(request.referrer or url_for("dashboard.index"))
         flash("Audit berhasil diperbarui.", "success")
         return redirect(url_for("audit.detail", booking_id=booking.id))
 
@@ -179,7 +194,12 @@ def delete(audit_id):
     if request.method == "POST":
         AuditItemResult.query.filter_by(audit_id=audit_id).delete()
         db.session.delete(audit)
-        db.session.commit()
+        try:
+            safe_commit()
+        except Exception:
+            db.session.rollback()
+            flash("Terjadi kesalahan saat menyimpan data.", "danger")
+            return redirect(request.referrer or url_for("dashboard.index"))
         flash("Audit berhasil dihapus.", "success")
         return redirect(url_for("audit.detail", booking_id=booking_id))
 

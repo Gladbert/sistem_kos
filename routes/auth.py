@@ -1,12 +1,14 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, login_required, current_user
-from extensions import db
+from extensions import db, limiter
+from helpers import safe_commit
 from models import User
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
+@limiter.limit("10 per minute", methods=["POST"])
 def login():
     if current_user.is_authenticated:
         return redirect(url_for("dashboard.index"))
@@ -42,6 +44,7 @@ def login():
 
 
 @auth_bp.route("/register", methods=["GET", "POST"])
+@limiter.limit("5 per minute", methods=["POST"])
 def register():
     if current_user.is_authenticated:
         return redirect(url_for("dashboard.index"))
@@ -89,7 +92,12 @@ def register():
         )
         user.set_password(password)
         db.session.add(user)
-        db.session.commit()
+        try:
+            safe_commit()
+        except Exception:
+            db.session.rollback()
+            flash("Terjadi kesalahan saat menyimpan data.", "danger")
+            return redirect(request.referrer or url_for("dashboard.index"))
 
         flash("Pendaftaran berhasil! Silakan login.", "success")
         return redirect(url_for("auth.login"))

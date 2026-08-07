@@ -3,7 +3,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db
 from models import Payment, Booking, Room
-from helpers import admin_or_management, get_or_404, kos_room_ids, parse_amount, create_notification, wa_redirect
+from helpers import admin_or_management, get_or_404, kos_room_ids, parse_amount, create_notification, wa_redirect, safe_commit
 
 payments_bp = Blueprint("payments", __name__, url_prefix="/payments")
 
@@ -67,7 +67,12 @@ def tambah():
             catatan=request.form.get("catatan"),
         )
         db.session.add(payment)
-        db.session.commit()
+        try:
+            safe_commit()
+        except Exception:
+            db.session.rollback()
+            flash("Terjadi kesalahan saat menyimpan data.", "danger")
+            return redirect(request.referrer or url_for("dashboard.index"))
 
         create_notification(
             booking.user_id,
@@ -98,7 +103,12 @@ def edit(id):
         payment.metode_bayar = request.form.get("metode_bayar", "transfer")
         payment.status = request.form.get("status", "lunas")
         payment.catatan = request.form.get("catatan")
-        db.session.commit()
+        try:
+            safe_commit()
+        except Exception:
+            db.session.rollback()
+            flash("Terjadi kesalahan saat menyimpan data.", "danger")
+            return redirect(request.referrer or url_for("dashboard.index"))
         flash("Pembayaran berhasil diperbarui.", "success")
         return redirect(url_for("payments.index"))
 
@@ -110,7 +120,12 @@ def edit(id):
 def hapus(id):
     payment = get_or_404(Payment, id)
     db.session.delete(payment)
-    db.session.commit()
+    try:
+        safe_commit()
+    except Exception:
+        db.session.rollback()
+        flash("Terjadi kesalahan saat menyimpan data.", "danger")
+        return redirect(request.referrer or url_for("dashboard.index"))
     flash("Pembayaran berhasil dihapus.", "success")
     return redirect(url_for("payments.index"))
 

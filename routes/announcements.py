@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, flash, url_for
 from flask_login import login_required, current_user
 from extensions import db
 from models import Announcement
-from helpers import log_activity, admin_or_management, get_or_404
+from helpers import log_activity, admin_or_management, get_or_404, safe_commit
 
 announcement_bp = Blueprint("announcements", __name__, url_prefix="/pengumuman")
 
@@ -30,7 +30,12 @@ def create():
         )
         db.session.add(a)
         log_activity(current_user.id, "Buat pengumuman", f"Judul: {request.form['judul']}", "Announcement")
-        db.session.commit()
+        try:
+            safe_commit()
+        except Exception:
+            db.session.rollback()
+            flash("Terjadi kesalahan saat menyimpan data.", "danger")
+            return redirect(request.referrer or url_for("dashboard.index"))
         flash("Pengumuman berhasil dibuat.", "success")
         return redirect(url_for("announcements.index"))
     return render_template("announcements/form.html")
@@ -46,7 +51,12 @@ def edit(id):
         a.prioritas = request.form.get("prioritas", "normal")
         a.ditampilkan = request.form.get("ditampilkan") == "on"
         log_activity(current_user.id, "Edit pengumuman", f"Judul: {a.judul}", "Announcement")
-        db.session.commit()
+        try:
+            safe_commit()
+        except Exception:
+            db.session.rollback()
+            flash("Terjadi kesalahan saat menyimpan data.", "danger")
+            return redirect(request.referrer or url_for("dashboard.index"))
         flash("Pengumuman diperbarui.", "success")
         return redirect(url_for("announcements.index"))
     return render_template("announcements/form.html", announcement=a)
@@ -58,6 +68,11 @@ def delete(id):
     a = get_or_404(Announcement, id)
     log_activity(current_user.id, "Hapus pengumuman", f"Judul: {a.judul}", "Announcement")
     db.session.delete(a)
-    db.session.commit()
+    try:
+        safe_commit()
+    except Exception:
+        db.session.rollback()
+        flash("Terjadi kesalahan saat menyimpan data.", "danger")
+        return redirect(request.referrer or url_for("dashboard.index"))
     flash("Pengumuman dihapus.", "success")
     return redirect(url_for("announcements.index"))

@@ -2,7 +2,7 @@ from datetime import date
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from extensions import db
 from models import MaintenanceRequest, Vendor, Room
-from helpers import admin_or_management, get_or_404, kos_rooms, kos_room_ids, create_notification, wa_redirect
+from helpers import admin_or_management, get_or_404, kos_rooms, kos_room_ids, create_notification, wa_redirect, safe_commit
 
 maintenance_bp = Blueprint("maintenance", __name__, url_prefix="/maintenance")
 
@@ -45,7 +45,12 @@ def tambah():
             catatan=request.form.get("catatan"),
         )
         db.session.add(mr)
-        db.session.commit()
+        try:
+            safe_commit()
+        except Exception:
+            db.session.rollback()
+            flash("Terjadi kesalahan saat menyimpan data.", "danger")
+            return redirect(request.referrer or url_for("dashboard.index"))
 
         if room_id:
             room = db.session.get(Room, room_id)
@@ -84,7 +89,12 @@ def edit(id):
         except ValueError:
             mr.biaya = 0
 
-        db.session.commit()
+        try:
+            safe_commit()
+        except Exception:
+            db.session.rollback()
+            flash("Terjadi kesalahan saat menyimpan data.", "danger")
+            return redirect(request.referrer or url_for("dashboard.index"))
         flash("Permintaan maintenance berhasil diperbarui.", "success")
         return redirect(url_for("maintenance.index"))
 
@@ -96,7 +106,12 @@ def edit(id):
 def hapus(id):
     mr = get_or_404(MaintenanceRequest, id)
     db.session.delete(mr)
-    db.session.commit()
+    try:
+        safe_commit()
+    except Exception:
+        db.session.rollback()
+        flash("Terjadi kesalahan saat menyimpan data.", "danger")
+        return redirect(request.referrer or url_for("dashboard.index"))
     flash("Permintaan maintenance berhasil dihapus.", "success")
     return redirect(url_for("maintenance.index"))
 
@@ -125,7 +140,12 @@ def vendor_tambah():
             catatan=request.form.get("catatan"),
         )
         db.session.add(vendor)
-        db.session.commit()
+        try:
+            safe_commit()
+        except Exception:
+            db.session.rollback()
+            flash("Terjadi kesalahan saat menyimpan data.", "danger")
+            return redirect(request.referrer or url_for("dashboard.index"))
         flash(f"Vendor {nama} berhasil ditambahkan.", "success")
         return redirect(url_for("maintenance.vendor_index"))
 
@@ -143,7 +163,12 @@ def vendor_edit(id):
         vendor.kategori = request.form.get("kategori", "lainnya")
         vendor.alamat = request.form.get("alamat")
         vendor.catatan = request.form.get("catatan")
-        db.session.commit()
+        try:
+            safe_commit()
+        except Exception:
+            db.session.rollback()
+            flash("Terjadi kesalahan saat menyimpan data.", "danger")
+            return redirect(request.referrer or url_for("dashboard.index"))
         flash(f"Vendor {vendor.nama} berhasil diperbarui.", "success")
         return redirect(url_for("maintenance.vendor_index"))
 
@@ -155,7 +180,12 @@ def vendor_edit(id):
 def vendor_hapus(id):
     vendor = get_or_404(Vendor, id)
     db.session.delete(vendor)
-    db.session.commit()
+    try:
+        safe_commit()
+    except Exception:
+        db.session.rollback()
+        flash("Terjadi kesalahan saat menyimpan data.", "danger")
+        return redirect(request.referrer or url_for("dashboard.index"))
     flash("Vendor berhasil dihapus.", "success")
     return redirect(url_for("maintenance.vendor_index"))
 

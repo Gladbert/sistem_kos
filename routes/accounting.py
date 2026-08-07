@@ -4,7 +4,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db
 from models import Payment, Expense, Booking, Vendor
-from helpers import admin_or_management, get_or_404, parse_amount, kos_expense_query
+from helpers import admin_or_management, get_or_404, parse_amount, kos_expense_query, safe_commit
 
 accounting_bp = Blueprint("accounting", __name__, url_prefix="/accounting")
 
@@ -93,7 +93,12 @@ def tambah_pengeluaran():
             vendor_id=request.form.get("vendor_id", type=int) or None,
         )
         db.session.add(expense)
-        db.session.commit()
+        try:
+            safe_commit()
+        except Exception:
+            db.session.rollback()
+            flash("Terjadi kesalahan saat menyimpan data.", "danger")
+            return redirect(request.referrer or url_for("dashboard.index"))
         flash("Pengeluaran berhasil dicatat.", "success")
         return redirect(url_for("accounting.index"))
 
@@ -116,7 +121,12 @@ def edit_pengeluaran(id):
         expense.tanggal = datetime.strptime(request.form["tanggal"], "%Y-%m-%d").date() if request.form.get("tanggal") else date.today()
         expense.deskripsi = request.form.get("deskripsi")
         expense.vendor_id = request.form.get("vendor_id", type=int) or None
-        db.session.commit()
+        try:
+            safe_commit()
+        except Exception:
+            db.session.rollback()
+            flash("Terjadi kesalahan saat menyimpan data.", "danger")
+            return redirect(request.referrer or url_for("dashboard.index"))
         flash("Pengeluaran berhasil diperbarui.", "success")
         return redirect(url_for("accounting.index"))
 
@@ -128,7 +138,12 @@ def edit_pengeluaran(id):
 def hapus_pengeluaran(id):
     expense = get_or_404(Expense, id)
     db.session.delete(expense)
-    db.session.commit()
+    try:
+        safe_commit()
+    except Exception:
+        db.session.rollback()
+        flash("Terjadi kesalahan saat menyimpan data.", "danger")
+        return redirect(request.referrer or url_for("dashboard.index"))
     flash("Pengeluaran berhasil dihapus.", "success")
     return redirect(url_for("accounting.index"))
 

@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db
 from models import Room, Booking, MaintenanceRequest, Kos
-from helpers import admin_or_management, get_or_404, parse_amount
+from helpers import admin_or_management, get_or_404, parse_amount, safe_commit
 
 rooms_bp = Blueprint("rooms", __name__, url_prefix="/rooms")
 
@@ -62,7 +62,12 @@ def tambah():
             deskripsi=request.form.get("deskripsi"),
         )
         db.session.add(room)
-        db.session.commit()
+        try:
+            safe_commit()
+        except Exception:
+            db.session.rollback()
+            flash("Terjadi kesalahan saat menyimpan data.", "danger")
+            return redirect(request.referrer or url_for("dashboard.index"))
         flash(f"Kamar {nomor} berhasil ditambahkan.", "success")
         return redirect(url_for("rooms.index"))
 
@@ -99,7 +104,12 @@ def edit(id):
         room.fasilitas = request.form.get("fasilitas")
         room.status = request.form.get("status", "tersedia")
         room.deskripsi = request.form.get("deskripsi")
-        db.session.commit()
+        try:
+            safe_commit()
+        except Exception:
+            db.session.rollback()
+            flash("Terjadi kesalahan saat menyimpan data.", "danger")
+            return redirect(request.referrer or url_for("dashboard.index"))
         flash(f"Kamar {nomor} berhasil diperbarui.", "success")
         return redirect(url_for("rooms.index"))
 
@@ -115,7 +125,12 @@ def hapus(id):
         return redirect(url_for("rooms.index"))
 
     db.session.delete(room)
-    db.session.commit()
+    try:
+        safe_commit()
+    except Exception:
+        db.session.rollback()
+        flash("Terjadi kesalahan saat menyimpan data.", "danger")
+        return redirect(request.referrer or url_for("dashboard.index"))
     flash(f"Kamar {room.nomor_kamar} berhasil dihapus.", "success")
     return redirect(url_for("rooms.index"))
 

@@ -79,3 +79,12 @@ def kos_rooms(kos_id=None):
     if kos_id:
         return Room.query.filter_by(kos_id=kos_id).all()
     return Room.query.all()
+
+def safe_commit():
+    """Commit with rollback on error. Returns True on success."""
+    try:
+        db.session.commit()
+        return True
+    except Exception:
+        db.session.rollback()
+        raise

@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from extensions import db
 from sqlalchemy import or_
 from models import User, Booking, Payment, Notification, Room
-from helpers import admin_or_management, get_or_404, kos_room_ids
+from helpers import admin_or_management, get_or_404, kos_room_ids, safe_commit
 
 clients_bp = Blueprint("clients", __name__, url_prefix="/clients")
 
@@ -55,7 +55,12 @@ def detail(id):
 def nonaktifkan(id):
     user = get_or_404(User, id)
     user.is_active = not user.is_active
-    db.session.commit()
+    try:
+        safe_commit()
+    except Exception:
+        db.session.rollback()
+        flash("Terjadi kesalahan saat menyimpan data.", "danger")
+        return redirect(request.referrer or url_for("dashboard.index"))
     status = "diaktifkan" if user.is_active else "dinonaktifkan"
     flash(f"Akun {user.nama_lengkap} berhasil {status}.", "success")
     return redirect(url_for("clients.index"))
@@ -79,7 +84,12 @@ def edit(id):
                 flash("Password minimal 6 karakter.", "danger")
                 return render_template("clients/edit.html", client=client)
 
-        db.session.commit()
+        try:
+            safe_commit()
+        except Exception:
+            db.session.rollback()
+            flash("Terjadi kesalahan saat menyimpan data.", "danger")
+            return redirect(request.referrer or url_for("dashboard.index"))
         flash(f"Data {client.nama_lengkap} berhasil diperbarui.", "success")
         return redirect(url_for("clients.detail", id=id))
 

@@ -4,7 +4,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db
 from models import User, Room, Booking, Payment, Notification
-from helpers import create_notification
+from helpers import create_notification, safe_commit
 
 onboarding_bp = Blueprint("onboarding", __name__, url_prefix="/onboarding")
 
@@ -82,7 +82,12 @@ def daftar(room_id):
             catatan=deposit_catatan,
         )
         db.session.add(booking)
-        db.session.commit()
+        try:
+            safe_commit()
+        except Exception:
+            db.session.rollback()
+            flash("Terjadi kesalahan saat menyimpan data.", "danger")
+            return redirect(request.referrer or url_for("dashboard.index"))
 
         create_notification(
             current_user.id,
@@ -97,7 +102,12 @@ def daftar(room_id):
                 pesan=f"Permintaan booking baru dari {current_user.nama_lengkap} untuk kamar {room.nomor_kamar}.",
                 jenis="umum",
             ))
-        db.session.commit()
+        try:
+            safe_commit()
+        except Exception:
+            db.session.rollback()
+            flash("Terjadi kesalahan saat menyimpan data.", "danger")
+            return redirect(request.referrer or url_for("dashboard.index"))
 
         flash(f"Permintaan sewa kamar {room.nomor_kamar} telah dikirim. Menunggu persetujuan pengelola.", "success")
         return redirect(url_for("dashboard.client"))

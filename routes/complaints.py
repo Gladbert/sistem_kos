@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, flash, url_for,
 from flask_login import login_required, current_user
 from extensions import db
 from models import Complaint
-from helpers import log_activity, admin_or_management, get_or_404
+from helpers import log_activity, admin_or_management, get_or_404, safe_commit
 
 complaint_bp = Blueprint("complaints", __name__, url_prefix="/komplain")
 
@@ -34,7 +34,12 @@ def create():
         )
         db.session.add(c)
         log_activity(current_user.id, "Buat komplain", f"Judul: {request.form['judul']}", "Complaint")
-        db.session.commit()
+        try:
+            safe_commit()
+        except Exception:
+            db.session.rollback()
+            flash("Terjadi kesalahan saat menyimpan data.", "danger")
+            return redirect(request.referrer or url_for("dashboard.index"))
         flash("Komplain terkirim.", "success")
         return redirect(url_for("complaints.index"))
     return render_template("complaints/form.html")
@@ -48,6 +53,11 @@ def respond(id):
     c.status = request.form.get("status", "ditindaklanjuti")
     c.ditanggapi_oleh = current_user.id
     log_activity(current_user.id, "Tanggapi komplain", f"Judul: {c.judul}, Status: {c.status}", "Complaint")
-    db.session.commit()
+    try:
+        safe_commit()
+    except Exception:
+        db.session.rollback()
+        flash("Terjadi kesalahan saat menyimpan data.", "danger")
+        return redirect(request.referrer or url_for("dashboard.index"))
     flash("Tanggapan dikirim.", "success")
     return redirect(url_for("complaints.index"))
