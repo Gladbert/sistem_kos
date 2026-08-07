@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, flash, url_for
 from flask_login import current_user
 from extensions import db
 from models import Room, RoomItem
-from helpers import log_activity, admin_or_management, get_or_404, kos_rooms, safe_commit
+from helpers import log_activity, admin_or_management, get_or_404, kos_rooms, safe_commit, sanitize
 
 inventory_bp = Blueprint("inventory", __name__, url_prefix="/inventaris")
 
@@ -31,10 +31,10 @@ def add_item(room_id):
     if request.method == "POST":
         i = RoomItem(
             room_id=room_id,
-            nama=request.form["nama"],
+            nama=sanitize(request.form["nama"]),
             jumlah=int(request.form.get("jumlah", 1)),
             kondisi=request.form.get("kondisi", "baik"),
-            catatan=request.form.get("catatan", ""),
+            catatan=sanitize(request.form.get("catatan", "")),
         )
         db.session.add(i)
         log_activity(current_user.id, "Tambah barang", f"{request.form['nama']} di {room.nomor_kamar}", "RoomItem")
@@ -55,10 +55,10 @@ def add_item(room_id):
 def edit_item(id):
     i = get_or_404(RoomItem, id)
     if request.method == "POST":
-        i.nama = request.form["nama"]
+        i.nama = sanitize(request.form["nama"])
         i.jumlah = int(request.form.get("jumlah", 1))
         i.kondisi = request.form.get("kondisi", "baik")
-        i.catatan = request.form.get("catatan", "")
+        i.catatan = sanitize(request.form.get("catatan", ""))
         log_activity(current_user.id, "Edit barang", f"{i.nama} di {i.room.nomor_kamar}", "RoomItem")
         try:
             safe_commit()

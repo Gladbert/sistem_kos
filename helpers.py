@@ -1,8 +1,15 @@
+import re
 import urllib.parse
 from functools import wraps
 from flask import flash, redirect, url_for, session, abort
 from flask_login import current_user
 from extensions import db
+
+def sanitize(text):
+    """Strip HTML tags from user input. Returns clean text or empty string."""
+    if not text:
+        return ""
+    return re.sub(r'<[^>]+>', '', str(text)).strip()
 
 
 def parse_amount(raw, label="Jumlah"):

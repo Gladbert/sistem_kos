@@ -30,3 +30,15 @@ def register_routes(app):
     app.register_blueprint(inventory_bp)
     app.register_blueprint(audit_bp)
     app.register_blueprint(fasilitas_bp)
+
+    # URL aliases for common guesses (ISSUE-015)
+    from flask import redirect, url_for
+    @app.route("/inventory/")
+    def _inventory_alias():
+        return redirect(url_for("inventory.index"))
+    @app.route("/complaints/")
+    def _complaints_alias():
+        return redirect(url_for("complaint.index"))
+    @app.route("/logs/")
+    def _logs_alias():
+        return redirect(url_for("activity.index"))

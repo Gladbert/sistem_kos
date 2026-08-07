@@ -2,7 +2,7 @@ from datetime import date
 from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
 from extensions import db
 from models import MaintenanceRequest, Vendor, Room
-from helpers import admin_or_management, get_or_404, kos_rooms, kos_room_ids, create_notification, wa_redirect, safe_commit
+from helpers import admin_or_management, get_or_404, kos_rooms, kos_room_ids, create_notification, wa_redirect, safe_commit, sanitize
 
 maintenance_bp = Blueprint("maintenance", __name__, url_prefix="/maintenance")
 
@@ -138,11 +138,11 @@ def vendor_tambah():
             return render_template("maintenance/vendor_form.html")
 
         vendor = Vendor(
-            nama=nama,
-            no_telepon=request.form.get("no_telepon"),
+            nama=sanitize(nama),
+            no_telepon=sanitize(request.form.get("no_telepon")),
             kategori=request.form.get("kategori", "lainnya"),
-            alamat=request.form.get("alamat"),
-            catatan=request.form.get("catatan"),
+            alamat=sanitize(request.form.get("alamat")),
+            catatan=sanitize(request.form.get("catatan")),
         )
         db.session.add(vendor)
         try:
@@ -164,11 +164,11 @@ def vendor_edit(id):
     vendor = get_or_404(Vendor, id)
 
     if request.method == "POST":
-        vendor.nama = request.form.get("nama", vendor.nama)
-        vendor.no_telepon = request.form.get("no_telepon")
+        vendor.nama = sanitize(request.form.get("nama", vendor.nama))
+        vendor.no_telepon = sanitize(request.form.get("no_telepon"))
         vendor.kategori = request.form.get("kategori", "lainnya")
-        vendor.alamat = request.form.get("alamat")
-        vendor.catatan = request.form.get("catatan")
+        vendor.alamat = sanitize(request.form.get("alamat"))
+        vendor.catatan = sanitize(request.form.get("catatan"))
         try:
             safe_commit()
         except Exception:

@@ -26,6 +26,12 @@
                         </option>
                         {% endfor %}
                     </select>
+                    {% if not kategori_list %}
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle me-1"></i>Belum ada kategori. 
+                        <a href="{{ url_for('fasilitas.kategori_tambah') }}">Tambah kategori</a> terlebih dahulu.
+                    </small>
+                    {% endif %}
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Lokasi</label>

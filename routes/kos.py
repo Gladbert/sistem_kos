@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db
 from models import Kos, UserKos
-from helpers import log_activity, admin_or_management, get_or_404, safe_commit
+from helpers import log_activity, admin_or_management, get_or_404, safe_commit, sanitize
 
 kos_bp = Blueprint("kos", __name__, url_prefix="/kos")
 
@@ -44,9 +44,9 @@ def tambah():
             return render_template("kos/form.html", kos=None)
 
         kos = Kos(
-            nama=nama,
-            alamat=request.form.get("alamat", "").strip(),
-            deskripsi=request.form.get("deskripsi", "").strip(),
+            nama=sanitize(nama),
+            alamat=sanitize(request.form.get("alamat", "")),
+            deskripsi=sanitize(request.form.get("deskripsi", "")),
         )
         db.session.add(kos)
         try:
@@ -84,9 +84,9 @@ def edit(id):
             flash("Nama kos wajib diisi.", "danger")
             return render_template("kos/form.html", kos=kos)
 
-        kos.nama = nama
-        kos.alamat = request.form.get("alamat", "").strip()
-        kos.deskripsi = request.form.get("deskripsi", "").strip()
+        kos.nama = sanitize(nama)
+        kos.alamat = sanitize(request.form.get("alamat", ""))
+        kos.deskripsi = sanitize(request.form.get("deskripsi", ""))
         try:
             safe_commit()
         except Exception:

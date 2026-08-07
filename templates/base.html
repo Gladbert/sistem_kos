@@ -228,5 +228,65 @@
     });
     </script>
     {% block extra_scripts %}{% endblock %}
+
+    <!-- Global Confirm Modal (replaces window.confirm) -->
+    <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmModalLabel">Konfirmasi</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Batal"></button>
+                </div>
+                <div class="modal-body" id="confirmModalBody"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-danger" id="confirmModalOk">Ya, Lanjutkan</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // Accessible confirm dialog using Bootstrap modal
+    function confirmAction(message, onConfirm) {
+        const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+        document.getElementById('confirmModalBody').textContent = message;
+        const okBtn = document.getElementById('confirmModalOk');
+        const handler = function() {
+            okBtn.removeEventListener('click', handler);
+            modal.hide();
+            onConfirm();
+        };
+        okBtn.addEventListener('click', handler);
+        modal.show();
+    }
+
+    // Replace all onsubmit="return confirm(...)" with accessible modal
+    document.querySelectorAll('form[onsubmit*="confirm"]').forEach(function(form) {
+        const onsubmit = form.getAttribute('onsubmit');
+        const match = onsubmit.match(/confirm\(['"](.+?)['"]\)/);
+        if (match) {
+            const message = match[1];
+            form.removeAttribute('onsubmit');
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                confirmAction(message, function() { form.submit(); });
+            });
+        }
+    });
+    // Replace onclick="return confirm(...)" on buttons
+    document.querySelectorAll('[onclick*="confirm"]').forEach(function(el) {
+        const onclick = el.getAttribute('onclick');
+        const match = onclick.match(/confirm\(['"](.+?)['"]\)/);
+        if (match) {
+            const message = match[1];
+            el.removeAttribute('onclick');
+            el.addEventListener('click', function(e) {
+                e.preventDefault();
+                confirmAction(message, function() { /* no-op for buttons */ });
+            });
+        }
+    });
+    </script>
 </body>
 </html>

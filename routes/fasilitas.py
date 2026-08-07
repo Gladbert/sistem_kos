@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db
 from models import FasilitasUmum, FasilitasKategori
-from helpers import admin_or_management, get_or_404, safe_commit, log_activity
+from helpers import admin_or_management, get_or_404, safe_commit, log_activity, sanitize
 
 fasilitas_bp = Blueprint("fasilitas", __name__, url_prefix="/fasilitas")
 
@@ -41,14 +41,19 @@ def index():
 @admin_or_management
 def tambah():
     if request.method == "POST":
+        nama = request.form.get("nama", "").strip()
+        if not nama:
+            flash("Nama fasilitas wajib diisi.", "danger")
+            return render_template("fasilitas/form.html", kategori_list=get_kategori_list(), kondisi_list=KONDISI, item=None)
+
         item = FasilitasUmum(
             kos_id=session.get("kos_id"),
-            nama=request.form["nama"],
+            nama=sanitize(nama),
             kategori=request.form.get("kategori", "lainnya"),
-            lokasi=request.form.get("lokasi"),
+            lokasi=sanitize(request.form.get("lokasi")),
             kondisi=request.form.get("kondisi", "baik"),
-            deskripsi=request.form.get("deskripsi"),
-            catatan=request.form.get("catatan"),
+            deskripsi=sanitize(request.form.get("deskripsi")),
+            catatan=sanitize(request.form.get("catatan")),
         )
         db.session.add(item)
         try:
@@ -70,13 +75,18 @@ def edit(id):
     item = get_or_404(FasilitasUmum, id)
     
     if request.method == "POST":
+        nama = request.form.get("nama", "").strip()
+        if not nama:
+            flash("Nama fasilitas wajib diisi.", "danger")
+            return render_template("fasilitas/form.html", kategori_list=get_kategori_list(), kondisi_list=KONDISI, item=item)
+
         old_kondisi = item.kondisi
-        item.nama = request.form["nama"]
+        item.nama = sanitize(nama)
         item.kategori = request.form.get("kategori", "lainnya")
-        item.lokasi = request.form.get("lokasi")
+        item.lokasi = sanitize(request.form.get("lokasi"))
         item.kondisi = request.form.get("kondisi", "baik")
-        item.deskripsi = request.form.get("deskripsi")
-        item.catatan = request.form.get("catatan")
+        item.deskripsi = sanitize(request.form.get("deskripsi"))
+        item.catatan = sanitize(request.form.get("catatan"))
         
         try:
             safe_commit()
@@ -139,7 +149,12 @@ def kategori_index():
 @admin_or_management
 def kategori_tambah():
     if request.method == "POST":
-        nama = request.form["nama"].strip().lower().replace(" ", "_")
+        raw_nama = request.form.get("nama", "").strip()
+        if not raw_nama:
+            flash("Nama kategori wajib diisi.", "danger")
+            return render_template("fasilitas/kategori_form.html", item=None)
+
+        nama = raw_nama.lower().replace(" ", "_")
         if FasilitasKategori.query.filter_by(nama=nama).first():
             flash(f"Kategori '{nama}' sudah ada.", "warning")
             return redirect(url_for("fasilitas.kategori_index"))
@@ -147,7 +162,7 @@ def kategori_tambah():
         kat = FasilitasKategori(
             nama=nama,
             icon=request.form.get("icon", "bi-box"),
-            deskripsi=request.form.get("deskripsi"),
+            deskripsi=sanitize(request.form.get("deskripsi")),
         )
         db.session.add(kat)
         try:
@@ -168,9 +183,14 @@ def kategori_edit(id):
     item = get_or_404(FasilitasKategori, id)
     
     if request.method == "POST":
-        item.nama = request.form["nama"].strip().lower().replace(" ", "_")
+        raw_nama = request.form.get("nama", "").strip()
+        if not raw_nama:
+            flash("Nama kategori wajib diisi.", "danger")
+            return render_template("fasilitas/kategori_form.html", item=item)
+
+        item.nama = raw_nama.lower().replace(" ", "_")
         item.icon = request.form.get("icon", "bi-box")
-        item.deskripsi = request.form.get("deskripsi")
+        item.deskripsi = sanitize(request.form.get("deskripsi"))
         item.is_active = "is_active" in request.form
         try:
             safe_commit()
