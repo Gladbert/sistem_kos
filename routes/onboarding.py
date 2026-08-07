@@ -58,6 +58,14 @@ def daftar(room_id):
             flash("Hanya client yang bisa melakukan booking.", "danger")
             return redirect(url_for("dashboard.index"))
 
+        # Check if client already has active booking for this room
+        existing = Booking.query.filter_by(
+            user_id=current_user.id, room_id=room.id
+        ).filter(Booking.status.in_(["pending", "approved", "aktif"])).first()
+        if existing:
+            flash(f"Anda sudah memiliki booking aktif untuk kamar {room.nomor_kamar}.", "warning")
+            return redirect(url_for("dashboard.client"))
+
         tanggal_masuk = request.form.get("tanggal_masuk")
         durasi = request.form.get("durasi", 1, type=int)
         deposit_catatan = request.form.get("deposit_catatan", "")
