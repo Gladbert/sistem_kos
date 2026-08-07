@@ -29,7 +29,7 @@ def check_in(booking_id):
         flash("Akses ditolak.", "danger")
         return redirect(url_for("dashboard.index"))
 
-    existing = RoomAudit.query.filter_by(booking_id=booking_id, tipe="check_in").first()
+    existing = RoomAudit.query.options(joinedload(RoomAudit.items)).filter_by(booking_id=booking_id, tipe="check_in").first()
     if existing and current_user.role not in ("admin", "management"):
         flash("Audit check-in sudah dilakukan.", "info")
         return redirect(url_for("audit.detail", booking_id=booking_id))
@@ -68,7 +68,7 @@ def check_out(booking_id):
         flash("Audit check-out sudah dilakukan.", "info")
         return redirect(url_for("audit.detail", booking_id=booking_id))
 
-    check_in = RoomAudit.query.filter_by(booking_id=booking_id, tipe="check_in").first()
+    check_in = RoomAudit.query.options(joinedload(RoomAudit.items)).filter_by(booking_id=booking_id, tipe="check_in").first()
     if not check_in:
         flash("Audit check-in harus dilakukan terlebih dahulu sebelum check-out.", "warning")
         return redirect(url_for("audit.detail", booking_id=booking_id))
@@ -211,6 +211,7 @@ def export(booking_id):
 @admin_or_management
 def delete(audit_id):
     audit = get_or_404(RoomAudit, audit_id)
+    booking = audit.booking
     booking_id = audit.booking_id
 
     if request.method == "POST":
