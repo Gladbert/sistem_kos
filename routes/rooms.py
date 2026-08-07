@@ -175,5 +175,5 @@ def hapus(id):
 def detail(id):
     room = get_or_404(Room, id)
     booking = room.booking_aktif
-    maintenance = MaintenanceRequest.query.filter_by(room_id=id).order_by(MaintenanceRequest.created_at.desc()).all()
+    maintenance = MaintenanceRequest.query.options(joinedload(MaintenanceRequest.vendor)).filter_by(room_id=id).order_by(MaintenanceRequest.created_at.desc()).all()
     return render_template("rooms/detail.html", room=room, booking=booking, maintenance=maintenance)

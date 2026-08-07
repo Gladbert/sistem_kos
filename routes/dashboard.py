@@ -164,7 +164,7 @@ def client():
     booking_aktif = Booking.query.filter_by(user_id=current_user.id, status="aktif").first()
     booking_pending = Booking.query.filter_by(user_id=current_user.id, status="pending").first()
     booking = booking_aktif or booking_pending
-    riwayat = Booking.query.filter_by(user_id=current_user.id).order_by(Booking.created_at.desc()).all()
+    riwayat = Booking.query.options(joinedload(Booking.room)).filter_by(user_id=current_user.id).order_by(Booking.created_at.desc()).all()
     pembayaran = Payment.query.join(Booking).filter(Booking.user_id == current_user.id).order_by(Payment.created_at.desc()).all()
     notifikasi = Notification.query.filter_by(user_id=current_user.id).order_by(Notification.created_at.desc()).limit(10).all()
     notif_belum_dibaca = Notification.query.filter_by(user_id=current_user.id, dibaca=False).count()

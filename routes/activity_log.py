@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, current_app
 from flask_login import login_required, current_user
 from models import ActivityLog
+from sqlalchemy.orm import joinedload
 
 activity_bp = Blueprint("activity", __name__, url_prefix="/aktivitas")
 
@@ -19,6 +20,6 @@ def index():
         q = q.filter_by(model=model)
     if tindakan:
         q = q.filter(ActivityLog.tindakan.ilike(f"%{tindakan}%"))
-    pagination = q.order_by(ActivityLog.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    pagination = q.options(joinedload(ActivityLog.user)).order_by(ActivityLog.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
     models = [m[0] for m in ActivityLog.query.with_entities(ActivityLog.model).distinct().all()]
     return render_template("activity/index.html", pagination=pagination, logs=pagination.items, models=models)
