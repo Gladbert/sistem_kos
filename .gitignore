@@ -9,4 +9,5 @@ venv/
 .codegraph/
 opencode.json
 test_all.py
+supabase/seed.sql
 # AGENTS.md is intentionally tracked despite this ignore list

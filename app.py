@@ -48,6 +48,11 @@ def create_app():
     from routes import register_routes
     register_routes(app)
 
+    # Create tables for local dev only (Vercel uses Supabase migrations)
+    if app.config["SQLALCHEMY_DATABASE_URI"].startswith("sqlite"):
+        with app.app_context():
+            db.create_all()
+
     return app
 
 app = create_app()
