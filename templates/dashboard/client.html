@@ -8,6 +8,7 @@
     </div>
     {% if notif_belum_dibaca > 0 %}
     <form method="POST" action="{{ url_for('dashboard.baca_semua_notif') }}" style="display:inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button class="btn btn-sm btn-outline-primary"><i class="bi bi-check-all me-1"></i>Tandai Semua Dibaca</button>
     </form>
     {% endif %}
@@ -136,6 +137,7 @@
                         </div>
                         {% if not n.dibaca %}
                         <form method="POST" action="{{ url_for('dashboard.baca_notifikasi', id=n.id) }}" style="display:inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button class="btn btn-sm btn-outline-secondary" title="Tandai dibaca"><i class="bi bi-check"></i></button>
                         </form>
                         {% endif %}

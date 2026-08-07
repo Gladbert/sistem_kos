@@ -7,6 +7,7 @@
 <div class="page-header d-flex flex-wrap justify-content-between align-items-center">
     <div><h1>Dashboard</h1><p>Ringkasan operasional kos</p></div>
     <form method="POST" action="{{ url_for('dashboard.auto_proses') }}" style="display:inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button class="btn btn-outline-primary" onclick="return confirm('Jalankan proses otomatis?')">
             <i class="bi bi-arrow-repeat me-1"></i>Proses Otomatis
         </button>
@@ -107,9 +108,11 @@
                             <td><a href="tel:{{ b.client.no_telepon }}">{{ b.client.no_telepon }}</a></td>
                             <td>
                                 <form method="POST" action="{{ url_for('dashboard.approve_booking', id=b.id) }}" style="display:inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button class="btn btn-sm btn-success" title="Setujui"><i class="bi bi-check-lg"></i></button>
                                 </form>
                                 <form method="POST" action="{{ url_for('dashboard.tolak_booking', id=b.id) }}" style="display:inline" onsubmit="return confirm('Tolak booking ini?')">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button class="btn btn-sm btn-outline-danger" title="Tolak"><i class="bi bi-x-lg"></i></button>
                                 </form>
                             </td>

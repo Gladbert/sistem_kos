@@ -30,7 +30,7 @@
                                 {% if room.status == 'tersedia' %}
                                 <span class="badge badge-success">Tersedia</span>
                                 {% elif room.status == 'terisi' %}
-                                <span class="badge badge-warning">Terisi</span>
+                                <span class="badge badge-info">Terisi</span>
                                 {% else %}
                                 <span class="badge badge-secondary">{{ room.status }}</span>
                                 {% endif %}
@@ -104,7 +104,7 @@
                                     <td>{{ m.deskripsi }}</td>
                                     <td>{{ m.vendor.nama if m.vendor else '-' }}</td>
                                     <td>
-                                        {% if m.status == 'diajukan' %}<span class="badge badge-info">Diajukan</span>
+                                        {% if m.status == 'diajukan' %}<span class="badge badge-warning">Diajukan</span>
                                         {% elif m.status == 'diproses' %}<span class="badge badge-warning">Diproses</span>
                                         {% elif m.status == 'selesai' %}<span class="badge badge-success">Selesai</span>
                                         {% else %}<span class="badge badge-secondary">{{ m.status }}</span>{% endif %}
