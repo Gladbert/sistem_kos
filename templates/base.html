@@ -240,9 +240,9 @@
                 form.querySelectorAll('input[data-rupiah]').forEach(function(input) {
                     input.value = unformatRupiah(input.value);
                 });
-                // Disable submit button to prevent double-click
+                // Disable submit button to prevent double-click (skip auth preset forms)
                 var btn = form.querySelector('button[type="submit"]');
-                if (btn && !btn.disabled) {
+                if (btn && !btn.disabled && !form.querySelector('input[name="username"][type="hidden"]')) {
                     btn.disabled = true;
                     btn.dataset.origText = btn.innerHTML;
                     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Memproses...';
