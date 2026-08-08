@@ -39,7 +39,7 @@ def get_month_range(year, month):
     return date(year, month, 1), date(year + 1, month, 1) - timedelta(days=1)
 
 @accounting_bp.route("/")
-@admin_or_management
+@admin_only
 def index():
     tahun = request.args.get("tahun", date.today().year, type=int)
     bulan = request.args.get("bulan", date.today().month, type=int)
@@ -196,7 +196,7 @@ def hapus_pengeluaran(id):
     return redirect(url_for("accounting.index"))
 
 @accounting_bp.route("/laporan")
-@admin_or_management
+@admin_only
 def laporan():
     tahun = request.args.get("tahun", date.today().year, type=int)
 
@@ -252,7 +252,7 @@ def laporan():
         total_laba=total_pemasukan - total_pengeluaran)
 
 @accounting_bp.route("/export/csv")
-@admin_or_management
+@admin_only
 def export_csv():
     tahun = request.args.get("tahun", date.today().year, type=int)
     bulan = request.args.get("bulan", 0, type=int)
