@@ -254,6 +254,11 @@ body {
     color: var(--warning);
 }
 
+.badge-recurring {
+    background: var(--accent-light);
+    color: var(--accent);
+}
+
 .badge-danger {
     background: var(--danger-light);
     color: var(--danger);
