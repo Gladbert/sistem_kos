@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Kelola Hak Akses - Sistem Kos{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Kelola Hak Akses</h1>
+    <p>Atur hak akses untuk setiap role. Admin selalu memiliki akses penuh.</p>
+</div>
+
+<form method="POST" action="{{ url_for('roles.update') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="table-responsive">
+        <table class="table table-bordered align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th style="min-width:180px">Modul</th>
+                    {% for role in roles %}
+                    <th class="text-center" colspan="4">
+                        <span class="badge bg-{{ 'danger' if role == 'admin' else 'primary' if role == 'management' else 'secondary' }} fs-6">
+                            {{ role|capitalize }}
+                        </span>
+                        {% if role == 'admin' %}
+                        <br><small class="text-muted">Akses penuh (terkunci)</small>
+                        {% endif %}
+                    </th>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    <th></th>
+                    {% for role in roles %}
+                    <th class="text-center text-muted small">Lihat</th>
+                    <th class="text-center text-muted small">Tambah</th>
+                    <th class="text-center text-muted small">Edit</th>
+                    <th class="text-center text-muted small">Hapus</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for module_key, module_label, module_icon in modules %}
+                <tr>
+                    <td>
+                        <i class="{{ module_icon }} me-1"></i>{{ module_label }}
+                    </td>
+                    {% for role in roles %}
+                        {% for action in ['view', 'create', 'edit', 'delete'] %}
+                        <td class="text-center">
+                            {% if role == 'admin' %}
+                                <i class="bi bi-check-circle-fill text-success"></i>
+                            {% else %}
+                                <div class="form-check d-inline-block">
+                                    <input class="form-check-input" type="checkbox"
+                                           name="{{ role }}_{{ module_key }}_{{ action }}"
+                                           {{ 'checked' if perms[role][module_key][action] else '' }}>
+                                </div>
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="d-flex justify-content-end mt-3">
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check-lg me-1"></i>Simpan Perubahan
+        </button>
+    </div>
+</form>
+
+<div class="card border-0 bg-light mt-4">
+    <div class="card-body">
+        <h6><i class="bi bi-info-circle me-1"></i>Keterangan</h6>
+        <ul class="mb-0 small text-muted">
+            <li><strong>Admin</strong> selalu memiliki akses penuh ke semua modul (tidak bisa diubah).</li>
+            <li><strong>Management</strong> — atur akses untuk staf pengelola kos.</li>
+            <li><strong>Client</strong> — atur akses untuk penghuni/pengguna kos.</li>
+            <li>Perubahan berlaku langsung pada navbar dan akses halaman.</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

@@ -366,3 +366,39 @@ class FasilitasKategori(db.Model):
     deskripsi = db.Column(db.String(200))
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class RolePermission(db.Model):
+    """Per-module permission for a role. Admin page can toggle these."""
+    __tablename__ = "role_permissions"
+
+    id = db.Column(db.Integer, primary_key=True)
+    role = db.Column(db.String(20), nullable=False)  # admin, management, client
+    module = db.Column(db.String(50), nullable=False)  # rooms, payments, etc.
+    can_view = db.Column(db.Boolean, default=False)
+    can_create = db.Column(db.Boolean, default=False)
+    can_edit = db.Column(db.Boolean, default=False)
+    can_delete = db.Column(db.Boolean, default=False)
+
+    __table_args__ = (db.UniqueConstraint('role', 'module', name='uq_role_module'),)
+
+    @staticmethod
+    def get_perm(role, module):
+        """Return RolePermission row or None."""
+        return RolePermission.query.filter_by(role=role, module=module).first()
+
+    @staticmethod
+    def can(role, module, action='view'):
+        """Check permission. Admin always True."""
+        if role == 'admin':
+            return True
+        p = RolePermission.get_perm(role, module)
+        if not p:
+            return False
+        return getattr(p, f'can_{action}', False)
+
+    @staticmethod
+    def get_all_for_role(role):
+        """Return dict of {module: {view, create, edit, delete}} for role."""
+        perms = RolePermission.query.filter_by(role=role).all()
+        return {p.module: {'view': p.can_view, 'create': p.can_create,
+                           'edit': p.can_edit, 'delete': p.can_delete} for p in perms}

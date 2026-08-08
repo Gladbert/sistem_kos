@@ -30,6 +30,24 @@ def create_app():
         return {"date_today": date.today()}
 
     @app.context_processor
+    def inject_permissions():
+        from flask_login import current_user
+        from models import RolePermission
+        if not current_user.is_authenticated:
+            return {"role_can": lambda m, a='view': False}
+        user_role = current_user.role
+        # Cache all perms for this role once per request (avoids N+1)
+        all_perms = RolePermission.get_all_for_role(user_role)
+        def role_can(module, action='view'):
+            if user_role == 'admin':
+                return True
+            p = all_perms.get(module)
+            if not p:
+                return False
+            return p.get(action, False)
+        return {"role_can": role_can}
+
+    @app.context_processor
     def inject_kos():
         from flask_login import current_user
         if not current_user.is_authenticated:

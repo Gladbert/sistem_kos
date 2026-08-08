@@ -101,6 +101,23 @@ def admin_only(f):
     return require_kos_role("admin")(f)
 
 
+def check_module_perm(module, action='view'):
+    """Check current user has module permission. Returns True/False."""
+    from flask_login import current_user
+    from models import RolePermission
+    if not current_user.is_authenticated:
+        return False
+    return RolePermission.can(current_user.role, module, action)
+
+
+def require_module_perm(module, action='view'):
+    """Check module permission; flash + return False if denied. Use in route body."""
+    if check_module_perm(module, action):
+        return True
+    flash("Akses ditolak. Anda tidak memiliki izin untuk halaman ini.", "danger")
+    return False
+
+
 def get_or_404(model, id):
     """Get model by primary key or abort(404)."""
     obj = db.session.get(model, id)

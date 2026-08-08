@@ -13,8 +13,10 @@ from .inventory import inventory_bp
 from .audit import audit_bp
 from .kos import kos_bp
 from .fasilitas import fasilitas_bp
+from .roles import roles_bp
 
 def register_routes(app):
+    app.register_blueprint(roles_bp)
     app.register_blueprint(kos_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
