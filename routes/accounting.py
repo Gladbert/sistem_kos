@@ -3,9 +3,10 @@ from datetime import date, datetime, timedelta
 from flask import Blueprint, render_template, redirect, url_for, flash, request, Response, session, current_app, g
 from flask_login import login_required, current_user
 from extensions import db
-from models import Payment, Expense, Booking, Vendor
+from models import Payment, Expense, Booking, Vendor, FasilitasUmum
 from helpers import admin_or_management, admin_only, get_or_404, parse_amount, kos_expense_query, kos_room_ids, safe_commit
 from sqlalchemy.orm import joinedload
+from sqlalchemy import select
 
 accounting_bp = Blueprint("accounting", __name__, url_prefix="/accounting")
 
@@ -151,6 +152,72 @@ def tambah_pengeluaran():
         return redirect(url_for("accounting.index"))
 
     return render_template("accounting/expense_form.html", vendors=Vendor.query.order_by(Vendor.nama).all())
+
+@accounting_bp.route("/generate-recurring", methods=["POST"])
+@admin_or_management
+def generate_recurring():
+    """Auto-create expenses from recurring fasilitas for current period."""
+    kos_id = session.get("kos_id")
+    if not kos_id:
+        flash("Pilih kos terlebih dahulu.", "warning")
+        return redirect(url_for("accounting.index"))
+
+    recurring = FasilitasUmum.query.filter_by(kos_id=kos_id, is_recurring=True, kondisi="baik").all()
+    if not recurring:
+        flash("Tidak ada fasilitas berulang.", "info")
+        return redirect(url_for("accounting.index"))
+
+    today = date.today()
+    created = 0
+    for f in recurring:
+        # Determine if expense should be generated this month
+        freq = f.frekuensi or "bulanan"
+        month_ok = False
+        if freq == "bulanan":
+            month_ok = True
+        elif freq == "3_bulan":
+            month_ok = today.month % 3 == 1  # Jan, Apr, Jul, Oct
+        elif freq == "6_bulan":
+            month_ok = today.month in (1, 7)  # Jan, Jul
+        elif freq == "tahunan":
+            month_ok = today.month == 1  # Jan only
+
+        if not month_ok:
+            continue
+
+        # Dedup: check if expense already exists for this fasilitas + month
+        month_start = date(today.year, today.month, 1)
+        if today.month == 12:
+            month_end = date(today.year + 1, 1, 1) - timedelta(days=1)
+        else:
+            month_end = date(today.year, today.month + 1, 1) - timedelta(days=1)
+
+        exists = Expense.query.filter(
+            Expense.fasilitas_id == f.id,
+            Expense.tanggal >= month_start,
+            Expense.tanggal <= month_end,
+        ).first()
+        if exists:
+            continue
+
+        exp = Expense(
+            kos_id=kos_id,
+            kategori=f.kategori,
+            jumlah=f.biaya_per_bulan or 0,
+            tanggal=today,
+            deskripsi=f"Biaya {f.nama} - {today.strftime('%B %Y')}",
+            fasilitas_id=f.id,
+        )
+        db.session.add(exp)
+        created += 1
+
+    if created:
+        safe_commit()
+        flash(f"{created} biaya berulang berhasil dicatat.", "success")
+    else:
+        db.session.rollback()
+        flash("Semua biaya berulang sudah dicatat bulan ini.", "info")
+    return redirect(url_for("accounting.index"))
 
 @accounting_bp.route("/pengeluaran/edit/<int:id>", methods=["GET", "POST"])
 @admin_or_management

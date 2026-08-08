@@ -207,9 +207,11 @@ class Expense(db.Model):
     tanggal = db.Column(db.Date, default=date.today)
     deskripsi = db.Column(db.Text)
     vendor_id = db.Column(db.Integer, db.ForeignKey("vendors.id", name="fk_expense_vendor"), nullable=True, index=True)
+    fasilitas_id = db.Column(db.Integer, db.ForeignKey("fasilitas_umum.id"), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     vendor = db.relationship("Vendor", backref="expenses")
+    fasilitas = db.relationship("FasilitasUmum", backref="expenses")
     kos = db.relationship("Kos", backref="expenses")
 
 class Vendor(db.Model):
