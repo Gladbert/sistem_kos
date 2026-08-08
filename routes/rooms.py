@@ -49,29 +49,30 @@ def index():
 def tambah():
     if request.method == "POST":
         nomor = request.form.get("nomor_kamar", "").strip()
+        submitted = request.form
         if not nomor:
             flash("Nomor kamar wajib diisi.", "danger")
-            return render_template("rooms/form.html")
+            return render_template("rooms/form.html", submitted=submitted)
 
         kos_id = session.get("kos_id")
         existing = Room.query.filter_by(nomor_kamar=nomor, kos_id=kos_id).first()
         if existing:
             flash("Nomor kamar sudah ada di kos ini.", "danger")
-            return render_template("rooms/form.html")
+            return render_template("rooms/form.html", submitted=submitted)
 
         harga, err = parse_amount(request.form.get("harga_per_bulan"), label="Harga")
         if err:
             flash(err, "danger")
-            return render_template("rooms/form.html")
+            return render_template("rooms/form.html", submitted=submitted)
 
         try:
             lantai = int(request.form.get("lantai", 1))
         except (ValueError, TypeError):
             flash("Lantai harus berupa angka.", "danger")
-            return render_template("rooms/form.html")
+            return render_template("rooms/form.html", submitted=submitted)
         if lantai < 1:
             flash("Lantai harus minimal 1.", "danger")
-            return render_template("rooms/form.html")
+            return render_template("rooms/form.html", submitted=submitted)
 
         room = Room(
             kos_id=kos_id,

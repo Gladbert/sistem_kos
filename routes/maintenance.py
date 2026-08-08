@@ -39,7 +39,7 @@ def tambah():
 
         if not deskripsi:
             flash("Deskripsi wajib diisi.", "danger")
-            return render_template("maintenance/form.html", rooms=kos_rooms(), vendors=Vendor.query.order_by(Vendor.nama).all())
+            return render_template("maintenance/form.html", rooms=kos_rooms(), vendors=Vendor.query.order_by(Vendor.nama).all(), submitted=request.form)
 
         mr = MaintenanceRequest(
             room_id=room_id,

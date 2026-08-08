@@ -13,35 +13,35 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Username*</label>
-                        <input type="text" name="username" class="form-control" required>
+                        <label class="form-label" for="register-username">Username*</label>
+                        <input type="text" name="username" id="register-username" class="form-control" required autocomplete="username">
                     </div>
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Email*</label>
-                        <input type="email" name="email" class="form-control" required>
+                        <label class="form-label" for="register-email">Email*</label>
+                        <input type="email" name="email" id="register-email" class="form-control" required autocomplete="email">
                     </div>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Nama Lengkap*</label>
-                    <input type="text" name="nama_lengkap" class="form-control" required>
+                    <label class="form-label" for="register-nama">Nama Lengkap*</label>
+                    <input type="text" name="nama_lengkap" id="register-nama" class="form-control" required autocomplete="name">
                 </div>
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Password*</label>
-                        <input type="password" name="password" class="form-control" required minlength="6">
+                        <label class="form-label" for="register-password">Password*</label>
+                        <input type="password" name="password" id="register-password" class="form-control" required minlength="6" autocomplete="new-password">
                     </div>
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Konfirmasi Password*</label>
-                        <input type="password" name="confirm_password" class="form-control" required>
+                        <label class="form-label" for="register-confirm">Konfirmasi Password*</label>
+                        <input type="password" name="confirm_password" id="register-confirm" class="form-control" required autocomplete="new-password">
                     </div>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">No. Telepon</label>
-                    <input type="tel" name="no_telepon" class="form-control" placeholder="08123456789">
+                    <label class="form-label" for="register-telepon">No. Telepon</label>
+                    <input type="tel" name="no_telepon" id="register-telepon" class="form-control" placeholder="08123456789" autocomplete="tel">
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Alamat</label>
-                    <textarea name="alamat" class="form-control" rows="2"></textarea>
+                    <label class="form-label" for="register-alamat">Alamat</label>
+                    <textarea name="alamat" id="register-alamat" class="form-control" rows="2" autocomplete="street-address"></textarea>
                 </div>
                 <button type="submit" class="btn btn-primary w-100 py-2 mt-2">Daftar</button>
             </form>

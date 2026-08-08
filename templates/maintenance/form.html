@@ -19,7 +19,7 @@
                             <select name="room_id" class="form-select" required>
                                 <option value="">Pilih Kamar</option>
                                 {% for r in rooms %}
-                                <option value="{{ r.id }}" {% if mr and mr.room_id == r.id %}selected{% endif %}>
+                                <option value="{{ r.id }}" {% if (submitted and submitted.room_id|string == r.id|string) or (mr and mr.room_id == r.id) %}selected{% endif %}>
                                     {{ r.nomor_kamar }} ({{ r.tipe }})
                                 </option>
                                 {% endfor %}
@@ -30,7 +30,7 @@
                             <select name="vendor_id" class="form-select">
                                 <option value="">-- Pilih Vendor --</option>
                                 {% for v in vendors %}
-                                <option value="{{ v.id }}" {% if mr and mr.vendor_id == v.id %}selected{% endif %}>
+                                <option value="{{ v.id }}" {% if (submitted and submitted.vendor_id|string == v.id|string) or (mr and mr.vendor_id == v.id) %}selected{% endif %}>
                                     {{ v.nama }} ({{ v.kategori }})
                                 </option>
                                 {% endfor %}
@@ -39,9 +39,9 @@
                         <div class="col-md-6">
                             <label class="form-label">Prioritas</label>
                             <select name="prioritas" class="form-select">
-                                <option value="rendah" {% if mr and mr.prioritas == 'rendah' %}selected{% endif %}>Rendah</option>
-                                <option value="normal" {% if not mr or mr.prioritas == 'normal' %}selected{% endif %}>Normal</option>
-                                <option value="tinggi" {% if mr and mr.prioritas == 'tinggi' %}selected{% endif %}>Tinggi</option>
+                                <option value="rendah" {% if (submitted and submitted.prioritas == 'rendah') or (mr and mr.prioritas == 'rendah') %}selected{% endif %}>Rendah</option>
+                                <option value="normal" {% if (submitted and submitted.prioritas == 'normal') or (not submitted and (not mr or mr.prioritas == 'normal')) %}selected{% endif %}>Normal</option>
+                                <option value="tinggi" {% if (submitted and submitted.prioritas == 'tinggi') or (mr and mr.prioritas == 'tinggi') %}selected{% endif %}>Tinggi</option>
                             </select>
                         </div>
                         <div class="col-md-6">
@@ -54,15 +54,15 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Biaya (Rp)</label>
-                            <input type="text" name="biaya" class="form-control" data-rupiah value="{{ mr.biaya|int if mr and mr.biaya else '' }}">
+                            <input type="text" name="biaya" class="form-control" data-rupiah value="{{ submitted.biaya if submitted else (mr.biaya|int if mr and mr.biaya else '') }}">
                         </div>
                         <div class="col-12">
                             <label class="form-label">Deskripsi <span class="text-danger">*</span></label>
-                            <textarea name="deskripsi" class="form-control" required placeholder="Jelaskan masalah atau pekerjaan yang perlu dilakukan">{{ mr.deskripsi if mr else '' }}</textarea>
+                            <textarea name="deskripsi" class="form-control" required placeholder="Jelaskan masalah atau pekerjaan yang perlu dilakukan">{{ submitted.deskripsi if submitted else (mr.deskripsi if mr else '') }}</textarea>
                         </div>
                         <div class="col-12">
                             <label class="form-label">Catatan</label>
-                            <textarea name="catatan" class="form-control" placeholder="Catatan tambahan">{{ mr.catatan if mr else '' }}</textarea>
+                            <textarea name="catatan" class="form-control" placeholder="Catatan tambahan">{{ submitted.catatan if submitted else (mr.catatan if mr else '') }}</textarea>
                         </div>
                     </div>
                     <div class="d-flex gap-2 mt-4">

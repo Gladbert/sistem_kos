@@ -64,7 +64,7 @@ def tambah():
         jumlah, err = parse_amount(request.form.get("jumlah"))
         if err:
             flash(err, "danger")
-            return render_template("payments/form.html", bookings=_scoped_bookings())
+            return render_template("payments/form.html", bookings=_scoped_bookings(), submitted=request.form)
 
         booking = db.session.get(Booking, booking_id)
         if not booking:

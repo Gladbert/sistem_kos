@@ -14,13 +14,13 @@
                 <form method="POST" action="">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="row g-3">
-                        {% if not payment %}
+                        {% if not payment and not submitted %}
                         <div class="col-12">
                             <label class="form-label">Penghuni</label>
                             <select name="booking_id" class="form-select" required>
                                 <option value="">Pilih Penghuni</option>
                                 {% for b in bookings %}
-                                <option value="{{ b.id }}" {% if request.args.get('booking_id')|string == b.id|string %}selected{% endif %}>
+                                <option value="{{ b.id }}" {% if (submitted and submitted.booking_id|string == b.id|string) or request.args.get('booking_id')|string == b.id|string %}selected{% endif %}>
                                     {{ b.client.nama_lengkap }} - Kamar {{ b.room.nomor_kamar }}
                                 </option>
                                 {% endfor %}
@@ -29,33 +29,33 @@
                         {% endif %}
                         <div class="col-md-6">
                             <label class="form-label">Jumlah (Rp)</label>
-                            <input type="text" name="jumlah" class="form-control" data-rupiah value="{{ payment.jumlah|int if payment else '' }}" required>
+                            <input type="text" name="jumlah" class="form-control" data-rupiah value="{{ submitted.jumlah if submitted else (payment.jumlah|int if payment else '') }}" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Tanggal Bayar</label>
-                            <input type="date" name="tanggal_bayar" class="form-control" value="{{ payment.tanggal_bayar.strftime('%Y-%m-%d') if payment else '' }}">
+                            <input type="date" name="tanggal_bayar" class="form-control" value="{{ submitted.tanggal_bayar if submitted else (payment.tanggal_bayar.strftime('%Y-%m-%d') if payment else '') }}">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Bulan Dibayar</label>
-                            <input type="month" name="bulan_dibayar_untuk" class="form-control" value="{{ payment.bulan_dibayar_untuk if payment else '' }}">
+                            <input type="month" name="bulan_dibayar_untuk" class="form-control" value="{{ submitted.bulan_dibayar_untuk if submitted else (payment.bulan_dibayar_untuk if payment else '') }}">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Metode Bayar</label>
                             <select name="metode_bayar" class="form-select" required>
-                                <option value="transfer" {% if payment and payment.metode_bayar == 'transfer' %}selected{% endif %}>Transfer</option>
-                                <option value="tunai" {% if payment and payment.metode_bayar == 'tunai' %}selected{% endif %}>Tunai</option>
+                                <option value="transfer" {% if (submitted and submitted.metode_bayar == 'transfer') or (not submitted and (not payment or payment.metode_bayar == 'transfer')) %}selected{% endif %}>Transfer</option>
+                                <option value="tunai" {% if (submitted and submitted.metode_bayar == 'tunai') or (payment and payment.metode_bayar == 'tunai') %}selected{% endif %}>Tunai</option>
                             </select>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Status</label>
                             <select name="status" class="form-select" required>
-                                <option value="lunas" {% if not payment or payment.status == 'lunas' %}selected{% endif %}>Lunas</option>
-                                <option value="tertunda" {% if payment and payment.status == 'tertunda' %}selected{% endif %}>Tertunda</option>
+                                <option value="lunas" {% if (submitted and submitted.status == 'lunas') or (not submitted and (not payment or payment.status == 'lunas')) %}selected{% endif %}>Lunas</option>
+                                <option value="tertunda" {% if (submitted and submitted.status == 'tertunda') or (payment and payment.status == 'tertunda') %}selected{% endif %}>Tertunda</option>
                             </select>
                         </div>
                         <div class="col-12">
                             <label class="form-label">Catatan</label>
-                            <textarea name="catatan" class="form-control" placeholder="Catatan tambahan">{{ payment.catatan if payment else '' }}</textarea>
+                            <textarea name="catatan" class="form-control" placeholder="Catatan tambahan">{{ submitted.catatan if submitted else (payment.catatan if payment else '') }}</textarea>
                         </div>
                     </div>
                     <div class="d-flex gap-2 mt-4">

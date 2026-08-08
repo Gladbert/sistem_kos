@@ -893,3 +893,27 @@ textarea.form-control {
     background: var(--gray-900);
     color: #fff;
 }
+
+/* ==========================================
+   FOCUS VISIBLE (keyboard navigation)
+   ========================================== */
+:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+button:focus-visible,
+a:focus-visible,
+.form-control:focus-visible,
+.form-select:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.btn:focus:not(:focus-visible) {
+    outline: none;
+}
+.form-control:focus:not(:focus-visible),
+.form-select:focus:not(:focus-visible) {
+    box-shadow: 0 0 0 1px var(--gray-900);
+}

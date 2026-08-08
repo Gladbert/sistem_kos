@@ -140,7 +140,7 @@
                             <td>{{ b.durasi_bulan }} bln</td>
                             <td><a href="tel:{{ b.client.no_telepon }}">{{ b.client.no_telepon }}</a></td>
                             <td>
-                                <form method="POST" action="{{ url_for('dashboard.approve_booking', id=b.id) }}" style="display:inline">
+                                <form method="POST" action="{{ url_for('dashboard.approve_booking', id=b.id) }}" style="display:inline" onsubmit="return confirm('Setujui booking ini?')">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button class="btn btn-sm btn-success" title="Setujui"><i class="bi bi-check-lg"></i></button>
                                 </form>

@@ -42,7 +42,7 @@
                 </ul>
             </div>
             {% endif %}
-            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-label="Menu navigasi" aria-expanded="false">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
@@ -234,12 +234,21 @@
             }
         });
 
-        // Unformat before form submit
+        // Unformat before form submit + loading state on submit button
         document.querySelectorAll('form').forEach(function(form) {
             form.addEventListener('submit', function() {
                 form.querySelectorAll('input[data-rupiah]').forEach(function(input) {
                     input.value = unformatRupiah(input.value);
                 });
+                // Disable submit button to prevent double-click
+                var btn = form.querySelector('button[type="submit"]');
+                if (btn && !btn.disabled) {
+                    btn.disabled = true;
+                    btn.dataset.origText = btn.innerHTML;
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Memproses...';
+                    // Re-enable after 10s as safety net
+                    setTimeout(function() { btn.disabled = false; btn.innerHTML = btn.dataset.origText; }, 10000);
+                }
             });
         });
     });
