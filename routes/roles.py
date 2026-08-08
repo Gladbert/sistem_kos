@@ -30,20 +30,11 @@ def index():
     roles = ["admin", "management", "client"]
     perms = {}
     for role in roles:
-        perms[role] = {}
+        perms[role] = RolePermission.get_all_for_role(role)
+        # Fill missing modules with False defaults
         for module_key, _, _ in MODULES:
-            p = RolePermission.query.filter_by(role=role, module=module_key).first()
-            if p:
-                perms[role][module_key] = {
-                    "view": p.can_view,
-                    "create": p.can_create,
-                    "edit": p.can_edit,
-                    "delete": p.can_delete,
-                }
-            else:
-                perms[role][module_key] = {
-                    "view": False, "create": False, "edit": False, "delete": False,
-                }
+            if module_key not in perms[role]:
+                perms[role][module_key] = {"view": False, "create": False, "edit": False, "delete": False}
     return render_template("admin/roles.html", modules=MODULES, roles=roles, perms=perms)
 
 

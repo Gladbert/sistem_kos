@@ -1,7 +1,7 @@
 -- Supabase migration: all tables + indexes
 -- Run against target database
 
-CREATE TABLE kos (
+CREATE TABLE IF NOT EXISTS kos (
 	id SERIAL NOT NULL, 
 	nama VARCHAR(150) NOT NULL, 
 	alamat TEXT, 
@@ -11,7 +11,7 @@ CREATE TABLE kos (
 	PRIMARY KEY (id)
 );
 
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
 	id SERIAL NOT NULL, 
 	username VARCHAR(80) NOT NULL, 
 	email VARCHAR(120) NOT NULL, 
@@ -27,7 +27,7 @@ CREATE TABLE users (
 	UNIQUE (email)
 );
 
-CREATE TABLE user_kos (
+CREATE TABLE IF NOT EXISTS user_kos (
 	id SERIAL NOT NULL, 
 	user_id INTEGER NOT NULL, 
 	kos_id INTEGER NOT NULL, 
@@ -39,7 +39,7 @@ CREATE TABLE user_kos (
 	CONSTRAINT fk_userkos_kos FOREIGN KEY(kos_id) REFERENCES kos (id)
 );
 
-CREATE TABLE kos_invites (
+CREATE TABLE IF NOT EXISTS kos_invites (
 	id SERIAL NOT NULL, 
 	kos_id INTEGER NOT NULL, 
 	code VARCHAR(20) NOT NULL, 
@@ -55,7 +55,7 @@ CREATE TABLE kos_invites (
 	CONSTRAINT fk_invite_creator FOREIGN KEY(created_by) REFERENCES users (id)
 );
 
-CREATE TABLE vendors (
+CREATE TABLE IF NOT EXISTS vendors (
 	id SERIAL NOT NULL, 
 	nama VARCHAR(150) NOT NULL, 
 	no_telepon VARCHAR(20), 
@@ -66,7 +66,7 @@ CREATE TABLE vendors (
 	PRIMARY KEY (id)
 );
 
-CREATE TABLE rooms (
+CREATE TABLE IF NOT EXISTS rooms (
 	id SERIAL NOT NULL, 
 	kos_id INTEGER, 
 	nomor_kamar VARCHAR(10) NOT NULL, 
@@ -83,7 +83,7 @@ CREATE TABLE rooms (
 	CONSTRAINT fk_room_kos FOREIGN KEY(kos_id) REFERENCES kos (id)
 );
 
-CREATE TABLE bookings (
+CREATE TABLE IF NOT EXISTS bookings (
 	id SERIAL NOT NULL, 
 	user_id INTEGER NOT NULL, 
 	room_id INTEGER NOT NULL, 
@@ -98,7 +98,7 @@ CREATE TABLE bookings (
 	CONSTRAINT fk_booking_room FOREIGN KEY(room_id) REFERENCES rooms (id)
 );
 
-CREATE TABLE payments (
+CREATE TABLE IF NOT EXISTS payments (
 	id SERIAL NOT NULL, 
 	booking_id INTEGER NOT NULL, 
 	jumlah NUMERIC(12, 2) NOT NULL, 
@@ -113,7 +113,7 @@ CREATE TABLE payments (
 	CONSTRAINT fk_payment_booking FOREIGN KEY(booking_id) REFERENCES bookings (id)
 );
 
-CREATE TABLE expenses (
+CREATE TABLE IF NOT EXISTS expenses (
 	id SERIAL NOT NULL, 
 	kos_id INTEGER, 
 	kategori VARCHAR(50) NOT NULL, 
@@ -129,7 +129,7 @@ CREATE TABLE expenses (
 	FOREIGN KEY(fasilitas_id) REFERENCES fasilitas_umum (id)
 );
 
-CREATE TABLE maintenance_requests (
+CREATE TABLE IF NOT EXISTS maintenance_requests (
 	id SERIAL NOT NULL, 
 	room_id INTEGER NOT NULL, 
 	vendor_id INTEGER, 
@@ -146,7 +146,7 @@ CREATE TABLE maintenance_requests (
 	CONSTRAINT fk_maintenance_vendor FOREIGN KEY(vendor_id) REFERENCES vendors (id)
 );
 
-CREATE TABLE notifications (
+CREATE TABLE IF NOT EXISTS notifications (
 	id SERIAL NOT NULL, 
 	user_id INTEGER, 
 	pesan TEXT NOT NULL, 
@@ -158,7 +158,7 @@ CREATE TABLE notifications (
 	CONSTRAINT fk_notification_user FOREIGN KEY(user_id) REFERENCES users (id)
 );
 
-CREATE TABLE announcements (
+CREATE TABLE IF NOT EXISTS announcements (
 	id SERIAL NOT NULL, 
 	judul VARCHAR(200) NOT NULL, 
 	isi TEXT NOT NULL, 
@@ -170,7 +170,7 @@ CREATE TABLE announcements (
 	CONSTRAINT fk_announcement_creator FOREIGN KEY(created_by) REFERENCES users (id)
 );
 
-CREATE TABLE complaints (
+CREATE TABLE IF NOT EXISTS complaints (
 	id SERIAL NOT NULL, 
 	user_id INTEGER NOT NULL, 
 	kos_id INTEGER, 
@@ -187,7 +187,7 @@ CREATE TABLE complaints (
 	CONSTRAINT fk_complaint_responder FOREIGN KEY(ditanggapi_oleh) REFERENCES users (id)
 );
 
-CREATE TABLE activity_logs (
+CREATE TABLE IF NOT EXISTS activity_logs (
 	id SERIAL NOT NULL, 
 	user_id INTEGER, 
 	tindakan VARCHAR(100) NOT NULL, 
@@ -198,7 +198,7 @@ CREATE TABLE activity_logs (
 	CONSTRAINT fk_activitylog_user FOREIGN KEY(user_id) REFERENCES users (id)
 );
 
-CREATE TABLE room_items (
+CREATE TABLE IF NOT EXISTS room_items (
 	id SERIAL NOT NULL, 
 	room_id INTEGER NOT NULL, 
 	nama VARCHAR(150) NOT NULL, 
@@ -210,7 +210,7 @@ CREATE TABLE room_items (
 	CONSTRAINT fk_roomitem_room FOREIGN KEY(room_id) REFERENCES rooms (id)
 );
 
-CREATE TABLE room_audits (
+CREATE TABLE IF NOT EXISTS room_audits (
 	id SERIAL NOT NULL, 
 	booking_id INTEGER NOT NULL, 
 	tipe VARCHAR(20) NOT NULL, 
@@ -222,7 +222,7 @@ CREATE TABLE room_audits (
 	CONSTRAINT fk_roomaudit_creator FOREIGN KEY(created_by) REFERENCES users (id)
 );
 
-CREATE TABLE audit_item_results (
+CREATE TABLE IF NOT EXISTS audit_item_results (
 	id SERIAL NOT NULL, 
 	audit_id INTEGER NOT NULL, 
 	item_id INTEGER NOT NULL, 
@@ -233,7 +233,7 @@ CREATE TABLE audit_item_results (
 	CONSTRAINT fk_auditresult_item FOREIGN KEY(item_id) REFERENCES room_items (id)
 );
 
-CREATE TABLE fasilitas_umum (
+CREATE TABLE IF NOT EXISTS fasilitas_umum (
 	id SERIAL NOT NULL, 
 	kos_id INTEGER NOT NULL, 
 	nama VARCHAR(150) NOT NULL, 
@@ -251,7 +251,7 @@ CREATE TABLE fasilitas_umum (
 	CONSTRAINT fk_fasilitas_kos FOREIGN KEY(kos_id) REFERENCES kos (id)
 );
 
-CREATE TABLE fasilitas_kategori (
+CREATE TABLE IF NOT EXISTS fasilitas_kategori (
 	id SERIAL NOT NULL, 
 	nama VARCHAR(50) NOT NULL, 
 	icon VARCHAR(30), 
@@ -262,7 +262,7 @@ CREATE TABLE fasilitas_kategori (
 	UNIQUE (nama)
 );
 
-CREATE TABLE role_permissions (
+CREATE TABLE IF NOT EXISTS role_permissions (
 	id SERIAL NOT NULL, 
 	role VARCHAR(20) NOT NULL, 
 	module VARCHAR(50) NOT NULL, 
