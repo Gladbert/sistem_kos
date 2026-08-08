@@ -39,7 +39,7 @@ def index():
     maint = sum(1 for i in items if i.kondisi == "maintenance")
     
     return render_template("fasilitas/index.html",
-        items=items, kategori_list=get_kategori_list(), kondisi_list=KONDISI, frekuensi_list=FREKUENSI,
+        items=items, kategori_list=get_kategori_list(), kondisi_list=KONDISI,
         kategori_filter=kategori_filter,
         total=total, baik=baik, rusak=rusak, maintenance=maint)
 
