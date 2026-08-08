@@ -2,7 +2,7 @@ from datetime import date
 from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
 from extensions import db
 from models import MaintenanceRequest, Vendor, Room
-from helpers import admin_or_management, get_or_404, kos_rooms, kos_room_ids, create_notification, wa_redirect, safe_commit, sanitize
+from helpers import admin_or_management, get_or_404, kos_rooms, kos_room_ids, create_notification, wa_redirect, safe_commit, sanitize, require_module_perm
 from sqlalchemy.orm import joinedload
 
 maintenance_bp = Blueprint("maintenance", __name__, url_prefix="/maintenance")
@@ -33,6 +33,8 @@ def index():
 @maintenance_bp.route("/tambah", methods=["GET", "POST"])
 @admin_or_management
 def tambah():
+    if not require_module_perm("maintenance", "create"):
+        return redirect(url_for("dashboard.index"))
     if request.method == "POST":
         room_id = request.form.get("room_id", type=int)
         deskripsi = request.form.get("deskripsi", "").strip()
@@ -82,14 +84,19 @@ def tambah():
 @maintenance_bp.route("/edit/<int:id>", methods=["GET", "POST"])
 @admin_or_management
 def edit(id):
+    if not require_module_perm("maintenance", "edit"):
+        return redirect(url_for("dashboard.index"))
     mr = get_or_404(MaintenanceRequest, id)
 
     if request.method == "POST":
         mr.room_id = request.form.get("room_id", type=int)
         mr.vendor_id = request.form.get("vendor_id", type=int) or None
         mr.deskripsi = request.form.get("deskripsi", "")
+        VALID_MR_STATUSES = ("diajukan", "diproses", "selesai", "dibatalkan")
         mr.prioritas = request.form.get("prioritas", "normal")
         mr.status = request.form.get("status", mr.status)
+        if mr.status not in VALID_MR_STATUSES:
+            mr.status = mr.status or "diajukan"
         mr.catatan = request.form.get("catatan")
 
         if mr.status == "selesai" and not mr.tanggal_selesai:
@@ -104,7 +111,7 @@ def edit(id):
                     room.status = "tersedia"
 
         try:
-            mr.biaya = float(request.form.get("biaya", 0))
+            mr.biaya = max(0, float(request.form.get("biaya", 0)))
         except ValueError:
             mr.biaya = 0
 
@@ -124,6 +131,8 @@ def edit(id):
 @maintenance_bp.route("/hapus/<int:id>", methods=["POST"])
 @admin_or_management
 def hapus(id):
+    if not require_module_perm("maintenance", "delete"):
+        return redirect(url_for("dashboard.index"))
     mr = get_or_404(MaintenanceRequest, id)
     db.session.delete(mr)
     try:

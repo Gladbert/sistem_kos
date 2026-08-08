@@ -40,7 +40,7 @@ def register_routes(app):
         return redirect(url_for("inventory.index"))
     @app.route("/complaints/")
     def _complaints_alias():
-        return redirect(url_for("complaint.index"))
+        return redirect(url_for("complaints.index"))
     @app.route("/logs/")
     def _logs_alias():
         return redirect(url_for("activity.index"))

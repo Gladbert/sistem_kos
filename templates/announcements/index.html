@@ -38,7 +38,7 @@
                         <p class="text-muted mb-2" style="white-space:pre-line">{{ a.isi }}</p>
                         <small class="text-muted">
                             <i class="bi bi-person me-1"></i>{{ a.creator.nama_lengkap if a.creator else '-' }}
-                            &middot; {{ a.created_at.strftime('%d/%m/%Y %H:%M') }}
+                            &middot; {{ a.created_at.strftime('%d/%m/%Y %H:%M') if a.created_at else '' }}
                         </small>
                     </div>
                     {% if current_user.role in ('admin', 'management') %}

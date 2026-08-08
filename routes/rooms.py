@@ -2,8 +2,11 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db
 from models import Room, Booking, MaintenanceRequest, Kos
-from helpers import admin_or_management, get_or_404, parse_amount, safe_commit
+from helpers import admin_or_management, get_or_404, parse_amount, safe_commit, require_module_perm
 from sqlalchemy.orm import joinedload
+
+VALID_ROOM_STATUSES = ("tersedia", "terisi", "maintenance")
+VALID_ROOM_TIYPES = ("Reguler", "Deluxe", "VIP")
 
 rooms_bp = Blueprint("rooms", __name__, url_prefix="/rooms")
 
@@ -47,6 +50,8 @@ def index():
 @rooms_bp.route("/tambah", methods=["GET", "POST"])
 @admin_or_management
 def tambah():
+    if not require_module_perm("rooms", "create"):
+        return redirect(url_for("dashboard.index"))
     if request.method == "POST":
         nomor = request.form.get("nomor_kamar", "").strip()
         submitted = request.form
@@ -74,15 +79,22 @@ def tambah():
             flash("Lantai harus minimal 1.", "danger")
             return render_template("rooms/form.html", submitted=submitted)
 
+        status = request.form.get("status", "tersedia")
+        if status not in VALID_ROOM_STATUSES:
+            status = "tersedia"
+        tipe = request.form.get("tipe", "Reguler")
+        if tipe not in VALID_ROOM_TIYPES:
+            tipe = "Reguler"
+
         room = Room(
             kos_id=kos_id,
             nomor_kamar=nomor,
             lantai=lantai,
-            tipe=request.form.get("tipe", "Reguler"),
+            tipe=tipe,
             harga_per_bulan=harga,
             ukuran=request.form.get("ukuran"),
             fasilitas=request.form.get("fasilitas"),
-            status=request.form.get("status", "tersedia"),
+            status=status,
             deskripsi=request.form.get("deskripsi"),
         )
         db.session.add(room)
@@ -102,6 +114,8 @@ def tambah():
 @rooms_bp.route("/edit/<int:id>", methods=["GET", "POST"])
 @admin_or_management
 def edit(id):
+    if not require_module_perm("rooms", "edit"):
+        return redirect(url_for("dashboard.index"))
     room = get_or_404(Room, id)
 
     if request.method == "POST":
@@ -133,10 +147,14 @@ def edit(id):
         room.nomor_kamar = nomor
         room.lantai = lantai
         room.tipe = request.form.get("tipe", "Reguler")
+        if room.tipe not in VALID_ROOM_TIYPES:
+            room.tipe = "Reguler"
         room.harga_per_bulan = harga
         room.ukuran = request.form.get("ukuran")
         room.fasilitas = request.form.get("fasilitas")
         room.status = request.form.get("status", "tersedia")
+        if room.status not in VALID_ROOM_STATUSES:
+            room.status = "tersedia"
         room.deskripsi = request.form.get("deskripsi")
         try:
             safe_commit()
@@ -154,6 +172,8 @@ def edit(id):
 @rooms_bp.route("/hapus/<int:id>", methods=["POST"])
 @admin_or_management
 def hapus(id):
+    if not require_module_perm("rooms", "delete"):
+        return redirect(url_for("dashboard.index"))
     room = get_or_404(Room, id)
     if room.status == "terisi":
         flash("Kamar sedang terisi, tidak bisa dihapus.", "danger")

@@ -4,7 +4,7 @@ from extensions import db
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
 from models import User, Booking, Payment, Notification, Room
-from helpers import admin_or_management, get_or_404, kos_room_ids, safe_commit
+from helpers import admin_or_management, get_or_404, kos_room_ids, safe_commit, require_module_perm
 
 clients_bp = Blueprint("clients", __name__, url_prefix="/clients")
 
@@ -77,11 +77,21 @@ def nonaktifkan(id):
 @clients_bp.route("/edit/<int:id>", methods=["GET", "POST"])
 @admin_or_management
 def edit(id):
+    if not require_module_perm("clients", "edit"):
+        return redirect(url_for("dashboard.index"))
     client = get_or_404(User, id)
 
     if request.method == "POST":
         client.nama_lengkap = request.form.get("nama_lengkap", client.nama_lengkap)
-        client.email = request.form.get("email", client.email)
+        email = request.form.get("email", client.email).strip()
+        if not email or "@" not in email:
+            flash("Email tidak valid.", "danger")
+            return render_template("clients/edit.html", client=client)
+        dup = User.query.filter(User.email == email, User.id != client.id).first()
+        if dup:
+            flash("Email sudah digunakan penghuni lain.", "danger")
+            return render_template("clients/edit.html", client=client)
+        client.email = email
         client.no_telepon = request.form.get("no_telepon")
         client.alamat = request.form.get("alamat")
 

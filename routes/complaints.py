@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, flash, url_for,
 from flask_login import login_required, current_user
 from extensions import db
 from models import Complaint, User
-from helpers import log_activity, admin_or_management, get_or_404, safe_commit
+from helpers import log_activity, admin_or_management, get_or_404, safe_commit, sanitize, require_module_perm
 from sqlalchemy.orm import joinedload
 
 complaint_bp = Blueprint("complaints", __name__, url_prefix="/komplain")
@@ -29,16 +29,26 @@ def index():
 @complaint_bp.route("/tambah", methods=["GET", "POST"])
 @login_required
 def create():
+    if not require_module_perm("complaints", "create"):
+        return redirect(url_for("dashboard.index"))
     if request.method == "POST":
+        judul = sanitize(request.form.get("judul", "").strip())
+        deskripsi = sanitize(request.form.get("deskripsi", "").strip())
+        if not judul:
+            flash("Judul wajib diisi.", "danger")
+            return render_template("complaints/form.html")
+        if not deskripsi:
+            flash("Deskripsi wajib diisi.", "danger")
+            return render_template("complaints/form.html")
         c = Complaint(
             user_id=current_user.id,
             kos_id=session.get("kos_id"),
-            judul=request.form["judul"],
-            deskripsi=request.form["deskripsi"],
+            judul=judul,
+            deskripsi=deskripsi,
             kategori=request.form.get("kategori", "umum"),
         )
         db.session.add(c)
-        log_activity(current_user.id, "Buat komplain", f"Judul: {request.form['judul']}", "Complaint")
+        log_activity(current_user.id, "Buat komplain", f"Judul: {judul}", "Complaint")
         try:
             safe_commit()
         except Exception:
@@ -54,9 +64,19 @@ def create():
 @complaint_bp.route("/tanggap/<int:id>", methods=["POST"])
 @admin_or_management
 def respond(id):
+    if not require_module_perm("complaints", "edit"):
+        return redirect(url_for("dashboard.index"))
     c = get_or_404(Complaint, id)
-    c.tanggapan = request.form["tanggapan"]
-    c.status = request.form.get("status", "ditindaklanjuti")
+    VALID_STATUSES = ("diajukan", "ditindaklanjuti", "selesai")
+    tanggapan = sanitize(request.form.get("tanggapan", "").strip())
+    if not tanggapan:
+        flash("Tanggapan wajib diisi.", "danger")
+        return redirect(url_for("complaints.index"))
+    c.tanggapan = tanggapan
+    status = request.form.get("status", "ditindaklanjuti")
+    if status not in VALID_STATUSES:
+        status = "ditindaklanjuti"
+    c.status = status
     c.ditanggapi_oleh = current_user.id
     log_activity(current_user.id, "Tanggapi komplain", f"Judul: {c.judul}, Status: {c.status}", "Complaint")
     try:

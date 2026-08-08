@@ -46,7 +46,7 @@
                         {% endif %}
                         <small class="text-muted mt-2 d-block">
                             <i class="bi bi-person me-1"></i>{{ c.user.nama_lengkap }}
-                            &middot; {{ c.created_at.strftime('%d/%m/%Y %H:%M') }}
+                            &middot; {{ c.created_at.strftime('%d/%m/%Y %H:%M') if c.created_at else '' }}
                         </small>
                     </div>
                 </div>

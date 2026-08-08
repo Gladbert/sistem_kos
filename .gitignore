@@ -18,3 +18,4 @@ dogfood-output/
 seed.py
 seed_production.py
 # AGENTS.md is intentionally tracked despite this ignore list
+tests/

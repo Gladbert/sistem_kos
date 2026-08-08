@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, flash, url_for
 from flask_login import current_user
 from extensions import db
 from models import Room, RoomItem
-from helpers import log_activity, admin_or_management, get_or_404, kos_rooms, safe_commit, sanitize
+from helpers import log_activity, admin_or_management, get_or_404, kos_rooms, safe_commit, sanitize, require_module_perm
 
 inventory_bp = Blueprint("inventory", __name__, url_prefix="/inventaris")
 
@@ -27,17 +27,23 @@ def room_items(room_id):
 @inventory_bp.route("/tambah/<int:room_id>", methods=["GET", "POST"])
 @admin_or_management
 def add_item(room_id):
+    if not require_module_perm("inventory", "create"):
+        return redirect(url_for("dashboard.index"))
     room = get_or_404(Room, room_id)
     if request.method == "POST":
+        nama = sanitize(request.form.get("nama", "").strip())
+        if not nama:
+            flash("Nama barang wajib diisi.", "danger")
+            return render_template("inventory/form.html", room=room)
         i = RoomItem(
             room_id=room_id,
-            nama=sanitize(request.form["nama"]),
-            jumlah=int(request.form.get("jumlah", 1)),
+            nama=nama,
+            jumlah=max(1, int(request.form.get("jumlah", 1))),
             kondisi=request.form.get("kondisi", "baik"),
             catatan=sanitize(request.form.get("catatan", "")),
         )
         db.session.add(i)
-        log_activity(current_user.id, "Tambah barang", f"{request.form['nama']} di {room.nomor_kamar}", "RoomItem")
+        log_activity(current_user.id, "Tambah barang", f"{nama} di {room.nomor_kamar}", "RoomItem")
         try:
             safe_commit()
         except Exception:
@@ -53,10 +59,16 @@ def add_item(room_id):
 @inventory_bp.route("/edit/<int:id>", methods=["GET", "POST"])
 @admin_or_management
 def edit_item(id):
+    if not require_module_perm("inventory", "edit"):
+        return redirect(url_for("dashboard.index"))
     i = get_or_404(RoomItem, id)
     if request.method == "POST":
-        i.nama = sanitize(request.form["nama"])
-        i.jumlah = int(request.form.get("jumlah", 1))
+        nama = sanitize(request.form.get("nama", "").strip())
+        if not nama:
+            flash("Nama barang wajib diisi.", "danger")
+            return render_template("inventory/form.html", room=i.room, item=i)
+        i.nama = nama
+        i.jumlah = max(1, int(request.form.get("jumlah", 1)))
         i.kondisi = request.form.get("kondisi", "baik")
         i.catatan = sanitize(request.form.get("catatan", ""))
         log_activity(current_user.id, "Edit barang", f"{i.nama} di {i.room.nomor_kamar}", "RoomItem")
@@ -75,6 +87,8 @@ def edit_item(id):
 @inventory_bp.route("/hapus/<int:id>", methods=["POST"])
 @admin_or_management
 def delete_item(id):
+    if not require_module_perm("inventory", "delete"):
+        return redirect(url_for("dashboard.index"))
     i = get_or_404(RoomItem, id)
     room_id = i.room_id
     log_activity(current_user.id, "Hapus barang", f"{i.nama} dari {i.room.nomor_kamar}", "RoomItem")

@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db
 from models import Kos, UserKos
-from helpers import log_activity, admin_or_management, get_or_404, safe_commit, sanitize
+from helpers import log_activity, admin_or_management, get_or_404, safe_commit, sanitize, require_module_perm
 
 kos_bp = Blueprint("kos", __name__, url_prefix="/kos")
 
@@ -37,6 +37,8 @@ def index():
 @kos_bp.route("/tambah", methods=["GET", "POST"])
 @admin_or_management
 def tambah():
+    if not require_module_perm("kos", "create"):
+        return redirect(url_for("dashboard.index"))
     if request.method == "POST":
         nama = request.form.get("nama", "").strip()
         submitted = {
@@ -76,6 +78,8 @@ def tambah():
 @kos_bp.route("/edit/<int:id>", methods=["GET", "POST"])
 @admin_or_management
 def edit(id):
+    if not require_module_perm("kos", "edit"):
+        return redirect(url_for("dashboard.index"))
     kos = get_or_404(Kos, id)
     
     # Verify access
@@ -108,6 +112,8 @@ def edit(id):
 @kos_bp.route("/hapus/<int:id>", methods=["POST"])
 @login_required
 def hapus(id):
+    if not require_module_perm("kos", "delete"):
+        return redirect(url_for("dashboard.index"))
     # Only kos admin can delete
     kos_role = current_user.get_role_for_kos(id)
     if kos_role != "admin" and current_user.role != "admin":

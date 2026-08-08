@@ -3,7 +3,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db
 from models import Payment, Booking, Room
-from helpers import admin_or_management, get_or_404, kos_room_ids, parse_amount, create_notification, wa_redirect, safe_commit
+from helpers import admin_or_management, get_or_404, kos_room_ids, parse_amount, create_notification, wa_redirect, safe_commit, require_module_perm
 from sqlalchemy.orm import joinedload
 from sqlalchemy import select
 
@@ -59,6 +59,8 @@ def index():
 @payments_bp.route("/tambah", methods=["GET", "POST"])
 @admin_or_management
 def tambah():
+    if not require_module_perm("payments", "create"):
+        return redirect(url_for("dashboard.index"))
     if request.method == "POST":
         booking_id = request.form.get("booking_id", type=int)
         jumlah, err = parse_amount(request.form.get("jumlah"))
@@ -120,6 +122,8 @@ def _scoped_bookings():
 @payments_bp.route("/edit/<int:id>", methods=["GET", "POST"])
 @admin_or_management
 def edit(id):
+    if not require_module_perm("payments", "edit"):
+        return redirect(url_for("dashboard.index"))
     payment = get_or_404(Payment, id)
 
     if request.method == "POST":
@@ -150,6 +154,8 @@ def edit(id):
 @payments_bp.route("/hapus/<int:id>", methods=["POST"])
 @admin_or_management
 def hapus(id):
+    if not require_module_perm("payments", "delete"):
+        return redirect(url_for("dashboard.index"))
     payment = get_or_404(Payment, id)
     db.session.delete(payment)
     try:

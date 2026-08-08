@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db
 from models import FasilitasUmum, FasilitasKategori
-from helpers import admin_or_management, get_or_404, safe_commit, log_activity, sanitize
+from helpers import admin_or_management, get_or_404, safe_commit, log_activity, sanitize, require_module_perm
 
 fasilitas_bp = Blueprint("fasilitas", __name__, url_prefix="/fasilitas")
 
@@ -46,6 +46,8 @@ def index():
 @fasilitas_bp.route("/tambah", methods=["GET", "POST"])
 @admin_or_management
 def tambah():
+    if not require_module_perm("fasilitas", "create"):
+        return redirect(url_for("dashboard.index"))
     if request.method == "POST":
         nama = request.form.get("nama", "").strip()
         if not nama:
@@ -81,6 +83,8 @@ def tambah():
 @fasilitas_bp.route("/edit/<int:id>", methods=["GET", "POST"])
 @admin_or_management
 def edit(id):
+    if not require_module_perm("fasilitas", "edit"):
+        return redirect(url_for("dashboard.index"))
     item = get_or_404(FasilitasUmum, id)
     
     if request.method == "POST":
@@ -119,6 +123,8 @@ def edit(id):
 @fasilitas_bp.route("/hapus/<int:id>", methods=["POST"])
 @admin_or_management
 def hapus(id):
+    if not require_module_perm("fasilitas", "delete"):
+        return redirect(url_for("dashboard.index"))
     item = get_or_404(FasilitasUmum, id)
     nama = item.nama
     db.session.delete(item)

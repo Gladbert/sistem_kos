@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db
 from models import RoomAudit, AuditItemResult, RoomItem, Booking, Notification
-from helpers import admin_or_management, get_or_404, safe_commit
+from helpers import admin_or_management, get_or_404, safe_commit, require_module_perm
 from sqlalchemy.orm import joinedload
 
 audit_bp = Blueprint("audit", __name__, url_prefix="/audit")
@@ -10,14 +10,18 @@ audit_bp = Blueprint("audit", __name__, url_prefix="/audit")
 
 def _save_audit_items(audit, items):
     """Upsert AuditItemResult rows from form data."""
+    # Delete existing results first (for edit)
+    AuditItemResult.query.filter_by(audit_id=audit.id).delete()
     for item in items:
-        kondisi = request.form.get(f"kondisi_{item.id}", "baik")
-        if kondisi not in ("baik", "rusak"):
-            kondisi = "baik"
+        kondisi = request.form.get(f'kondisi_{item.id}')
+        if kondisi is None:
+            continue  # skip items not in form (stale refs)
+        if kondisi not in ('baik', 'rusak'):
+            kondisi = 'baik'
         db.session.add(AuditItemResult(
             audit_id=audit.id, item_id=item.id,
             kondisi=kondisi,
-            catatan=request.form.get(f"catatan_{item.id}", "").strip(),
+            catatan=request.form.get(f'catatan_{item.id}', '').strip(),
         ))
 
 
@@ -27,6 +31,8 @@ def check_in(booking_id):
     booking = get_or_404(Booking, booking_id)
     if booking.user_id != current_user.id and current_user.role not in ("admin", "management"):
         flash("Akses ditolak.", "danger")
+        return redirect(url_for("dashboard.index"))
+    if current_user.role in ("admin", "management") and not require_module_perm("audit", "create"):
         return redirect(url_for("dashboard.index"))
 
     existing = RoomAudit.query.options(joinedload(RoomAudit.items)).filter_by(booking_id=booking_id, tipe="check_in").first()
@@ -62,6 +68,8 @@ def check_in(booking_id):
 @audit_bp.route("/check-out/<int:booking_id>", methods=["GET", "POST"])
 @admin_or_management
 def check_out(booking_id):
+    if not require_module_perm("audit", "edit"):
+        return redirect(url_for("dashboard.index"))
     booking = get_or_404(Booking, booking_id)
     existing = RoomAudit.query.filter_by(booking_id=booking_id, tipe="check_out").first()
     if existing:
@@ -116,6 +124,8 @@ def detail(booking_id):
 @audit_bp.route("/edit/<int:audit_id>", methods=["GET", "POST"])
 @admin_or_management
 def edit(audit_id):
+    if not require_module_perm("audit", "edit"):
+        return redirect(url_for("dashboard.index"))
     audit = get_or_404(RoomAudit, audit_id)
     booking = audit.booking
     items = RoomItem.query.filter_by(room_id=booking.room_id).order_by(RoomItem.nama).all()

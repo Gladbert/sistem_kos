@@ -4,7 +4,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db
 from models import Payment, Expense, Booking, Vendor, FasilitasUmum
-from helpers import admin_or_management, admin_only, get_or_404, parse_amount, kos_expense_query, kos_room_ids, safe_commit
+from helpers import admin_or_management, admin_only, get_or_404, parse_amount, kos_expense_query, kos_room_ids, safe_commit, require_module_perm
 from sqlalchemy.orm import joinedload
 from sqlalchemy import select
 
@@ -126,6 +126,8 @@ def index():
 @accounting_bp.route("/pengeluaran/tambah", methods=["GET", "POST"])
 @admin_or_management
 def tambah_pengeluaran():
+    if not require_module_perm("accounting", "create"):
+        return redirect(url_for("dashboard.index"))
     if request.method == "POST":
         jumlah, err = parse_amount(request.form.get("jumlah"))
         if err:
@@ -222,6 +224,8 @@ def generate_recurring():
 @accounting_bp.route("/pengeluaran/edit/<int:id>", methods=["GET", "POST"])
 @admin_or_management
 def edit_pengeluaran(id):
+    if not require_module_perm("accounting", "edit"):
+        return redirect(url_for("dashboard.index"))
     expense = get_or_404(Expense, id)
 
     if request.method == "POST":
@@ -250,6 +254,8 @@ def edit_pengeluaran(id):
 @accounting_bp.route("/pengeluaran/hapus/<int:id>", methods=["POST"])
 @admin_or_management
 def hapus_pengeluaran(id):
+    if not require_module_perm("accounting", "delete"):
+        return redirect(url_for("dashboard.index"))
     expense = get_or_404(Expense, id)
     db.session.delete(expense)
     try:
