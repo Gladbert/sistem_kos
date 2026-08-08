@@ -7,6 +7,12 @@ from helpers import admin_or_management, get_or_404, safe_commit, log_activity, 
 fasilitas_bp = Blueprint("fasilitas", __name__, url_prefix="/fasilitas")
 
 KONDISI = ["baik", "rusak_ringan", "rusak_berat", "maintenance"]
+FREKUENSI = [
+    ("bulanan", "Bulanan"),
+    ("3_bulan", "3 Bulan"),
+    ("6_bulan", "6 Bulan"),
+    ("tahunan", "Tahunan"),
+]
 
 def get_kategori_list():
     return FasilitasKategori.query.filter_by(is_active=True).order_by(FasilitasKategori.nama).all()
@@ -33,7 +39,7 @@ def index():
     maint = sum(1 for i in items if i.kondisi == "maintenance")
     
     return render_template("fasilitas/index.html",
-        items=items, kategori_list=get_kategori_list(), kondisi_list=KONDISI,
+        items=items, kategori_list=get_kategori_list(), kondisi_list=KONDISI, frekuensi_list=FREKUENSI,
         kategori_filter=kategori_filter,
         total=total, baik=baik, rusak=rusak, maintenance=maint)
 
@@ -44,7 +50,7 @@ def tambah():
         nama = request.form.get("nama", "").strip()
         if not nama:
             flash("Nama fasilitas wajib diisi.", "danger")
-            return render_template("fasilitas/form.html", kategori_list=get_kategori_list(), kondisi_list=KONDISI, item=None)
+            return render_template("fasilitas/form.html", kategori_list=get_kategori_list(), kondisi_list=KONDISI, frekuensi_list=FREKUENSI, item=None)
 
         item = FasilitasUmum(
             kos_id=session.get("kos_id"),
@@ -54,6 +60,9 @@ def tambah():
             kondisi=request.form.get("kondisi", "baik"),
             deskripsi=sanitize(request.form.get("deskripsi")),
             catatan=sanitize(request.form.get("catatan")),
+            is_recurring=request.form.get("is_recurring") == "1",
+            biaya_per_bulan=float(request.form.get("biaya_per_bulan") or 0) if request.form.get("biaya_per_bulan") else None,
+            frekuensi=request.form.get("frekuensi", "bulanan"),
         )
         db.session.add(item)
         try:
@@ -67,7 +76,7 @@ def tambah():
         flash(f"Fasilitas '{item.nama}' berhasil ditambahkan.", "success")
         return redirect(url_for("fasilitas.index"))
     
-    return render_template("fasilitas/form.html", kategori_list=get_kategori_list(), kondisi_list=KONDISI, item=None)
+    return render_template("fasilitas/form.html", kategori_list=get_kategori_list(), kondisi_list=KONDISI, frekuensi_list=FREKUENSI, item=None)
 
 @fasilitas_bp.route("/edit/<int:id>", methods=["GET", "POST"])
 @admin_or_management
@@ -78,7 +87,7 @@ def edit(id):
         nama = request.form.get("nama", "").strip()
         if not nama:
             flash("Nama fasilitas wajib diisi.", "danger")
-            return render_template("fasilitas/form.html", kategori_list=get_kategori_list(), kondisi_list=KONDISI, item=item)
+            return render_template("fasilitas/form.html", kategori_list=get_kategori_list(), kondisi_list=KONDISI, frekuensi_list=FREKUENSI, item=item)
 
         old_kondisi = item.kondisi
         item.nama = sanitize(nama)
@@ -87,6 +96,9 @@ def edit(id):
         item.kondisi = request.form.get("kondisi", "baik")
         item.deskripsi = sanitize(request.form.get("deskripsi"))
         item.catatan = sanitize(request.form.get("catatan"))
+        item.is_recurring = request.form.get("is_recurring") == "1"
+        item.biaya_per_bulan = float(request.form.get("biaya_per_bulan") or 0) if request.form.get("biaya_per_bulan") else None
+        item.frekuensi = request.form.get("frekuensi", "bulanan")
         
         try:
             safe_commit()
@@ -102,7 +114,7 @@ def edit(id):
             flash(f"Fasilitas '{item.nama}' berhasil diperbarui.", "success")
         return redirect(url_for("fasilitas.index"))
     
-    return render_template("fasilitas/form.html", kategori_list=get_kategori_list(), kondisi_list=KONDISI, item=item)
+    return render_template("fasilitas/form.html", kategori_list=get_kategori_list(), kondisi_list=KONDISI, frekuensi_list=FREKUENSI, item=item)
 
 @fasilitas_bp.route("/hapus/<int:id>", methods=["POST"])
 @admin_or_management

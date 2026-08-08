@@ -66,6 +66,11 @@
                         {{ item.kondisi|replace('_', ' ')|title }}
                     </span>
                 </div>
+                {% if item.is_recurring %}
+                <div class="mb-2">
+                    <span class="badge badge-recurring"><i class="bi bi-arrow-repeat me-1"></i>Langganan · Rp{{ "{:,.0f}".format(item.biaya_per_bulan or 0) }}/bln · {{ item.frekuensi|replace('_',' ') }}</span>
+                </div>
+                {% endif %}
                 {% if item.deskripsi %}
                 <p class="text-muted small mb-2">{{ item.deskripsi[:100] }}{% if item.deskripsi|length > 100 %}...{% endif %}</p>
                 {% endif %}

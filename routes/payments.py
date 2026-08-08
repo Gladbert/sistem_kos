@@ -48,7 +48,7 @@ def index():
         bookings = bookings_q.all()
         return render_template("payments/index.html", pagination=pagination, payments=pagination.items, bookings=bookings)
 
-    booking = Booking.query.filter_by(user_id=current_user.id, status="aktif").first()
+    booking = Booking.query.filter_by(user_id=current_user.id).filter(Booking.status.in_(["aktif", "pending"])).first()
     if not booking:
         flash("Anda belum memiliki kamar.", "warning")
         return redirect(url_for("dashboard.client"))

@@ -343,6 +343,9 @@ class FasilitasUmum(db.Model):
     kondisi = db.Column(db.String(20), default="baik")
     deskripsi = db.Column(db.Text)
     catatan = db.Column(db.Text)
+    is_recurring = db.Column(db.Boolean, default=False)
+    biaya_per_bulan = db.Column(db.Numeric(12, 2))
+    frekuensi = db.Column(db.String(20), default="bulanan")  # bulanan, 3_bulan, 6_bulan, tahunan
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
