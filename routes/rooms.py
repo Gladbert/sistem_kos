@@ -6,7 +6,7 @@ from helpers import admin_or_management, get_or_404, parse_amount, safe_commit, 
 from sqlalchemy.orm import joinedload
 
 VALID_ROOM_STATUSES = ("tersedia", "terisi", "maintenance")
-VALID_ROOM_TIYPES = ("Reguler", "Deluxe", "VIP")
+VALID_ROOM_TYPES = ("Reguler", "Deluxe", "VIP")
 
 rooms_bp = Blueprint("rooms", __name__, url_prefix="/rooms")
 
@@ -83,7 +83,7 @@ def tambah():
         if status not in VALID_ROOM_STATUSES:
             status = "tersedia"
         tipe = request.form.get("tipe", "Reguler")
-        if tipe not in VALID_ROOM_TIYPES:
+        if tipe not in VALID_ROOM_TYPES:
             tipe = "Reguler"
 
         room = Room(
@@ -147,7 +147,7 @@ def edit(id):
         room.nomor_kamar = nomor
         room.lantai = lantai
         room.tipe = request.form.get("tipe", "Reguler")
-        if room.tipe not in VALID_ROOM_TIYPES:
+        if room.tipe not in VALID_ROOM_TYPES:
             room.tipe = "Reguler"
         room.harga_per_bulan = harga
         room.ukuran = request.form.get("ukuran")

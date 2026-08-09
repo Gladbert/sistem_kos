@@ -38,7 +38,7 @@ def add_item(room_id):
         i = RoomItem(
             room_id=room_id,
             nama=nama,
-            jumlah=max(1, int(request.form.get("jumlah", 1))),
+            jumlah=max(1, int(request.form.get("jumlah", 1) or 1)),
             kondisi=request.form.get("kondisi", "baik"),
             catatan=sanitize(request.form.get("catatan", "")),
         )
@@ -68,7 +68,7 @@ def edit_item(id):
             flash("Nama barang wajib diisi.", "danger")
             return render_template("inventory/form.html", room=i.room, item=i)
         i.nama = nama
-        i.jumlah = max(1, int(request.form.get("jumlah", 1)))
+        i.jumlah = max(1, int(request.form.get("jumlah", 1) or 1))
         i.kondisi = request.form.get("kondisi", "baik")
         i.catatan = sanitize(request.form.get("catatan", ""))
         log_activity(current_user.id, "Edit barang", f"{i.nama} di {i.room.nomor_kamar}", "RoomItem")

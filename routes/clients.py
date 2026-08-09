@@ -60,6 +60,8 @@ def detail(id):
 @clients_bp.route("/nonaktifkan/<int:id>", methods=["POST"])
 @admin_or_management
 def nonaktifkan(id):
+    if not require_module_perm("clients", "edit"):
+        return redirect(url_for("dashboard.index"))
     user = get_or_404(User, id)
     user.is_active = not user.is_active
     try:

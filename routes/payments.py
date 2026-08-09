@@ -29,7 +29,7 @@ def index():
             else:
                 # Use subquery instead of collecting IDs — single round trip
                 sub = select(Booking.id).where(Booking.room_id.in_(room_ids)).subquery()
-                query = query.filter(Payment.booking_id.in_(sub))
+                query = query.filter(Payment.booking_id.in_(sub.select()))
         if booking_id:
             query = query.filter_by(booking_id=booking_id)
         if status:
@@ -133,7 +133,11 @@ def edit(id):
             return render_template("payments/form.html", payment=payment, bookings=[])
         payment.jumlah = jumlah_val
 
-        payment.tanggal_bayar = datetime.strptime(request.form["tanggal_bayar"], "%Y-%m-%d").date() if request.form.get("tanggal_bayar") else date.today()
+        try:
+            payment.tanggal_bayar = datetime.strptime(request.form.get("tanggal_bayar", ""), "%Y-%m-%d").date() if request.form.get("tanggal_bayar") else date.today()
+        except ValueError:
+            flash("Format tanggal tidak valid.", "danger")
+            return render_template("payments/form.html", payment=payment, bookings=[])
         payment.bulan_dibayar_untuk = request.form.get("bulan_dibayar_untuk")
         payment.metode_bayar = request.form.get("metode_bayar", "transfer")
         payment.status = request.form.get("status", "lunas")

@@ -29,15 +29,14 @@ def _kos_payment_filter():
         g._kos_payment_filter = db.false()
         return g._kos_payment_filter
     # Use subquery instead of collecting IDs — single round trip, scales better
-    from sqlalchemy import select
     sub = select(Booking.id).where(Booking.room_id.in_(room_ids)).subquery()
-    g._kos_payment_filter = Payment.booking_id.in_(sub)
+    g._kos_payment_filter = Payment.booking_id.in_(sub.select())
     return g._kos_payment_filter
 
 def get_month_range(year, month):
     if month == 12:
         return date(year, month, 1), date(year + 1, 1, 1) - timedelta(days=1)
-    return date(year, month, 1), date(year + 1, month, 1) - timedelta(days=1)
+    return date(year, month, 1), date(year, month + 1, 1) - timedelta(days=1)
 
 @accounting_bp.route("/")
 @admin_only
@@ -134,11 +133,16 @@ def tambah_pengeluaran():
             flash(err, "danger")
             return render_template("accounting/expense_form.html", vendors=Vendor.query.order_by(Vendor.nama).all())
 
+        try:
+            tanggal = datetime.strptime(request.form.get("tanggal", ""), "%Y-%m-%d").date() if request.form.get("tanggal") else date.today()
+        except ValueError:
+            flash("Format tanggal tidak valid.", "danger")
+            return render_template("accounting/expense_form.html", vendors=Vendor.query.order_by(Vendor.nama).all())
         expense = Expense(
             kos_id=session.get("kos_id"),
             kategori=request.form.get("kategori", "lainnya"),
             jumlah=jumlah,
-            tanggal=datetime.strptime(request.form["tanggal"], "%Y-%m-%d").date() if request.form.get("tanggal") else date.today(),
+            tanggal=tanggal,
             deskripsi=request.form.get("deskripsi"),
             vendor_id=request.form.get("vendor_id", type=int) or None,
         )
@@ -236,7 +240,11 @@ def edit_pengeluaran(id):
         expense.jumlah = jumlah_val
 
         expense.kategori = request.form.get("kategori", "lainnya")
-        expense.tanggal = datetime.strptime(request.form["tanggal"], "%Y-%m-%d").date() if request.form.get("tanggal") else date.today()
+        try:
+            expense.tanggal = datetime.strptime(request.form.get("tanggal", ""), "%Y-%m-%d").date() if request.form.get("tanggal") else date.today()
+        except ValueError:
+            flash("Format tanggal tidak valid.", "danger")
+            return render_template("accounting/expense_form.html", expense=expense, vendors=Vendor.query.order_by(Vendor.nama).all())
         expense.deskripsi = request.form.get("deskripsi")
         expense.vendor_id = request.form.get("vendor_id", type=int) or None
         try:

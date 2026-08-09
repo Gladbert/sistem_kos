@@ -37,7 +37,7 @@ def tambah():
         return redirect(url_for("dashboard.index"))
     if request.method == "POST":
         room_id = request.form.get("room_id", type=int)
-        deskripsi = request.form.get("deskripsi", "").strip()
+        deskripsi = sanitize(request.form.get("deskripsi", "").strip())
 
         if not deskripsi:
             flash("Deskripsi wajib diisi.", "danger")
@@ -91,7 +91,7 @@ def edit(id):
     if request.method == "POST":
         mr.room_id = request.form.get("room_id", type=int)
         mr.vendor_id = request.form.get("vendor_id", type=int) or None
-        mr.deskripsi = request.form.get("deskripsi", "")
+        mr.deskripsi = sanitize(request.form.get("deskripsi", ""))
         VALID_MR_STATUSES = ("diajukan", "diproses", "selesai", "dibatalkan")
         mr.prioritas = request.form.get("prioritas", "normal")
         mr.status = request.form.get("status", mr.status)
@@ -156,6 +156,8 @@ def vendor_index():
 @maintenance_bp.route("/vendor/tambah", methods=["GET", "POST"])
 @admin_or_management
 def vendor_tambah():
+    if not require_module_perm("maintenance", "create"):
+        return redirect(url_for("dashboard.index"))
     if request.method == "POST":
         nama = request.form.get("nama", "").strip()
         if not nama:
@@ -186,6 +188,8 @@ def vendor_tambah():
 @maintenance_bp.route("/vendor/edit/<int:id>", methods=["GET", "POST"])
 @admin_or_management
 def vendor_edit(id):
+    if not require_module_perm("maintenance", "edit"):
+        return redirect(url_for("dashboard.index"))
     vendor = get_or_404(Vendor, id)
 
     if request.method == "POST":
@@ -210,6 +214,8 @@ def vendor_edit(id):
 @maintenance_bp.route("/vendor/hapus/<int:id>", methods=["POST"])
 @admin_or_management
 def vendor_hapus(id):
+    if not require_module_perm("maintenance", "delete"):
+        return redirect(url_for("dashboard.index"))
     vendor = get_or_404(Vendor, id)
     db.session.delete(vendor)
     try:

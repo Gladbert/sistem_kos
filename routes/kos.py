@@ -67,7 +67,13 @@ def tambah():
         # Auto-assign creator as admin of this kos
         user_kos = UserKos(user_id=current_user.id, kos_id=kos.id, role="admin")
         db.session.add(user_kos)
-        db.session.commit()
+        try:
+            safe_commit()
+        except Exception:
+            current_app.logger.exception("Failed to assign user to kos")
+            db.session.rollback()
+            flash("Kos dibuat tapi gagal assign admin.", "warning")
+            return redirect(url_for("kos.index"))
         
         log_activity(current_user.id, "Tambah kos", f"Nama: {nama}", "Kos")
         flash(f'Kos "{nama}" berhasil ditambahkan.', "success")
@@ -110,7 +116,7 @@ def edit(id):
     return render_template("kos/form.html", kos=kos)
 
 @kos_bp.route("/hapus/<int:id>", methods=["POST"])
-@login_required
+@admin_or_management
 def hapus(id):
     if not require_module_perm("kos", "delete"):
         return redirect(url_for("dashboard.index"))
@@ -152,6 +158,7 @@ def unduran():
         return redirect(url_for("dashboard.index"))
     
     from models import KosInvite
+    kos = get_or_404(Kos, kos_id)
     
     if request.method == "POST":
         role = request.form.get("role", "client")
