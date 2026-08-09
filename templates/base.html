@@ -69,7 +69,7 @@
                     </div>
                 </div>
                 {% endif %}
-                {% if current_user.role in ('admin', 'management') or role_can('dashboard') %}
+                {% if current_user.role in ('admin', 'management') %}
                 <ul class="navbar-nav me-auto ms-lg-3">
                     {% if role_can('dashboard') %}
                     <li class="nav-item">
