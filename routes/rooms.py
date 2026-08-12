@@ -2,8 +2,9 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db
 from models import Room, Booking, MaintenanceRequest, Kos, User
-from helpers import admin_or_management, get_or_404, parse_amount, safe_commit, require_module_perm
+from helpers import admin_or_management, get_or_404, parse_amount, safe_commit, require_module_perm, log_activity
 from sqlalchemy.orm import joinedload
+from datetime import date
 
 VALID_ROOM_STATUSES = ("tersedia", "terisi", "maintenance")
 VALID_ROOM_TYPES = ("Reguler", "Deluxe", "VIP")
@@ -118,32 +119,41 @@ def edit(id):
         return redirect(url_for("dashboard.index"))
     room = get_or_404(Room, id)
     booking = Booking.query.filter_by(room_id=id, status="aktif").first()
+    clients = User.query.filter_by(role="client").order_by(User.nama_lengkap).all()
+    # room number per client's active booking (for the reassign select), excluding this room
+    active_map = {}
+    for b in Booking.query.filter_by(status="aktif").options(joinedload(Booking.room)).all():
+        if b.room_id != id and b.room:
+            active_map[b.user_id] = b.room.nomor_kamar
+
+    def render_form():
+        return render_template("rooms/form.html", room=room, booking=booking, clients=clients, active_map=active_map)
 
     if request.method == "POST":
         nomor = request.form.get("nomor_kamar", "").strip()
         if not nomor:
             flash("Nomor kamar wajib diisi.", "danger")
-            return render_template("rooms/form.html", room=room, booking=booking)
+            return render_form()
 
         kos_id = session.get("kos_id")
         dup = Room.query.filter_by(nomor_kamar=nomor, kos_id=kos_id).first()
         if dup and dup.id != id:
             flash("Nomor kamar sudah ada di kos ini.", "danger")
-            return render_template("rooms/form.html", room=room, booking=booking)
+            return render_form()
 
         harga, err = parse_amount(request.form.get("harga_per_bulan"), label="Harga")
         if err:
             flash(err, "danger")
-            return render_template("rooms/form.html", room=room, booking=booking)
+            return render_form()
 
         try:
             lantai = int(request.form.get("lantai", 1))
         except (ValueError, TypeError):
             flash("Lantai harus berupa angka.", "danger")
-            return render_template("rooms/form.html", room=room, booking=booking)
+            return render_form()
         if lantai < 1:
             flash("Lantai harus minimal 1.", "danger")
-            return render_template("rooms/form.html", room=room, booking=booking)
+            return render_form()
 
         room.nomor_kamar = nomor
         room.lantai = lantai
@@ -158,19 +168,44 @@ def edit(id):
             room.status = "tersedia"
         room.deskripsi = request.form.get("deskripsi")
 
-        # Resident (penghuni) update — same commit as room = atomic
+        # Resident: change penghuni (swap) and/or edit profile — same commit as room = atomic
+        swapped = False
         if booking:
+            target = booking.client
+            new_id = request.form.get("penghuni_id", type=int)
+            if new_id and new_id != booking.client.id:
+                new_client = db.session.get(User, new_id)
+                if not new_client or new_client.role != "client":
+                    flash("Penghuni tujuan tidak valid.", "danger")
+                    return render_form()
+                other = Booking.query.filter(
+                    Booking.user_id == new_client.id, Booking.status == "aktif",
+                    Booking.id != booking.id).first()
+                if other:
+                    flash(f"{new_client.nama_lengkap} masih menempati kamar {other.room.nomor_kamar}. Pilih penghuni lain.", "danger")
+                    return render_form()
+                # end current stay (history preserved), open new booking for target
+                booking.status = "selesai"
+                booking.tanggal_keluar = date.today()
+                db.session.add(Booking(
+                    user_id=new_client.id, room_id=room.id, tanggal_masuk=date.today(),
+                    tanggal_keluar=None, status="aktif", deposit=0,
+                    catatan="Dipindahkan dari penghuni sebelumnya via edit kamar"))
+                target = new_client
+                room.status = "terisi"
+                swapped = True
+
             nama = request.form.get("penghuni_nama", "").strip()
             if nama:
-                booking.client.nama_lengkap = nama
-                booking.client.no_telepon = request.form.get("penghuni_telepon") or booking.client.no_telepon
+                target.nama_lengkap = nama
+                target.no_telepon = request.form.get("penghuni_telepon") or target.no_telepon
                 email = request.form.get("penghuni_email", "").strip()
-                if email and email != booking.client.email:
-                    dup_email = User.query.filter(User.email == email, User.id != booking.client.id).first()
+                if email and email != target.email:
+                    dup_email = User.query.filter(User.email == email, User.id != target.id).first()
                     if dup_email:
                         flash("Email sudah digunakan penghuni lain.", "danger")
-                        return render_template("rooms/form.html", room=room, booking=booking)
-                    booking.client.email = email
+                        return render_form()
+                    target.email = email
 
         try:
             safe_commit()
@@ -179,10 +214,11 @@ def edit(id):
             db.session.rollback()
             flash("Terjadi kesalahan saat menyimpan data.", "danger")
             return redirect(request.referrer or url_for("dashboard.index"))
-        flash(f"Kamar {nomor} berhasil diperbarui.", "success")
+        log_activity(current_user.id, "Perbarui kamar", f"Kamar {nomor}", "Room")
+        flash(f"Kamar {nomor} berhasil diperbarui." + (" Penghuni diganti." if swapped else ""), "success")
         return redirect(url_for("rooms.index"))
 
-    return render_template("rooms/form.html", room=room, booking=booking)
+    return render_form()
 
 
 @rooms_bp.route("/hapus/<int:id>", methods=["POST"])

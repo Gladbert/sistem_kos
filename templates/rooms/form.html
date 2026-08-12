@@ -58,18 +58,29 @@
                         {% if booking %}
                         <div class="col-12">
                             <hr class="my-2">
-                            <h6 class="fw-semibold"><i class="bi bi-person me-1"></i>Penghuni Saat Ini</h6>
-                            <p class="text-muted small mb-0">Data penghuni tersimpan bersamaan (atomik) dengan perubahan kamar.</p>
+                            <h6 class="fw-semibold"><i class="bi bi-person me-1"></i>Penghuni Kamar</h6>
+                            <p class="text-muted small mb-0">Ganti penghuni untuk memindahkan kamar ke penghuni lain (riwayat penghuni lama tetap tersimpan). Data penghuni tersimpan bersamaan (atomik) dengan perubahan kamar.</p>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
+                            <label class="form-label">Penghuni</label>
+                            <select name="penghuni_id" class="form-select">
+                                {% for c in clients %}
+                                <option value="{{ c.id }}" {% if booking.client.id == c.id %}selected{% endif %}>
+                                    {{ c.nama_lengkap }}{% if c.id != booking.client.id and active_map.get(c.id) %} (kamar {{ active_map[c.id] }}){% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Penghuni yang sudah menempati kamar lain ditandai di dalam kurung.</div>
+                        </div>
+                        <div class="col-md-6">
                             <label class="form-label">Nama Lengkap Penghuni</label>
                             <input type="text" name="penghuni_nama" class="form-control" value="{{ booking.client.nama_lengkap }}">
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label">No Telepon Penghuni</label>
                             <input type="text" name="penghuni_telepon" class="form-control" value="{{ booking.client.no_telepon or '' }}">
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label">Email Penghuni</label>
                             <input type="email" name="penghuni_email" class="form-control" value="{{ booking.client.email }}">
                         </div>
