@@ -55,6 +55,25 @@
                             <label class="form-label">Deskripsi</label>
                             <textarea name="deskripsi" class="form-control" placeholder="Informasi tambahan tentang kamar">{{ (submitted.deskripsi if submitted else (room.deskripsi or '')) if room or submitted else '' }}</textarea>
                         </div>
+                        {% if booking %}
+                        <div class="col-12">
+                            <hr class="my-2">
+                            <h6 class="fw-semibold"><i class="bi bi-person me-1"></i>Penghuni Saat Ini</h6>
+                            <p class="text-muted small mb-0">Data penghuni tersimpan bersamaan (atomik) dengan perubahan kamar.</p>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Nama Lengkap Penghuni</label>
+                            <input type="text" name="penghuni_nama" class="form-control" value="{{ booking.client.nama_lengkap }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">No Telepon Penghuni</label>
+                            <input type="text" name="penghuni_telepon" class="form-control" value="{{ booking.client.no_telepon or '' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Email Penghuni</label>
+                            <input type="email" name="penghuni_email" class="form-control" value="{{ booking.client.email }}">
+                        </div>
+                        {% endif %}
                     </div>
                     <div class="d-flex gap-2 mt-4">
                         <button type="submit" class="btn btn-primary">

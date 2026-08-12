@@ -81,6 +81,57 @@
     <div class="row g-3 mt-2">
         <div class="col-12">
             <div class="card border-0">
+                <div class="card-header">
+                    <span><i class="bi bi-people me-2 text-info"></i>Riwayat Penghuni</span>
+                </div>
+                <div class="card-body p-0">
+                    {% if history %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Nama</th>
+                                    <th>Check-in</th>
+                                    <th>Check-out</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for h in history %}
+                                <tr>
+                                    <td class="fw-medium">
+                                        <a href="{{ url_for('clients.detail', id=h.client.id) }}" class="text-decoration-none">
+                                            <i class="bi bi-person-circle me-1"></i>{{ h.client.nama_lengkap }}
+                                        </a>
+                                    </td>
+                                    <td>{{ h.tanggal_masuk.strftime('%d/%m/%Y') if h.tanggal_masuk else '-' }}</td>
+                                    <td>{{ h.tanggal_keluar.strftime('%d/%m/%Y') if h.tanggal_keluar else '-' }}</td>
+                                    <td>
+                                        {% set s = h.status|lower %}
+                                        {% if s == 'aktif' %}<span class="badge badge-success">Aktif</span>
+                                        {% elif s == 'selesai' or s == 'checkout' %}<span class="badge badge-secondary">Selesai</span>
+                                        {% elif s == 'dibatalkan' or s == 'batal' %}<span class="badge badge-danger">Dibatalkan</span>
+                                        {% else %}<span class="badge badge-secondary">{{ h.status }}</span>{% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="empty-state">
+                        <i class="bi bi-inbox"></i>
+                        <h5>Belum ada riwayat penghuni</h5>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mt-2">
+        <div class="col-12">
+            <div class="card border-0">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <span><i class="bi bi-tools me-2 text-warning"></i>Riwayat Maintenance</span>
                 </div>

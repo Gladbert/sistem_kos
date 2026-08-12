@@ -13,6 +13,7 @@
             <div class="card-body p-4">
                 <form method="POST" action="">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    {% if current_user.role in ('admin', 'management') %}
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label">Nama Lengkap</label>
@@ -27,16 +28,38 @@
                             <input type="text" name="no_telepon" class="form-control" value="{{ client.no_telepon or '' }}">
                         </div>
                         <div class="col-md-6">
+                            <label class="form-label">Kamar Saat Ini</label>
+                            {% if booking_aktif %}
+                            <select name="room_id" class="form-select">
+                                {% for r in rooms %}
+                                <option value="{{ r.id }}" {% if booking_aktif.room_id == r.id %}selected{% endif %}>
+                                    {{ r.nomor_kamar }} — {{ r.tipe }} ({{ r.status }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                            {% else %}
+                            <input type="text" class="form-control" value="Tidak ada booking aktif" disabled>
+                            {% endif %}
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Alamat</label>
+                            <textarea name="alamat" class="form-control">{{ client.alamat or '' }}</textarea>
+                        </div>
+                    </div>
+                    <hr class="my-3">
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-1"></i>Penghuni hanya dapat mengubah password. Untuk perubahan nama, telepon, atau alamat, hubungi admin.
+                    </div>
+                    {% endif %}
+                    <div class="row g-3">
+                        <div class="col-md-6">
                             <label class="form-label">Password <small class="text-muted">(kosongkan jika tidak diubah)</small></label>
                             <input type="password" name="password" class="form-control" placeholder="Min. 6 karakter">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Konfirmasi Password</label>
                             <input type="password" name="confirm_password" class="form-control">
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label">Alamat</label>
-                            <textarea name="alamat" class="form-control">{{ client.alamat or '' }}</textarea>
                         </div>
                     </div>
                     <div class="d-flex gap-2 mt-4">

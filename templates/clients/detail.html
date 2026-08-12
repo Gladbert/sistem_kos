@@ -34,6 +34,14 @@
                 <dl class="row mb-0" style="font-size:.875rem">
                     <dt class="col-sm-4 text-muted">Username</dt>
                     <dd class="col-sm-8">{{ client.username }}</dd>
+                    <dt class="col-sm-4 text-muted">Kamar Saat Ini</dt>
+                    <dd class="col-sm-8">
+                        {% if booking_aktif %}
+                        <a href="{{ url_for('rooms.detail', id=booking_aktif.room_id) }}" class="text-decoration-none fw-medium">
+                            <i class="bi bi-door-open me-1"></i>{{ booking_aktif.room.nomor_kamar }}
+                        </a>
+                        {% else %}-{% endif %}
+                    </dd>
                     <dt class="col-sm-4 text-muted">Email</dt>
                     <dd class="col-sm-8">{{ client.email }}</dd>
                     <dt class="col-sm-4 text-muted">Telepon</dt>

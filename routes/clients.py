@@ -1,10 +1,10 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
+from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, session
 from flask_login import login_required, current_user
 from extensions import db
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
 from models import User, Booking, Payment, Notification, Room
-from helpers import admin_or_management, get_or_404, kos_room_ids, safe_commit, require_module_perm
+from helpers import admin_or_management, get_or_404, kos_room_ids, kos_rooms, safe_commit, require_module_perm
 
 clients_bp = Blueprint("clients", __name__, url_prefix="/clients")
 
@@ -45,6 +45,9 @@ def detail(id):
         return redirect(url_for("dashboard.index"))
 
     client = get_or_404(User, id)
+    booking_aktif = Booking.query.options(
+        joinedload(Booking.room)
+    ).filter_by(user_id=id, status="aktif").first()
     bookings = Booking.query.options(
         joinedload(Booking.room)
     ).filter_by(user_id=id).order_by(Booking.created_at.desc()).all()
@@ -54,7 +57,7 @@ def detail(id):
         Booking.user_id == id
     ).order_by(Payment.created_at.desc()).all()
 
-    return render_template("clients/detail.html", client=client, bookings=bookings, payments=payments)
+    return render_template("clients/detail.html", client=client, bookings=bookings, payments=payments, booking_aktif=booking_aktif)
 
 
 @clients_bp.route("/nonaktifkan/<int:id>", methods=["POST"])
@@ -77,32 +80,64 @@ def nonaktifkan(id):
 
 
 @clients_bp.route("/edit/<int:id>", methods=["GET", "POST"])
-@admin_or_management
+@login_required
 def edit(id):
-    if not require_module_perm("clients", "edit"):
-        return redirect(url_for("dashboard.index"))
+    is_admin = current_user.role in ("admin", "management")
+    # Admin/management: full access. Resident: self-service (password only).
+    if not is_admin and current_user.id != id:
+        flash("Akses ditolak.", "danger")
+        return redirect(url_for("clients.index"))
     client = get_or_404(User, id)
+    if is_admin and not require_module_perm("clients", "edit"):
+        return redirect(url_for("dashboard.index"))
+
+    booking_aktif = Booking.query.filter_by(user_id=id, status="aktif").first() if is_admin else None
+    rooms = kos_rooms() if is_admin else []
 
     if request.method == "POST":
-        client.nama_lengkap = request.form.get("nama_lengkap", client.nama_lengkap)
-        email = request.form.get("email", client.email).strip()
-        if not email or "@" not in email:
-            flash("Email tidak valid.", "danger")
-            return render_template("clients/edit.html", client=client)
-        dup = User.query.filter(User.email == email, User.id != client.id).first()
-        if dup:
-            flash("Email sudah digunakan penghuni lain.", "danger")
-            return render_template("clients/edit.html", client=client)
-        client.email = email
-        client.no_telepon = request.form.get("no_telepon")
-        client.alamat = request.form.get("alamat")
+        if is_admin:
+            # Full profile: name, contact, address (admin/management only)
+            client.nama_lengkap = request.form.get("nama_lengkap", client.nama_lengkap)
+            email = request.form.get("email", client.email).strip()
+            if not email or "@" not in email:
+                flash("Email tidak valid.", "danger")
+                return render_template("clients/edit.html", client=client, booking_aktif=booking_aktif, rooms=rooms)
+            dup = User.query.filter(User.email == email, User.id != client.id).first()
+            if dup:
+                flash("Email sudah digunakan penghuni lain.", "danger")
+                return render_template("clients/edit.html", client=client, booking_aktif=booking_aktif, rooms=rooms)
+            client.email = email
+            client.no_telepon = request.form.get("no_telepon")
+            client.alamat = request.form.get("alamat")
 
-        if request.form.get("password"):
-            if len(request.form["password"]) >= 6:
-                client.set_password(request.form["password"])
-            else:
+            # Reassign room: update booking.room_id FK, atomic with profile save
+            new_room_id = request.form.get("room_id", type=int)
+            if booking_aktif and new_room_id and new_room_id != booking_aktif.room_id:
+                new_room = db.session.get(Room, new_room_id)
+                if new_room and new_room.kos_id == (session.get("kos_id") or new_room.kos_id):
+                    old_room = booking_aktif.room
+                    booking_aktif.room_id = new_room_id
+                    if old_room and old_room.id != new_room_id:
+                        other = Booking.query.filter(
+                            Booking.room_id == old_room.id, Booking.status == "aktif",
+                            Booking.id != booking_aktif.id).first()
+                        if not other:
+                            old_room.status = "tersedia"
+                    new_room.status = "terisi"
+                else:
+                    flash("Kamar tujuan tidak valid.", "danger")
+                    return render_template("clients/edit.html", client=client, booking_aktif=booking_aktif, rooms=rooms)
+
+        # Password (admin and resident self-service)
+        password = request.form.get("password", "")
+        if password:
+            if request.form.get("confirm_password") != password:
+                flash("Konfirmasi password tidak cocok.", "danger")
+                return render_template("clients/edit.html", client=client, booking_aktif=booking_aktif, rooms=rooms)
+            if len(password) < 6:
                 flash("Password minimal 6 karakter.", "danger")
-                return render_template("clients/edit.html", client=client)
+                return render_template("clients/edit.html", client=client, booking_aktif=booking_aktif, rooms=rooms)
+            client.set_password(password)
 
         try:
             safe_commit()
@@ -114,4 +149,4 @@ def edit(id):
         flash(f"Data {client.nama_lengkap} berhasil diperbarui.", "success")
         return redirect(url_for("clients.detail", id=id))
 
-    return render_template("clients/edit.html", client=client)
+    return render_template("clients/edit.html", client=client, booking_aktif=booking_aktif, rooms=rooms)

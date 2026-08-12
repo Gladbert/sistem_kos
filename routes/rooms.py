@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session, current_app, g
 from flask_login import login_required, current_user
 from extensions import db
-from models import Room, Booking, MaintenanceRequest, Kos
+from models import Room, Booking, MaintenanceRequest, Kos, User
 from helpers import admin_or_management, get_or_404, parse_amount, safe_commit, require_module_perm
 from sqlalchemy.orm import joinedload
 
@@ -117,32 +117,33 @@ def edit(id):
     if not require_module_perm("rooms", "edit"):
         return redirect(url_for("dashboard.index"))
     room = get_or_404(Room, id)
+    booking = Booking.query.filter_by(room_id=id, status="aktif").first()
 
     if request.method == "POST":
         nomor = request.form.get("nomor_kamar", "").strip()
         if not nomor:
             flash("Nomor kamar wajib diisi.", "danger")
-            return render_template("rooms/form.html", room=room)
+            return render_template("rooms/form.html", room=room, booking=booking)
 
         kos_id = session.get("kos_id")
         dup = Room.query.filter_by(nomor_kamar=nomor, kos_id=kos_id).first()
         if dup and dup.id != id:
             flash("Nomor kamar sudah ada di kos ini.", "danger")
-            return render_template("rooms/form.html", room=room)
+            return render_template("rooms/form.html", room=room, booking=booking)
 
         harga, err = parse_amount(request.form.get("harga_per_bulan"), label="Harga")
         if err:
             flash(err, "danger")
-            return render_template("rooms/form.html", room=room)
+            return render_template("rooms/form.html", room=room, booking=booking)
 
         try:
             lantai = int(request.form.get("lantai", 1))
         except (ValueError, TypeError):
             flash("Lantai harus berupa angka.", "danger")
-            return render_template("rooms/form.html", room=room)
+            return render_template("rooms/form.html", room=room, booking=booking)
         if lantai < 1:
             flash("Lantai harus minimal 1.", "danger")
-            return render_template("rooms/form.html", room=room)
+            return render_template("rooms/form.html", room=room, booking=booking)
 
         room.nomor_kamar = nomor
         room.lantai = lantai
@@ -156,6 +157,21 @@ def edit(id):
         if room.status not in VALID_ROOM_STATUSES:
             room.status = "tersedia"
         room.deskripsi = request.form.get("deskripsi")
+
+        # Resident (penghuni) update — same commit as room = atomic
+        if booking:
+            nama = request.form.get("penghuni_nama", "").strip()
+            if nama:
+                booking.client.nama_lengkap = nama
+                booking.client.no_telepon = request.form.get("penghuni_telepon") or booking.client.no_telepon
+                email = request.form.get("penghuni_email", "").strip()
+                if email and email != booking.client.email:
+                    dup_email = User.query.filter(User.email == email, User.id != booking.client.id).first()
+                    if dup_email:
+                        flash("Email sudah digunakan penghuni lain.", "danger")
+                        return render_template("rooms/form.html", room=room, booking=booking)
+                    booking.client.email = email
+
         try:
             safe_commit()
         except Exception:
@@ -166,7 +182,7 @@ def edit(id):
         flash(f"Kamar {nomor} berhasil diperbarui.", "success")
         return redirect(url_for("rooms.index"))
 
-    return render_template("rooms/form.html", room=room)
+    return render_template("rooms/form.html", room=room, booking=booking)
 
 
 @rooms_bp.route("/hapus/<int:id>", methods=["POST"])
@@ -197,4 +213,5 @@ def detail(id):
     room = get_or_404(Room, id)
     booking = room.booking_aktif
     maintenance = MaintenanceRequest.query.options(joinedload(MaintenanceRequest.vendor)).filter_by(room_id=id).order_by(MaintenanceRequest.created_at.desc()).all()
-    return render_template("rooms/detail.html", room=room, booking=booking, maintenance=maintenance)
+    history = Booking.query.options(joinedload(Booking.client)).filter_by(room_id=id).order_by(Booking.created_at.desc()).all()
+    return render_template("rooms/detail.html", room=room, booking=booking, maintenance=maintenance, history=history)

@@ -17,5 +17,6 @@ supabase/seed.sql
 dogfood-output/
 seed.py
 seed_production.py
+seed_cielo_real.py
 # AGENTS.md is intentionally tracked despite this ignore list
 tests/

@@ -123,7 +123,7 @@ def index():
         selected_bulan=date(tahun, bulan, 1).strftime("%B"))
 
 @accounting_bp.route("/pengeluaran/tambah", methods=["GET", "POST"])
-@admin_or_management
+@admin_only
 def tambah_pengeluaran():
     if not require_module_perm("accounting", "create"):
         return redirect(url_for("dashboard.index"))
@@ -160,7 +160,7 @@ def tambah_pengeluaran():
     return render_template("accounting/expense_form.html", vendors=Vendor.query.order_by(Vendor.nama).all())
 
 @accounting_bp.route("/generate-recurring", methods=["POST"])
-@admin_or_management
+@admin_only
 def generate_recurring():
     """Auto-create expenses from recurring fasilitas for current period."""
     kos_id = session.get("kos_id")
@@ -226,7 +226,7 @@ def generate_recurring():
     return redirect(url_for("accounting.index"))
 
 @accounting_bp.route("/pengeluaran/edit/<int:id>", methods=["GET", "POST"])
-@admin_or_management
+@admin_only
 def edit_pengeluaran(id):
     if not require_module_perm("accounting", "edit"):
         return redirect(url_for("dashboard.index"))
@@ -260,7 +260,7 @@ def edit_pengeluaran(id):
     return render_template("accounting/expense_form.html", expense=expense, vendors=Vendor.query.order_by(Vendor.nama).all())
 
 @accounting_bp.route("/pengeluaran/hapus/<int:id>", methods=["POST"])
-@admin_or_management
+@admin_only
 def hapus_pengeluaran(id):
     if not require_module_perm("accounting", "delete"):
         return redirect(url_for("dashboard.index"))
