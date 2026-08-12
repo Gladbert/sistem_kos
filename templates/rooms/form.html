@@ -84,6 +84,25 @@
                             <label class="form-label">Email Penghuni</label>
                             <input type="email" name="penghuni_email" class="form-control" value="{{ booking.client.email }}">
                         </div>
+                        <script>
+                        // Refill resident fields when a different penghuni is chosen
+                        (function() {
+                            const data = {{ clients_json|tojson }};
+                            const sel = document.querySelector('select[name="penghuni_id"]');
+                            if (!sel) return;
+                            const fill = function() {
+                                const c = data.find(function(x) { return String(x.id) === sel.value; });
+                                if (!c) return;
+                                const nama = document.querySelector('input[name="penghuni_nama"]');
+                                const telp = document.querySelector('input[name="penghuni_telepon"]');
+                                const email = document.querySelector('input[name="penghuni_email"]');
+                                if (nama) nama.value = c.nama_lengkap || '';
+                                if (telp) telp.value = c.no_telepon || '';
+                                if (email) email.value = c.email || '';
+                            };
+                            sel.addEventListener('change', fill);
+                        })();
+                        </script>
                         {% endif %}
                     </div>
                     <div class="d-flex gap-2 mt-4">

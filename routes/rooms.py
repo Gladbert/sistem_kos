@@ -120,6 +120,11 @@ def edit(id):
     room = get_or_404(Room, id)
     booking = Booking.query.filter_by(room_id=id, status="aktif").first()
     clients = User.query.filter_by(role="client").order_by(User.nama_lengkap).all()
+    # JSON snapshot for the penghuni dropdown -> refill textboxes on change
+    clients_json = [
+        {"id": c.id, "nama_lengkap": c.nama_lengkap, "no_telepon": c.no_telepon or "", "email": c.email}
+        for c in clients
+    ]
     # room number per client's active booking (for the reassign select), excluding this room
     active_map = {}
     for b in Booking.query.filter_by(status="aktif").options(joinedload(Booking.room)).all():
@@ -127,7 +132,7 @@ def edit(id):
             active_map[b.user_id] = b.room.nomor_kamar
 
     def render_form():
-        return render_template("rooms/form.html", room=room, booking=booking, clients=clients, active_map=active_map)
+        return render_template("rooms/form.html", room=room, booking=booking, clients=clients, clients_json=clients_json, active_map=active_map)
 
     if request.method == "POST":
         nomor = request.form.get("nomor_kamar", "").strip()
