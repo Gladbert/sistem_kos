@@ -201,6 +201,18 @@
     function init() {
         document.querySelectorAll('select[data-searchable]').forEach(initSearchable);
         document.querySelectorAll('input[data-live-search]').forEach(initLiveSearch);
+        initNavbarMaterial();
+    }
+
+    // ── frosted navbar: deepen material when content scrolls under it ──
+    function initNavbarMaterial() {
+        var navbar = document.querySelector('.navbar');
+        if (!navbar) return;
+        var onScroll = function () {
+            navbar.classList.toggle('scrolled', window.scrollY > 10);
+        };
+        onScroll();
+        window.addEventListener('scroll', onScroll, { passive: true });
     }
 
     if (document.readyState === 'loading') {
