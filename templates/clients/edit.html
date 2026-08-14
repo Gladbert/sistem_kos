@@ -30,7 +30,7 @@
                         <div class="col-md-6">
                             <label class="form-label">Kamar Saat Ini</label>
                             {% if booking_aktif %}
-                            <select name="room_id" class="form-select">
+                            <select name="room_id" class="form-select" data-searchable>
                                 {% for r in rooms %}
                                 <option value="{{ r.id }}" {% if booking_aktif.room_id == r.id %}selected{% endif %}>
                                     {{ r.nomor_kamar }} — {{ r.tipe }} ({{ r.status }})

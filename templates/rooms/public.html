@@ -23,7 +23,7 @@
             <option value="VIP" {% if request.args.get('tipe') == 'VIP' %}selected{% endif %}>VIP</option>
         </select>
         <div class="input-group" style="min-width:200px">
-            <input type="text" name="search" class="form-control" placeholder="Cari kamar..." value="{{ request.args.get('search', '') }}">
+            <input type="text" name="search" class="form-control" placeholder="Cari kamar..." value="{{ request.args.get('search', '') }}" data-live-search>
             <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i></button>
         </div>
     </div>

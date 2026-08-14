@@ -63,7 +63,7 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Penghuni</label>
-                            <select name="penghuni_id" class="form-select">
+                            <select name="penghuni_id" class="form-select" data-searchable>
                                 {% for c in clients %}
                                 <option value="{{ c.id }}" {% if booking.client.id == c.id %}selected{% endif %}>
                                     {{ c.nama_lengkap }}{% if c.id != booking.client.id and active_map.get(c.id) %} (kamar {{ active_map[c.id] }}){% endif %}

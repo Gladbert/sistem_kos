@@ -28,7 +28,7 @@
             <option value="diperbaiki" {% if request.args.get('status') == 'diperbaiki' %}selected{% endif %}>Diperbaiki</option>
         </select>
         <div class="input-group" style="min-width:200px">
-            <input type="text" name="q" class="form-control" placeholder="Cari kamar..." value="{{ search or '' }}">
+            <input type="text" name="q" class="form-control" placeholder="Cari kamar..." value="{{ search or '' }}" data-live-search>
             <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i></button>
         </div>
     </div>

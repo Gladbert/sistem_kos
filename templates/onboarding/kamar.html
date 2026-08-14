@@ -33,7 +33,7 @@
             <input type="number" name="harga_max" class="form-control" placeholder="Max" value="{{ request.args.get('harga_max', '') }}" min="0" step="50000">
         </div>
         <div class="input-group" style="min-width:180px">
-            <input type="text" name="search" class="form-control" placeholder="Cari kamar..." value="{{ request.args.get('search', '') }}">
+            <input type="text" name="search" class="form-control" placeholder="Cari kamar..." value="{{ request.args.get('search', '') }}" data-live-search>
             <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i></button>
         </div>
         <a href="{{ url_for('onboarding.lihat_kamar') }}" class="btn btn-outline-secondary">

@@ -13,7 +13,7 @@
 <form method="GET" action="{{ url_for('clients.index') }}">
     <div class="filter-bar">
         <div class="input-group" style="min-width:280px">
-            <input type="text" name="search" class="form-control" placeholder="Cari nama, username, email, atau telepon..." value="{{ request.args.get('search', '') }}">
+            <input type="text" name="search" class="form-control" placeholder="Cari nama, username, email, atau telepon..." value="{{ request.args.get('search', '') }}" data-live-search>
             <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i></button>
             {% if request.args.get('search') %}
             <a href="{{ url_for('clients.index') }}" class="btn btn-outline-secondary"><i class="bi bi-x-lg"></i></a>
