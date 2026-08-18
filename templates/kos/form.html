@@ -34,6 +34,26 @@
                                   placeholder="Deskripsi singkat tentang kos ini">{{ kos.deskripsi if kos and kos.deskripsi else (submitted.deskripsi if submitted else '') }}</textarea>
                     </div>
 
+                    <div class="border rounded p-3 mb-3 bg-light">
+                        <label class="form-label fw-medium">Durasi Sewa Default</label>
+                        <p class="text-muted small mb-3">Durasi menginap otomatis untuk tamu baru. Admin/management tidak perlu mengisi setiap kali — cukup preset di sini.</p>
+                        <div class="row g-2">
+                            <div class="col-4">
+                                <input type="number" class="form-control" name="default_stay_value" min="1" value="{{ kos.default_stay_value if kos and kos.default_stay_value else (submitted.default_stay_value if submitted and submitted.default_stay_value else 1) }}">
+                            </div>
+                            <div class="col-8">
+                                <select name="default_stay_unit" class="form-select">
+                                    {% set units = [('hari','Hari'),('minggu','Minggu'),('bulan','Bulan'),('tahun','Tahun')] %}
+                                    {% set cur = (kos.default_stay_unit if kos and kos.default_stay_unit else (submitted.default_stay_unit if submitted and submitted.default_stay_unit else 'bulan')) %}
+                                    {% for val, label in units %}
+                                    <option value="{{ val }}" {% if cur == val %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-text">Contoh: 1 bulan (jangka panjang) atau 1 hari (jangka pendek).</div>
+                    </div>
+
                     <div class="d-flex gap-2 justify-content-end">
                         <a href="{{ url_for('kos.index') }}" class="btn btn-outline-secondary">Batal</a>
                         <button type="submit" class="btn btn-primary">

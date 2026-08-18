@@ -60,12 +60,16 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Durasi Sewa</label>
-                            <select name="durasi" class="form-select">
-                                <option value="1">1 Bulan</option>
-                                <option value="3">3 Bulan</option>
-                                <option value="6">6 Bulan</option>
-                                <option value="12" selected>12 Bulan</option>
-                            </select>
+                            <div class="input-group">
+                                <input type="number" name="durasi_value" class="form-control" min="1" value="{{ default_value }}" style="max-width:90px">
+                                <select name="durasi_unit" class="form-select">
+                                    {% set units = [('hari','Hari'),('minggu','Minggu'),('bulan','Bulan'),('tahun','Tahun')] %}
+                                    {% for val, label in units %}
+                                    <option value="{{ val }}" {% if default_unit == val %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-text">Durasi sudah diisi otomatis sesuai preset kos. Sesuaikan bila perlu.</div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Catatan (opsional)</label>

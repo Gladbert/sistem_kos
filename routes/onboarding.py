@@ -1,9 +1,8 @@
 from datetime import date, datetime
-from calendar import monthrange
-from flask import Blueprint, render_template, redirect, url_for, flash, request, session
+from flask import Blueprint, render_template, redirect, url_for, flash, request, session, current_app
 from flask_login import login_required, current_user
 from extensions import db
-from models import User, Room, Booking, Payment, Notification
+from models import User, Room, Booking, Payment, Notification, compute_keluar, DEFAULT_STAY_UNITS
 from helpers import create_notification, get_or_404, safe_commit
 
 onboarding_bp = Blueprint("onboarding", __name__, url_prefix="/onboarding")
@@ -45,9 +44,16 @@ def detail_kamar(id):
 def daftar(room_id):
     room = get_or_404(Room, room_id)
 
+    # kos default stay preset — used to prefill the duration fields
+    default_value = room.kos.default_stay_value if room.kos else 1
+    default_unit = room.kos.default_stay_unit if room.kos else "bulan"
+
     if room.status != "tersedia":
         flash("Kamar sudah tidak tersedia.", "warning")
         return redirect(url_for("onboarding.index"))
+
+    def render_form():
+        return render_template("onboarding/daftar.html", room=room, default_value=default_value, default_unit=default_unit)
 
     if request.method == "POST":
         if not current_user.is_authenticated:
@@ -67,24 +73,28 @@ def daftar(room_id):
             return redirect(url_for("dashboard.client"))
 
         tanggal_masuk = request.form.get("tanggal_masuk")
-        durasi = request.form.get("durasi", 1, type=int)
+        durasi_value = request.form.get("durasi_value", type=int)
+        durasi_unit = request.form.get("durasi_unit", "bulan")
         deposit_catatan = request.form.get("deposit_catatan", "")
 
         if not tanggal_masuk:
             flash("Tanggal masuk wajib diisi.", "danger")
-            return render_template("onboarding/daftar.html", room=room)
+            return render_form()
 
         try:
             tgl_masuk = datetime.strptime(tanggal_masuk, "%Y-%m-%d").date()
         except ValueError:
             flash("Format tanggal salah.", "danger")
-            return render_template("onboarding/daftar.html", room=room)
+            return render_form()
 
-        bulan_target = tgl_masuk.month + durasi
-        tahun_target = tgl_masuk.year + (bulan_target - 1) // 12
-        bulan_target = ((bulan_target - 1) % 12) + 1
-        max_day = monthrange(tahun_target, bulan_target)[1]
-        tgl_keluar = date(tahun_target, bulan_target, min(tgl_masuk.day, max_day))
+        if not durasi_value or durasi_value < 1:
+            flash("Durasi sewa minimal 1.", "danger")
+            return render_form()
+        if durasi_unit not in DEFAULT_STAY_UNITS:
+            flash("Satuan durasi tidak valid.", "danger")
+            return render_form()
+
+        tgl_keluar = compute_keluar(tgl_masuk, durasi_value, durasi_unit)
 
         booking = Booking(
             user_id=current_user.id,
@@ -128,4 +138,4 @@ def daftar(room_id):
         flash(f"Permintaan sewa kamar {room.nomor_kamar} telah dikirim. Menunggu persetujuan pengelola.", "success")
         return redirect(url_for("dashboard.client"))
 
-    return render_template("onboarding/daftar.html", room=room)
+    return render_form()

@@ -6,6 +6,23 @@ from helpers import log_activity, admin_or_management, get_or_404, safe_commit, 
 
 kos_bp = Blueprint("kos", __name__, url_prefix="/kos")
 
+DEFAULT_STAY_UNITS = ("hari", "minggu", "bulan", "tahun")
+
+
+def _parse_stay_preset(form, kos):
+    """Read default_stay_value/unit from form onto a kos object. Returns None or error msg."""
+    try:
+        val = int(form.get("default_stay_value", 1) or 1)
+    except (ValueError, TypeError):
+        return "Durasi sewa default harus angka."
+    if val < 1:
+        return "Durasi sewa default minimal 1."
+    unit = form.get("default_stay_unit", "bulan")
+    if unit not in DEFAULT_STAY_UNITS:
+        return "Satuan durasi sewa default tidak valid."
+    kos.default_stay_value = val
+    kos.default_stay_unit = unit
+
 @kos_bp.route("/pilih/<int:id>", methods=["POST"])
 @login_required
 def pilih(id):
@@ -55,6 +72,12 @@ def tambah():
             alamat=sanitize(request.form.get("alamat", "")),
             deskripsi=sanitize(request.form.get("deskripsi", "")),
         )
+        err = _parse_stay_preset(request.form, kos)
+        if err:
+            flash(err, "danger")
+            submitted["default_stay_value"] = request.form.get("default_stay_value")
+            submitted["default_stay_unit"] = request.form.get("default_stay_unit")
+            return render_template("kos/form.html", kos=None, submitted=submitted)
         db.session.add(kos)
         try:
             safe_commit()
@@ -102,6 +125,10 @@ def edit(id):
         kos.nama = sanitize(nama)
         kos.alamat = sanitize(request.form.get("alamat", ""))
         kos.deskripsi = sanitize(request.form.get("deskripsi", ""))
+        err = _parse_stay_preset(request.form, kos)
+        if err:
+            flash(err, "danger")
+            return render_template("kos/form.html", kos=kos)
         try:
             safe_commit()
         except Exception:

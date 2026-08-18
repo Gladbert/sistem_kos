@@ -194,7 +194,8 @@ def edit(id):
                 booking.tanggal_keluar = date.today()
                 db.session.add(Booking(
                     user_id=new_client.id, room_id=room.id, tanggal_masuk=date.today(),
-                    tanggal_keluar=None, status="aktif", deposit=0,
+                    tanggal_keluar=room.kos.default_keluar_date(date.today()) if room.kos else None,
+                    status="aktif", deposit=0,
                     catatan="Dipindahkan dari penghuni sebelumnya via edit kamar"))
                 target = new_client
                 room.status = "terisi"

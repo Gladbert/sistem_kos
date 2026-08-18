@@ -195,6 +195,9 @@ def approve_booking(id):
         return redirect(url_for("dashboard.admin"))
     booking.status = "aktif"
     booking.room.status = "terisi"
+    # apply kos default stay if the request came without an end date
+    if not booking.tanggal_keluar and booking.room and booking.room.kos:
+        booking.tanggal_keluar = booking.room.kos.default_keluar_date(booking.tanggal_masuk or date.today())
     log_activity(current_user.id, "Setujui booking", f"Kamar {booking.room.nomor_kamar} - {booking.client.nama_lengkap}", "Booking")
     create_notification(
         booking.user_id,

@@ -1,8 +1,34 @@
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
+from calendar import monthrange
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from extensions import db
 import secrets
+
+
+# Allowed default-stay units, shared by kos preset + booking request forms
+DEFAULT_STAY_UNITS = ("hari", "minggu", "bulan", "tahun")
+
+
+def compute_keluar(tgl_masuk, value, unit):
+    """Compute a stay end date from a duration value+unit.
+    unit: hari | minggu | bulan | tahun. Reused by Kos preset and booking forms."""
+    v = value or 1
+    if unit == "hari":
+        return tgl_masuk + timedelta(days=v)
+    if unit == "minggu":
+        return tgl_masuk + timedelta(weeks=v)
+    if unit == "tahun":
+        try:
+            return tgl_masuk.replace(year=tgl_masuk.year + v)
+        except ValueError:  # 29 Feb -> 28 Feb
+            return tgl_masuk.replace(year=tgl_masuk.year + v, day=28)
+    # bulan — calendar months (rolling month-end)
+    bulan = tgl_masuk.month + v
+    tahun = tgl_masuk.year + (bulan - 1) // 12
+    bulan = ((bulan - 1) % 12) + 1
+    max_day = monthrange(tahun, bulan)[1]
+    return date(tahun, bulan, min(tgl_masuk.day, max_day))
 
 class Kos(db.Model):
     __tablename__ = "kos"
@@ -13,9 +39,17 @@ class Kos(db.Model):
     deskripsi = db.Column(db.Text)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # Default stay duration preset (admin/management editable) so admins don't
+    # re-type it for every new guest. unit: hari | minggu | bulan | tahun
+    default_stay_value = db.Column(db.Integer, default=1)
+    default_stay_unit = db.Column(db.String(10), default="bulan")
 
     rooms = db.relationship("Room", backref="kos", lazy="dynamic")
     user_roles = db.relationship("UserKos", backref="kos", lazy="dynamic")
+
+    def default_keluar_date(self, tgl_masuk):
+        """Compute the stay end date from this kos's default stay preset."""
+        return compute_keluar(tgl_masuk, self.default_stay_value or 1, self.default_stay_unit or "bulan")
 
     @property
     def total_kamar(self):
