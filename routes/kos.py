@@ -1,12 +1,10 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session, current_app
 from flask_login import login_required, current_user
 from extensions import db
-from models import Kos, UserKos, AUDIT_ROLES
+from models import Kos, UserKos, AUDIT_ROLES, DEFAULT_STAY_UNITS
 from helpers import log_activity, admin_or_management, get_or_404, safe_commit, sanitize, require_module_perm
 
 kos_bp = Blueprint("kos", __name__, url_prefix="/kos")
-
-DEFAULT_STAY_UNITS = ("hari", "minggu", "bulan", "tahun")
 
 
 def _parse_kos_settings(form, kos):
