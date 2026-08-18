@@ -53,13 +53,14 @@ def daftar(room_id):
         default_value = max(1, int(default_value))
     except (ValueError, TypeError):
         default_value = 1
+    deposit_default = room.kos.default_deposit(room) if room.kos else (room.harga_per_bulan or 0)
 
     if room.status != "tersedia":
         flash("Kamar sudah tidak tersedia.", "warning")
         return redirect(url_for("onboarding.index"))
 
     def render_form():
-        return render_template("onboarding/daftar.html", room=room, default_value=default_value, default_unit=default_unit)
+        return render_template("onboarding/daftar.html", room=room, default_value=default_value, default_unit=default_unit, deposit_default=deposit_default)
 
     if request.method == "POST":
         if not current_user.is_authenticated:
@@ -101,6 +102,7 @@ def daftar(room_id):
             return render_form()
 
         tgl_keluar = compute_keluar(tgl_masuk, durasi_value, durasi_unit)
+        deposit = deposit_default
 
         booking = Booking(
             user_id=current_user.id,
@@ -108,7 +110,7 @@ def daftar(room_id):
             tanggal_masuk=tgl_masuk,
             tanggal_keluar=tgl_keluar,
             status="pending",
-            deposit=room.harga_per_bulan,
+            deposit=deposit,
             catatan=deposit_catatan,
         )
         db.session.add(booking)

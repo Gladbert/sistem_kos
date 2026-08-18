@@ -48,6 +48,8 @@ class Kos(db.Model):
     default_stay_unit = db.Column(db.String(10), default="bulan")
     # Who performs room audits: client (guest does own check-in) | management | admin
     audit_role = db.Column(db.String(20), default="client")
+    # Whether a 1-month deposit is charged on move-in
+    deposit_required = db.Column(db.Boolean, default=True)
 
     rooms = db.relationship("Room", backref="kos", lazy="dynamic")
     user_roles = db.relationship("UserKos", backref="kos", lazy="dynamic")
@@ -55,6 +57,12 @@ class Kos(db.Model):
     def default_keluar_date(self, tgl_masuk):
         """Compute the stay end date from this kos's default stay preset."""
         return compute_keluar(tgl_masuk, self.default_stay_value or 1, self.default_stay_unit or "bulan")
+
+    def default_deposit(self, room):
+        """Default deposit for a booking in this kos: 0 if not required, else 1 month's rent."""
+        if not self.deposit_required:
+            return 0
+        return room.harga_per_bulan if room and room.harga_per_bulan else 0
 
     @property
     def total_kamar(self):
@@ -188,7 +196,10 @@ class Room(db.Model):
         cache = g.get("_booking_aktif_cache")
         if cache is not None:
             return cache.get(self.id)
-        return Booking.query.filter_by(room_id=self.id, status="aktif").first()
+        return Booking.query.filter(
+            Booking.room_id == self.id,
+            Booking.status.in_(("aktif", "menunggu_checkout")),
+        ).first()
 
 class Booking(db.Model):
     __tablename__ = "bookings"

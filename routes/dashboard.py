@@ -144,6 +144,13 @@ def admin():
         komplain_baru_q = komplain_baru_q.filter(Complaint.kos_id == kos_id)
     komplain_baru = komplain_baru_q.count()
 
+    # Bookings awaiting check-out audit before the room can be reused
+    pending_checkout = Booking.query.options(
+        joinedload(Booking.room), joinedload(Booking.client)
+    ).filter_by(status="menunggu_checkout").all()
+    if room_ids:
+        pending_checkout = [b for b in pending_checkout if b.room_id in room_ids]
+
     return render_template("dashboard/admin.html",
         total_kamar=total_kamar, kamar_terisi=kamar_terisi_count,
         kamar_tersedia=kamar_tersedia, total_penghuni=total_penghuni,
@@ -156,7 +163,7 @@ def admin():
         booking_pending=booking_pending, unpaid_bookings=unpaid_bookings,
         collection_rate=collection_rate, occupancy_rate=occupancy_rate,
         tipe_kamar=tipe_kamar, pemasukan_6bulan=pemasukan_6bulan,
-        booking_audit=active_bookings[:5])
+        booking_audit=active_bookings[:5], pending_checkout=pending_checkout)
 
 @dashboard_bp.route("/client")
 @login_required
@@ -240,15 +247,28 @@ def tolak_booking(id):
 def auto_proses():
     today = date.today()
     count_selesai = 0
+    count_menunggu = 0
     count_notif = 0
+    from models import RoomAudit
 
+    # Lease ended: only finalize if a check-out audit exists (audit-before-reuse).
+    # Otherwise hold the room until the audit is done so condition is recorded.
     for b in Booking.query.filter(Booking.status == "aktif", Booking.tanggal_keluar < today).all():
-        b.status = "selesai"
-        b.room.status = "tersedia"
-        db.session.add(Notification(user_id=b.user_id,
-            pesan=f"Masa sewa kamar {b.room.nomor_kamar} telah berakhir per {b.tanggal_keluar.strftime('%d/%m/%Y')}.",
-            jenis="umum"))
-        count_selesai += 1
+        has_co = RoomAudit.query.filter_by(booking_id=b.id, tipe="check_out").first() is not None
+        if has_co:
+            b.status = "selesai"
+            b.room.status = "tersedia"
+            db.session.add(Notification(user_id=b.user_id,
+                pesan=f"Masa sewa kamar {b.room.nomor_kamar} telah berakhir per {b.tanggal_keluar.strftime('%d/%m/%Y')}.",
+                jenis="umum"))
+            count_selesai += 1
+        else:
+            b.status = "menunggu_checkout"
+            for u in User.query.filter(User.role.in_(("admin", "management"))).all():
+                db.session.add(Notification(user_id=u.id,
+                    pesan=f"Kamar {b.room.nomor_kamar} ({b.client.nama_lengkap}) menunggu AUDIT CHECK-OUT sebelum kamar dipakai ulang.",
+                    jenis="audit"))
+            count_menunggu += 1
 
     for b in Booking.query.filter(Booking.status == "aktif", Booking.tanggal_keluar >= today,
                                    Booking.tanggal_keluar <= date(today.year, today.month, today.day + 7)).all():
@@ -257,7 +277,7 @@ def auto_proses():
             jenis="umum"))
         count_notif += 1
 
-    log_activity(current_user.id, "Auto-proses", f"{count_selesai} booking selesai, {count_notif} pengingat dikirim", "System")
+    log_activity(current_user.id, "Auto-proses", f"{count_selesai} selesai, {count_menunggu} menunggu audit, {count_notif} pengingat dikirim", "System")
     try:
         safe_commit()
     except Exception:
@@ -265,7 +285,7 @@ def auto_proses():
         db.session.rollback()
         flash("Terjadi kesalahan saat menyimpan data.", "danger")
         return redirect(request.referrer or url_for("dashboard.index"))
-    flash(f"Proses otomatis selesai: {count_selesai} booking diakhiri, {count_notif} pengingat dikirim.", "success")
+    flash(f"Proses otomatis selesai: {count_selesai} booking diakhiri, {count_menunggu} menunggu audit check-out, {count_notif} pengingat dikirim.", "success")
     return redirect(url_for("dashboard.admin"))
 
 @dashboard_bp.route("/notifikasi/baca/<int:id>", methods=["POST"])

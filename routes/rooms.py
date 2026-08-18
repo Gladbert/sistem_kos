@@ -1,10 +1,10 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session, current_app, g
 from flask_login import login_required, current_user
 from extensions import db
-from models import Room, Booking, MaintenanceRequest, Kos, User
-from helpers import admin_or_management, get_or_404, parse_amount, safe_commit, require_module_perm, log_activity
+from models import Room, Booking, MaintenanceRequest, Kos, User, UserKos, Notification, compute_keluar, DEFAULT_STAY_UNITS
+from helpers import admin_or_management, get_or_404, parse_amount, safe_commit, require_module_perm, log_activity, create_notification, wa_redirect
 from sqlalchemy.orm import joinedload
-from datetime import date
+from datetime import date, datetime
 
 VALID_ROOM_STATUSES = ("tersedia", "terisi", "maintenance")
 VALID_ROOM_TYPES = ("Reguler", "Deluxe", "VIP")
@@ -37,10 +37,15 @@ def index():
         if rooms:
             active = Booking.query.filter(
                 Booking.room_id.in_([r.id for r in rooms]),
-                Booking.status == "aktif"
+                Booking.status.in_(("aktif", "menunggu_checkout")),
             ).options(joinedload(Booking.client)).all()
             g._booking_aktif_cache = {b.room_id: b for b in active}
-        return render_template("rooms/index.html", pagination=pagination, rooms=rooms, search=q)
+        # data for the manual fill modal
+        kos = db.session.get(Kos, kos_id) if kos_id else None
+        return render_template("rooms/index.html", pagination=pagination, rooms=rooms, search=q,
+                               modal_clients=User.query.filter_by(role="client").order_by(User.nama_lengkap).all(),
+                               modal_kos=kos,
+                               modal_active_map={b.user_id: b.room.nomor_kamar for b in Booking.query.filter_by(status="aktif").options(joinedload(Booking.room)).all() if b.room})
     query = Room.query.filter_by(status="tersedia")
     if kos_id:
         query = query.filter_by(kos_id=kos_id)
@@ -195,7 +200,8 @@ def edit(id):
                 db.session.add(Booking(
                     user_id=new_client.id, room_id=room.id, tanggal_masuk=date.today(),
                     tanggal_keluar=room.kos.default_keluar_date(date.today()) if room.kos else None,
-                    status="aktif", deposit=0,
+                    deposit=room.kos.default_deposit(room) if room.kos else 0,
+                    status="aktif",
                     catatan="Dipindahkan dari penghuni sebelumnya via edit kamar"))
                 target = new_client
                 room.status = "terisi"
@@ -225,6 +231,93 @@ def edit(id):
         return redirect(url_for("rooms.index"))
 
     return render_form()
+
+
+@rooms_bp.route("/isi-penghuni", methods=["POST"])
+@admin_or_management
+def isi_penghuni():
+    """Manual booking: admin/management assigns a guest to a room. No guest self-serve needed."""
+    if not require_module_perm("rooms", "edit"):
+        return redirect(url_for("dashboard.index"))
+    room = get_or_404(Room, request.form.get("room_id", type=int))
+    if room.status != "tersedia":
+        flash("Kamar tidak tersedia.", "warning")
+        return redirect(url_for("rooms.index"))
+
+    guest = db.session.get(User, request.form.get("guest_id", type=int))
+    if not guest or guest.role != "client":
+        flash("Pilih penghuni yang valid.", "danger")
+        return redirect(url_for("rooms.index"))
+    other = Booking.query.filter(
+        Booking.user_id == guest.id,
+        Booking.status.in_(("aktif", "pending", "menunggu_checkout")),
+    ).first()
+    if other:
+        flash(f"{guest.nama_lengkap} masih menempati kamar {other.room.nomor_kamar}.", "danger")
+        return redirect(url_for("rooms.index"))
+
+    masuk_str = request.form.get("tanggal_masuk", "")
+    try:
+        masuk = datetime.strptime(masuk_str, "%Y-%m-%d").date() if masuk_str else date.today()
+    except ValueError:
+        flash("Format tanggal masuk salah.", "danger")
+        return redirect(url_for("rooms.index"))
+
+    durasi_value = request.form.get("durasi_value", type=int) or 1
+    durasi_unit = request.form.get("durasi_unit", "bulan")
+    if durasi_unit not in DEFAULT_STAY_UNITS:
+        durasi_unit = "bulan"
+    keluar = compute_keluar(masuk, durasi_value, durasi_unit)
+
+    try:
+        deposit = float(request.form.get("deposit") or 0)
+    except (ValueError, TypeError):
+        deposit = 0
+    deposit = max(0, deposit)
+
+    kos = room.kos
+    if kos and not UserKos.query.filter_by(user_id=guest.id, kos_id=kos.id).first():
+        db.session.add(UserKos(user_id=guest.id, kos_id=kos.id, role="client"))
+
+    db.session.add(Booking(
+        user_id=guest.id, room_id=room.id, tanggal_masuk=masuk, tanggal_keluar=keluar,
+        status="aktif", deposit=deposit, catatan="Dimasukkan manual oleh pengelola",
+    ))
+    room.status = "terisi"
+    try:
+        safe_commit()
+    except Exception:
+        current_app.logger.exception("Failed to fill room")
+        db.session.rollback()
+        flash("Terjadi kesalahan saat menyimpan data.", "danger")
+        return redirect(request.referrer or url_for("rooms.index"))
+    log_activity(current_user.id, "Isi kamar", f"Kamar {room.nomor_kamar} - {guest.nama_lengkap}", "Booking")
+    db.session.add(Notification(user_id=guest.id,
+        pesan=f"Anda ditempatkan di kamar {room.nomor_kamar} (masuk {masuk.strftime('%d/%m/%Y')}). Selamat datang!", jenis="umum"))
+    safe_commit()
+    flash(f"Kamar {room.nomor_kamar} berhasil diisi {guest.nama_lengkap}.", "success")
+    return redirect(url_for("rooms.index"))
+
+
+@rooms_bp.route("/<int:id>/remind-deposit", methods=["POST"])
+@admin_or_management
+def remind_deposit(id):
+    """Send a deposit payment reminder to the current resident (notification + WhatsApp)."""
+    room = get_or_404(Room, id)
+    booking = room.booking_aktif
+    if not booking or not booking.client:
+        flash("Tidak ada penghuni aktif.", "warning")
+        return redirect(url_for("rooms.detail", id=id))
+    guest = booking.client
+    deposit = booking.deposit or 0
+    create_notification(guest.id,
+        f"Mohon segera bayar deposit kamar {room.nomor_kamar} sebesar Rp{deposit:,.0f}.", "pembayaran")
+    phone = getattr(guest, "no_telepon", None)
+    if phone:
+        msg = f"Halo {guest.nama_lengkap}, mohon selesaikan deposit kamar {room.nomor_kamar} sebesar Rp{deposit:,.0f}. Terima kasih."
+        return wa_redirect(phone, msg)
+    flash("Pengingat deposit terkirim ke penghuni.", "success")
+    return redirect(url_for("rooms.detail", id=id))
 
 
 @rooms_bp.route("/hapus/<int:id>", methods=["POST"])

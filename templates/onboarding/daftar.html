@@ -33,7 +33,13 @@
                         </tr>
                         <tr>
                             <td class="text-muted">Deposit</td>
-                            <td class="fw-medium">Rp{{ "{:,.0f}".format(room.harga_per_bulan) }} (1 bulan)</td>
+                            <td class="fw-medium">
+                                {% if deposit_default and deposit_default > 0 %}
+                                Rp{{ "{:,.0f}".format(deposit_default) }} (1 bulan)
+                                {% else %}
+                                Tidak wajib
+                                {% endif %}
+                            </td>
                         </tr>
                     </table>
                     {% if room.fasilitas %}
@@ -75,10 +81,12 @@
                             <label class="form-label">Catatan (opsional)</label>
                             <textarea name="deposit_catatan" class="form-control" rows="2"></textarea>
                         </div>
+                        {% if deposit_default and deposit_default > 0 %}
                         <div class="alert alert-info">
                             <i class="bi bi-info-circle me-1"></i>
-                            Deposit sebesar Rp{{ "{:,.0f}".format(room.harga_per_bulan) }} dibayarkan di awal.
+                            Deposit sebesar Rp{{ "{:,.0f}".format(deposit_default) }} dibayarkan di awal.
                         </div>
+                        {% endif %}
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-primary btn-lg">
                                 <i class="bi bi-check-lg me-1"></i>Konfirmasi Pemesanan

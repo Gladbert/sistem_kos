@@ -1,7 +1,8 @@
+from datetime import date
 from flask import Blueprint, render_template, redirect, url_for, flash, request, make_response, jsonify, current_app
 from flask_login import login_required, current_user
 from extensions import db
-from models import RoomAudit, AuditItemResult, RoomItem, Booking, Notification
+from models import RoomAudit, AuditItemResult, RoomItem, Booking, Notification, User
 from helpers import admin_or_management, get_or_404, safe_commit, require_module_perm
 from sqlalchemy.orm import joinedload
 
@@ -128,6 +129,23 @@ def check_out(booking_id):
         _save_audit_items(audit, items)
 
         db.session.add(Notification(user_id=booking.user_id, pesan=f"Audit check-out kamar {booking.room.nomor_kamar} selesai.", jenis="umum"))
+
+        # Finalize the booking (audit-before-reuse): lease done -> selesai, free the room.
+        booking.status = "selesai"
+        if not booking.tanggal_keluar:
+            booking.tanggal_keluar = date.today()
+        if booking.room and booking.room.status == "terisi":
+            other = Booking.query.filter(
+                Booking.room_id == booking.room_id, Booking.status == "aktif",
+                Booking.id != booking.id).first()
+            if not other:
+                booking.room.status = "tersedia"
+        # Remind admin/management to return the deposit.
+        if booking.deposit and booking.deposit > 0 and booking.client:
+            for u in User.query.filter(User.role.in_(("admin", "management"))).all():
+                db.session.add(Notification(user_id=u.id,
+                    pesan=f"Kembalikan deposit Rp{booking.deposit:,.0f} ke {booking.client.nama_lengkap} (kamar {booking.room.nomor_kamar}).",
+                    jenis="deposit"))
         try:
             safe_commit()
         except Exception:

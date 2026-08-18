@@ -67,6 +67,14 @@
                         {% endif %}
                         <tr><td class="text-muted">Deposit</td><td class="fw-medium">Rp{{ "{:,.0f}".format(booking.deposit) }}</td></tr>
                     </table>
+                    {% if booking.deposit and booking.deposit > 0 %}
+                    <form method="POST" action="{{ url_for('rooms.remind_deposit', id=room.id) }}" class="mt-2">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-sm btn-outline-warning w-100">
+                            <i class="bi bi-bell me-1"></i>Pengingat Deposit
+                        </button>
+                    </form>
+                    {% endif %}
                     {% else %}
                     <div class="empty-state">
                         <i class="bi bi-person-plus"></i>

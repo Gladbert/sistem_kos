@@ -25,6 +25,7 @@ def _parse_kos_settings(form, kos):
     kos.default_stay_value = val
     kos.default_stay_unit = unit
     kos.audit_role = audit_role
+    kos.deposit_required = form.get("deposit_required") == "1"
 
 @kos_bp.route("/pilih/<int:id>", methods=["POST"])
 @login_required

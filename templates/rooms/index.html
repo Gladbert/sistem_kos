@@ -84,6 +84,13 @@
                         <a href="{{ url_for('rooms.edit', id=room.id) }}" class="btn btn-sm btn-outline-primary btn-icon" title="Edit">
                             <i class="bi bi-pencil"></i>
                         </a>
+                        {% if room.status == 'tersedia' %}
+                        <button type="button" class="btn btn-sm btn-success btn-icon" title="Isi Penghuni" data-bs-toggle="modal" data-bs-target="#isiPenghuniModal"
+                            data-room-id="{{ room.id }}" data-room-no="{{ room.nomor_kamar }}"
+                            data-deposit="{{ (modal_kos.default_deposit(room) if modal_kos else 0) }}">
+                            <i class="bi bi-person-plus"></i>
+                        </button>
+                        {% endif %}
                         <form method="POST" action="{{ url_for('rooms.hapus', id=room.id) }}" class="d-inline" onsubmit="return confirm('Yakin hapus kamar {{ room.nomor_kamar }}?')">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn btn-sm btn-outline-danger btn-icon" title="Hapus">
@@ -109,4 +116,73 @@
 {% endif %}
 
 {{ render_pagination(pagination, 'rooms.index', request.args|reject_page) }}
+
+<!-- Modal: isi penghuni (manual, management/admin-driven) -->
+<div class="modal fade" id="isiPenghuniModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('rooms.isi_penghuni') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="room_id" id="isi_room_id">
+                <div class="modal-header">
+                    <h5 class="modal-title">Isi Penghuni — Kamar <span id="isi_room_no"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label">Penghuni</label>
+                        <select name="guest_id" class="form-select" data-searchable required>
+                            <option value="">Pilih penghuni...</option>
+                            {% for c in modal_clients %}
+                            <option value="{{ c.id }}">{{ c.nama_lengkap }}{% if modal_active_map.get(c.id) %} (kamar {{ modal_active_map[c.id] }}){% endif %}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Tanggal Masuk</label>
+                        <input type="date" name="tanggal_masuk" class="form-control" value="{{ date_today.isoformat() }}">
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-4">
+                            <label class="form-label">Durasi</label>
+                            <input type="number" name="durasi_value" class="form-control" min="1" value="{{ (modal_kos.default_stay_value if modal_kos else 1) or 1 }}">
+                        </div>
+                        <div class="col-8">
+                            <label class="form-label">Satuan</label>
+                            <select name="durasi_unit" class="form-select">
+                                {% set units = [('hari','Hari'),('minggu','Minggu'),('bulan','Bulan'),('tahun','Tahun')] %}
+                                {% set cur_u = (modal_kos.default_stay_unit if modal_kos else 'bulan') or 'bulan' %}
+                                {% for val, label in units %}<option value="{{ val }}" {% if cur_u == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Deposit (Rp)</label>
+                        <input type="text" name="deposit" class="form-control" id="isi_deposit" data-rupiah value="0">
+                    </div>
+                    <div class="form-text">Pengelola mengisi data penghuni secara manual. Durasi diisi otomatis dari preset kos.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-person-plus me-1"></i>Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    var modal = document.getElementById('isiPenghuniModal');
+    if (!modal) return;
+    modal.addEventListener('show.bs.modal', function (e) {
+        var btn = e.relatedTarget;
+        if (!btn) return;
+        document.getElementById('isi_room_id').value = btn.getAttribute('data-room-id');
+        document.getElementById('isi_room_no').textContent = btn.getAttribute('data-room-no');
+        var dep = document.getElementById('isi_deposit');
+        dep.value = btn.getAttribute('data-deposit') || '0';
+    });
+})();
+</script>
 {% endblock %}

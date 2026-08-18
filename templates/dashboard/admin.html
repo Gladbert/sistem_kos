@@ -457,4 +457,49 @@ const occupancyChart = new Chart(document.getElementById('occupancyChart'), {
 }
 </style>
 </script>
+
+{% if pending_checkout %}
+<!-- Modal: waiting check-out audit (audit-before-reuse) -->
+<div class="modal fade" id="pendingAuditModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-clipboard-check me-2 text-warning"></i>Audit Check-out Belum Selesai ({{ pending_checkout|length }})</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">Kamar dicek kembali sebelum dipakai ulang. Selesaikan audit check-out untuk membebaskan kamar.</p>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead><tr><th>Kamar</th><th>Penghuni</th><th>Masa Sewa Berakhir</th><th></th></tr></thead>
+                        <tbody>
+                            {% for b in pending_checkout %}
+                            <tr>
+                                <td class="fw-medium">{{ b.room.nomor_kamar if b.room else '-' }}</td>
+                                <td>{{ b.client.nama_lengkap if b.client else '-' }}</td>
+                                <td>{{ b.tanggal_keluar.strftime('%d/%m/%Y') if b.tanggal_keluar else '-' }}</td>
+                                <td class="text-end">
+                                    <a href="{{ url_for('audit.check_out', booking_id=b.id) }}" class="btn btn-sm btn-primary">
+                                        <i class="bi bi-clipboard me-1"></i>Audit Check-out
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Nanti</button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    var m = document.getElementById('pendingAuditModal');
+    if (m) new bootstrap.Modal(m).show();
+})();
+</script>
+{% endif %}
 {% endblock %}
