@@ -204,10 +204,13 @@ def approve_booking(id):
     if booking.status != "pending":
         flash("Booking sudah diproses.", "warning")
         return redirect(url_for("dashboard.admin"))
+    # Guard against double-occupancy: the room may have been filled meanwhile.
+    if not booking.room or booking.room.status != "tersedia":
+        flash("Kamar sudah terisi oleh penghuni lain. Tolak permintaan ini.", "warning")
+        return redirect(url_for("dashboard.admin"))
     booking.status = "aktif"
     booking.room.status = "terisi"
-    # apply kos default stay if the request came without an end date
-    if not booking.tanggal_keluar and booking.room and booking.room.kos:
+    if not booking.tanggal_keluar and booking.room.kos:
         booking.tanggal_keluar = booking.room.kos.default_keluar_date(booking.tanggal_masuk or date.today())
     log_activity(current_user.id, "Setujui booking", f"Kamar {booking.room.nomor_kamar} - {booking.client.nama_lengkap}", "Booking")
     create_notification(

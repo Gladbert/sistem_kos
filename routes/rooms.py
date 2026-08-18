@@ -246,6 +246,13 @@ def isi_penghuni():
     if room.status != "tersedia":
         flash("Kamar tidak tersedia.", "warning")
         return redirect(url_for("rooms.index"))
+    # Don't override an existing pending request on this room from another guest.
+    pending_for_room = Booking.query.filter(
+        Booking.room_id == room.id, Booking.status == "pending",
+    ).first()
+    if pending_for_room and pending_for_room.user_id != request.form.get("guest_id", type=int):
+        flash(f"Kamar ini punya permintaan pending dari {pending_for_room.client.nama_lengkap}. Tolak permintaan tersebut dulu.", "warning")
+        return redirect(url_for("rooms.index"))
 
     guest = db.session.get(User, request.form.get("guest_id", type=int))
     if not guest or guest.role != "client":
