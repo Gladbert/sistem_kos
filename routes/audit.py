@@ -141,7 +141,7 @@ def check_out(booking_id):
             if not other:
                 booking.room.status = "tersedia"
         # Remind admin/management to return the deposit.
-        if booking.deposit and booking.deposit > 0 and booking.client:
+        if booking.deposit and booking.deposit > 0 and booking.client and booking.room:
             for u in User.query.filter(User.role.in_(("admin", "management"))).all():
                 db.session.add(Notification(user_id=u.id,
                     pesan=f"Kembalikan deposit Rp{booking.deposit:,.0f} ke {booking.client.nama_lengkap} (kamar {booking.room.nomor_kamar}).",

@@ -240,6 +240,9 @@ def isi_penghuni():
     if not require_module_perm("rooms", "edit"):
         return redirect(url_for("dashboard.index"))
     room = get_or_404(Room, request.form.get("room_id", type=int))
+    if room.kos_id and not current_user.has_kos_access(room.kos_id, ["admin", "management"]):
+        flash("Akses ditolak untuk kos ini.", "danger")
+        return redirect(url_for("rooms.index"))
     if room.status != "tersedia":
         flash("Kamar tidak tersedia.", "warning")
         return redirect(url_for("rooms.index"))
@@ -284,6 +287,8 @@ def isi_penghuni():
         status="aktif", deposit=deposit, catatan="Dimasukkan manual oleh pengelola",
     ))
     room.status = "terisi"
+    db.session.add(Notification(user_id=guest.id,
+        pesan=f"Anda ditempatkan di kamar {room.nomor_kamar} (masuk {masuk.strftime('%d/%m/%Y')}). Selamat datang!", jenis="umum"))
     try:
         safe_commit()
     except Exception:
@@ -292,9 +297,6 @@ def isi_penghuni():
         flash("Terjadi kesalahan saat menyimpan data.", "danger")
         return redirect(request.referrer or url_for("rooms.index"))
     log_activity(current_user.id, "Isi kamar", f"Kamar {room.nomor_kamar} - {guest.nama_lengkap}", "Booking")
-    db.session.add(Notification(user_id=guest.id,
-        pesan=f"Anda ditempatkan di kamar {room.nomor_kamar} (masuk {masuk.strftime('%d/%m/%Y')}). Selamat datang!", jenis="umum"))
-    safe_commit()
     flash(f"Kamar {room.nomor_kamar} berhasil diisi {guest.nama_lengkap}.", "success")
     return redirect(url_for("rooms.index"))
 
@@ -304,12 +306,18 @@ def isi_penghuni():
 def remind_deposit(id):
     """Send a deposit payment reminder to the current resident (notification + WhatsApp)."""
     room = get_or_404(Room, id)
+    if room.kos_id and not current_user.has_kos_access(room.kos_id, ["admin", "management"]):
+        flash("Akses ditolak untuk kos ini.", "danger")
+        return redirect(url_for("rooms.detail", id=id))
     booking = room.booking_aktif
     if not booking or not booking.client:
         flash("Tidak ada penghuni aktif.", "warning")
         return redirect(url_for("rooms.detail", id=id))
     guest = booking.client
     deposit = booking.deposit or 0
+    if deposit <= 0:
+        flash("Tidak ada deposit yang tercatat untuk penghuni ini.", "info")
+        return redirect(url_for("rooms.detail", id=id))
     create_notification(guest.id,
         f"Mohon segera bayar deposit kamar {room.nomor_kamar} sebesar Rp{deposit:,.0f}.", "pembayaran")
     phone = getattr(guest, "no_telepon", None)
