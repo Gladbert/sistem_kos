@@ -25,22 +25,39 @@ def _save_audit_items(audit, items):
         ))
 
 
+def _effective_kos_role(booking):
+    """Effective role of current_user within the booking's kos.
+    Uses per-kos UserKos membership; falls back to the global role for admins."""
+    kos_id = booking.room.kos_id
+    if kos_id:
+        from models import UserKos
+        uk = UserKos.query.filter_by(user_id=current_user.id, kos_id=kos_id).first()
+        if uk:
+            return uk.role
+    return current_user.role or "client"
+
+
 def _check_in_allowed(booking):
     """Whether current user may audit a check-in, per the kos audit_role setting."""
     kos = booking.room.kos
-    role = (kos.audit_role if kos else "client") or "client"
-    if current_user.role in ("admin", "management"):
-        return True
-    return role == "client" and current_user.id == booking.user_id
+    setting = (kos.audit_role if kos else "client") or "client"
+    ur = _effective_kos_role(booking)
+    if setting == "admin":
+        return ur == "admin"
+    if setting == "management":
+        return ur in ("admin", "management")
+    # setting == 'client': pengelola audits any; guest audits own booking
+    return ur in ("admin", "management") or current_user.id == booking.user_id
 
 
 def _check_out_allowed(booking):
     """Whether current user may audit a check-out, per the kos audit_role setting."""
     kos = booking.room.kos
-    role = (kos.audit_role if kos else "client") or "client"
-    if role == "admin":
-        return current_user.role == "admin"
-    return current_user.role in ("admin", "management")
+    setting = (kos.audit_role if kos else "client") or "client"
+    ur = _effective_kos_role(booking)
+    if setting == "admin":
+        return ur == "admin"
+    return ur in ("admin", "management")
 
 
 @audit_bp.route("/check-in/<int:booking_id>", methods=["GET", "POST"])

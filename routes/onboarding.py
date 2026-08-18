@@ -47,6 +47,12 @@ def daftar(room_id):
     # kos default stay preset — used to prefill the duration fields
     default_value = room.kos.default_stay_value if room.kos else 1
     default_unit = room.kos.default_stay_unit if room.kos else "bulan"
+    if default_unit not in DEFAULT_STAY_UNITS:
+        default_unit = "bulan"
+    try:
+        default_value = max(1, int(default_value))
+    except (ValueError, TypeError):
+        default_value = 1
 
     if room.status != "tersedia":
         flash("Kamar sudah tidak tersedia.", "warning")
