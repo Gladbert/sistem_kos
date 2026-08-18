@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session, current_app
 from flask_login import login_required, current_user
 from extensions import db
-from models import Kos, UserKos
+from models import Kos, UserKos, AUDIT_ROLES
 from helpers import log_activity, admin_or_management, get_or_404, safe_commit, sanitize, require_module_perm
 
 kos_bp = Blueprint("kos", __name__, url_prefix="/kos")
@@ -9,8 +9,9 @@ kos_bp = Blueprint("kos", __name__, url_prefix="/kos")
 DEFAULT_STAY_UNITS = ("hari", "minggu", "bulan", "tahun")
 
 
-def _parse_stay_preset(form, kos):
-    """Read default_stay_value/unit from form onto a kos object. Returns None or error msg."""
+def _parse_kos_settings(form, kos):
+    """Read default_stay_* and audit_role from form onto a kos object.
+    Returns None on success, or an error message."""
     try:
         val = int(form.get("default_stay_value", 1) or 1)
     except (ValueError, TypeError):
@@ -20,8 +21,12 @@ def _parse_stay_preset(form, kos):
     unit = form.get("default_stay_unit", "bulan")
     if unit not in DEFAULT_STAY_UNITS:
         return "Satuan durasi sewa default tidak valid."
+    audit_role = form.get("audit_role", "client")
+    if audit_role not in AUDIT_ROLES:
+        return "Opsi pelaksana audit tidak valid."
     kos.default_stay_value = val
     kos.default_stay_unit = unit
+    kos.audit_role = audit_role
 
 @kos_bp.route("/pilih/<int:id>", methods=["POST"])
 @login_required
@@ -72,11 +77,12 @@ def tambah():
             alamat=sanitize(request.form.get("alamat", "")),
             deskripsi=sanitize(request.form.get("deskripsi", "")),
         )
-        err = _parse_stay_preset(request.form, kos)
+        err = _parse_kos_settings(request.form, kos)
         if err:
             flash(err, "danger")
             submitted["default_stay_value"] = request.form.get("default_stay_value")
             submitted["default_stay_unit"] = request.form.get("default_stay_unit")
+            submitted["audit_role"] = request.form.get("audit_role")
             return render_template("kos/form.html", kos=None, submitted=submitted)
         db.session.add(kos)
         try:
@@ -125,7 +131,7 @@ def edit(id):
         kos.nama = sanitize(nama)
         kos.alamat = sanitize(request.form.get("alamat", ""))
         kos.deskripsi = sanitize(request.form.get("deskripsi", ""))
-        err = _parse_stay_preset(request.form, kos)
+        err = _parse_kos_settings(request.form, kos)
         if err:
             flash(err, "danger")
             return render_template("kos/form.html", kos=kos)

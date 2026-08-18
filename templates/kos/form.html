@@ -54,6 +54,18 @@
                         <div class="form-text">Contoh: 1 bulan (jangka panjang) atau 1 hari (jangka pendek).</div>
                     </div>
 
+                    <div class="border rounded p-3 bg-light mb-3">
+                        <label class="form-label fw-medium">Pelaksana Audit Kamar</label>
+                        <p class="text-muted small mb-3">Siapa yang melakukan audit check-in kamar (cek kondisi barang).</p>
+                        {% set cur_audit = (kos.audit_role if kos and kos.audit_role else (submitted.audit_role if submitted and submitted.audit_role else 'client')) %}
+                        <select name="audit_role" class="form-select">
+                            <option value="client" {% if cur_audit == 'client' %}selected{% endif %}>Penghuni (tamu) — penghuni audit sendiri</option>
+                            <option value="management" {% if cur_audit == 'management' %}selected{% endif %}>Pengelola (admin + management)</option>
+                            <option value="admin" {% if cur_audit == 'admin' %}selected{% endif %}>Hanya Admin</option>
+                        </select>
+                        <div class="form-text">Default: penghuni melakukan audit check-in sendiri. Pilih "Pengelola" atau "Hanya Admin" untuk menyerahkan audit ke pihak pengelola.</div>
+                    </div>
+
                     <div class="d-flex gap-2 justify-content-end">
                         <a href="{{ url_for('kos.index') }}" class="btn btn-outline-secondary">Batal</a>
                         <button type="submit" class="btn btn-primary">

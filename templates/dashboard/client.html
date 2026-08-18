@@ -128,10 +128,12 @@
                     <div>
                         {% if audit_in %}
                         <span class="badge badge-success fs-6 px-3 py-2"><i class="bi bi-check-circle me-1"></i>Check-in Selesai</span>
-                        {% else %}
+                        {% elif guest_can_audit %}
                         <a href="{{ url_for('audit.check_in', booking_id=booking_aktif.id) }}" class="btn btn-primary btn-sm">
                             <i class="bi bi-clipboard me-1"></i>Audit Check-in
                         </a>
+                        {% else %}
+                        <span class="badge badge-secondary fs-6 px-3 py-2"><i class="bi bi-clock me-1"></i>Menunggu audit pengelola</span>
                         {% endif %}
                     </div>
                     <div>

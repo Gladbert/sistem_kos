@@ -169,21 +169,25 @@ def client():
     notifikasi = Notification.query.filter_by(user_id=current_user.id).order_by(Notification.created_at.desc()).limit(10).all()
     notif_belum_dibaca = Notification.query.filter_by(user_id=current_user.id, dibaca=False).count()
 
-    # Check if check-in audit is required
+    # Check if check-in audit is required (only if the guest performs it)
     needs_checkin_audit = False
     has_checkin_audit = False
+    guest_can_audit = False
     if booking_aktif:
         from models import RoomAudit
+        kos = booking_aktif.room.kos
+        guest_can_audit = (kos.audit_role if kos else "client") == "client"
         has_checkin_audit = RoomAudit.query.filter_by(
             booking_id=booking_aktif.id, tipe="check_in"
         ).first() is not None
-        needs_checkin_audit = not has_checkin_audit
+        needs_checkin_audit = guest_can_audit and not has_checkin_audit
 
     return render_template("dashboard/client.html",
         booking=booking, booking_aktif=booking_aktif, booking_pending=booking_pending,
         riwayat=riwayat, pembayaran=pembayaran,
         notifikasi=notifikasi, notif_belum_dibaca=notif_belum_dibaca,
         needs_checkin_audit=needs_checkin_audit, has_checkin_audit=has_checkin_audit,
+        guest_can_audit=guest_can_audit,
         date_today=date.today())
 
 @dashboard_bp.route("/booking/<int:id>/approve", methods=["POST"])

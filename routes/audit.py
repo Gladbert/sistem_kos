@@ -25,12 +25,30 @@ def _save_audit_items(audit, items):
         ))
 
 
+def _check_in_allowed(booking):
+    """Whether current user may audit a check-in, per the kos audit_role setting."""
+    kos = booking.room.kos
+    role = (kos.audit_role if kos else "client") or "client"
+    if current_user.role in ("admin", "management"):
+        return True
+    return role == "client" and current_user.id == booking.user_id
+
+
+def _check_out_allowed(booking):
+    """Whether current user may audit a check-out, per the kos audit_role setting."""
+    kos = booking.room.kos
+    role = (kos.audit_role if kos else "client") or "client"
+    if role == "admin":
+        return current_user.role == "admin"
+    return current_user.role in ("admin", "management")
+
+
 @audit_bp.route("/check-in/<int:booking_id>", methods=["GET", "POST"])
 @login_required
 def check_in(booking_id):
     booking = get_or_404(Booking, booking_id)
-    if booking.user_id != current_user.id and current_user.role not in ("admin", "management"):
-        flash("Akses ditolak.", "danger")
+    if not _check_in_allowed(booking):
+        flash("Akses ditolak. Audit kamar dilakukan oleh pengelola.", "danger")
         return redirect(url_for("dashboard.index"))
     if current_user.role in ("admin", "management") and not require_module_perm("audit", "create"):
         return redirect(url_for("dashboard.index"))
@@ -66,11 +84,14 @@ def check_in(booking_id):
 
 
 @audit_bp.route("/check-out/<int:booking_id>", methods=["GET", "POST"])
-@admin_or_management
+@login_required
 def check_out(booking_id):
+    booking = get_or_404(Booking, booking_id)
+    if not _check_out_allowed(booking):
+        flash("Akses ditolak.", "danger")
+        return redirect(url_for("dashboard.index"))
     if not require_module_perm("audit", "edit"):
         return redirect(url_for("dashboard.index"))
-    booking = get_or_404(Booking, booking_id)
     existing = RoomAudit.query.filter_by(booking_id=booking_id, tipe="check_out").first()
     if existing:
         flash("Audit check-out sudah dilakukan.", "info")

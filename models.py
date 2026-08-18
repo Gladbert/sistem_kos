@@ -9,6 +9,9 @@ import secrets
 # Allowed default-stay units, shared by kos preset + booking request forms
 DEFAULT_STAY_UNITS = ("hari", "minggu", "bulan", "tahun")
 
+# Who is allowed to perform room audits for a kos (admin can change per kos)
+AUDIT_ROLES = ("client", "management", "admin")
+
 
 def compute_keluar(tgl_masuk, value, unit):
     """Compute a stay end date from a duration value+unit.
@@ -43,6 +46,8 @@ class Kos(db.Model):
     # re-type it for every new guest. unit: hari | minggu | bulan | tahun
     default_stay_value = db.Column(db.Integer, default=1)
     default_stay_unit = db.Column(db.String(10), default="bulan")
+    # Who performs room audits: client (guest does own check-in) | management | admin
+    audit_role = db.Column(db.String(20), default="client")
 
     rooms = db.relationship("Room", backref="kos", lazy="dynamic")
     user_roles = db.relationship("UserKos", backref="kos", lazy="dynamic")
