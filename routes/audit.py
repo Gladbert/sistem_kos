@@ -2,8 +2,8 @@ from datetime import date
 from flask import Blueprint, render_template, redirect, url_for, flash, request, make_response, jsonify, current_app
 from flask_login import login_required, current_user
 from extensions import db
-from models import RoomAudit, AuditItemResult, RoomItem, Booking, Notification, User
-from helpers import admin_or_management, get_or_404, safe_commit, require_module_perm
+from models import RoomAudit, AuditItemResult, RoomItem, Booking, Notification
+from helpers import admin_or_management, get_or_404, safe_commit, require_module_perm, notify_pengelola
 from sqlalchemy.orm import joinedload
 
 audit_bp = Blueprint("audit", __name__, url_prefix="/audit")
@@ -142,10 +142,8 @@ def check_out(booking_id):
                 booking.room.status = "tersedia"
         # Remind admin/management to return the deposit.
         if booking.deposit and booking.deposit > 0 and booking.client and booking.room:
-            for u in User.query.filter(User.role.in_(("admin", "management"))).all():
-                db.session.add(Notification(user_id=u.id,
-                    pesan=f"Kembalikan deposit Rp{booking.deposit:,.0f} ke {booking.client.nama_lengkap} (kamar {booking.room.nomor_kamar}).",
-                    jenis="deposit"))
+            notify_pengelola(booking.room.kos_id,
+                f"Kembalikan deposit Rp{booking.deposit:,.0f} ke {booking.client.nama_lengkap} (kamar {booking.room.nomor_kamar}).", "deposit")
         try:
             safe_commit()
         except Exception:

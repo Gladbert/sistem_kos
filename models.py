@@ -16,7 +16,8 @@ AUDIT_ROLES = ("client", "management", "admin")
 def compute_keluar(tgl_masuk, value, unit):
     """Compute a stay end date from a duration value+unit.
     unit: hari | minggu | bulan | tahun. Reused by Kos preset and booking forms."""
-    v = max(1, value or 1)
+    # Clamp: sane ceiling (100 units) guards against date-overflow on huge/bad input.
+    v = min(max(1, value or 1), 100)
     if unit == "hari":
         return tgl_masuk + timedelta(days=v)
     if unit == "minggu":

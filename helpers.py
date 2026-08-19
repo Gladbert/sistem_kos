@@ -30,6 +30,26 @@ def create_notification(user_id, pesan, jenis="umum", wa_sent=False):
     db.session.commit()
 
 
+def notify_pengelola(kos_id, pesan, jenis="umum"):
+    """Add a Notification to every relevant pengelola (admin/management) for the given kos.
+    Includes: users with admin/management role in that kos, plus all global-role admins.
+    Management who don't manage the kos are excluded. Does NOT commit — the caller's
+    transaction owns the commit (keeps the change atomic). Safe to call any time."""
+    from models import User, UserKos, Notification
+    if not kos_id:
+        return
+    ids = set()
+    ids.update(row for (row,) in UserKos.query.filter(
+        UserKos.kos_id == kos_id,
+        UserKos.role.in_(("admin", "management")),
+    ).with_entities(UserKos.user_id).all())
+    ids.update(row for (row,) in User.query.filter(
+        User.role == "admin",
+    ).with_entities(User.id).all())
+    for uid in ids:
+        db.session.add(Notification(user_id=uid, pesan=pesan, jenis=jenis))
+
+
 def wa_redirect(phone, message):
     """Build WhatsApp redirect response."""
     return redirect(f"https://wa.me/{phone}?text={urllib.parse.quote(message)}")

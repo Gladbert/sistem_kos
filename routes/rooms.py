@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db
 from models import Room, Booking, MaintenanceRequest, Kos, User, UserKos, Notification, compute_keluar, DEFAULT_STAY_UNITS
-from helpers import admin_or_management, get_or_404, parse_amount, safe_commit, require_module_perm, log_activity, create_notification, wa_redirect
+from helpers import admin_or_management, get_or_404, parse_amount, safe_commit, require_module_perm, log_activity, create_notification, wa_redirect, notify_pengelola
 from sqlalchemy.orm import joinedload
 from datetime import date, datetime
 
@@ -203,10 +203,8 @@ def edit(id):
                         pesan=f"Kamar {room.nomor_kamar} telah dialihkan ke penghuni lain. Masa sewa Anda berakhir {date.today().strftime('%d/%m/%Y')}.",
                         jenis="umum"))
                 if booking.deposit and booking.deposit > 0 and booking.client:
-                    for u in User.query.filter(User.role.in_(("admin", "management"))).all():
-                        db.session.add(Notification(user_id=u.id,
-                            pesan=f"Kembalikan deposit Rp{booking.deposit:,.0f} ke {booking.client.nama_lengkap} (kamar {room.nomor_kamar}).",
-                            jenis="deposit"))
+                    notify_pengelola(room.kos_id,
+                        f"Kembalikan deposit Rp{booking.deposit:,.0f} ke {booking.client.nama_lengkap} (kamar {room.nomor_kamar}).", "deposit")
                 db.session.add(Booking(
                     user_id=new_client.id, room_id=room.id, tanggal_masuk=date.today(),
                     tanggal_keluar=room.kos.default_keluar_date(date.today()) if room.kos else None,

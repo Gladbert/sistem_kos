@@ -3,7 +3,7 @@ from flask import Blueprint, render_template, redirect, flash, url_for, request,
 from flask_login import login_required, current_user
 from extensions import db
 from models import User, Room, Booking, Payment, Expense, Notification, MaintenanceRequest, Complaint, Kos
-from helpers import log_activity, admin_or_management, get_or_404, kos_room_ids, create_notification, kos_expense_query, safe_commit
+from helpers import log_activity, admin_or_management, get_or_404, kos_room_ids, create_notification, kos_expense_query, safe_commit, notify_pengelola
 from sqlalchemy.orm import joinedload, subqueryload
 
 dashboard_bp = Blueprint("dashboard", __name__, url_prefix="/dashboard")
@@ -268,17 +268,13 @@ def auto_proses():
                 pesan=f"Masa sewa kamar {b.room.nomor_kamar} telah berakhir per {b.tanggal_keluar.strftime('%d/%m/%Y')}.",
                 jenis="umum"))
             if b.deposit and b.deposit > 0 and b.client and b.room:
-                for u in User.query.filter(User.role.in_(("admin", "management"))).all():
-                    db.session.add(Notification(user_id=u.id,
-                        pesan=f"Kembalikan deposit Rp{b.deposit:,.0f} ke {b.client.nama_lengkap} (kamar {b.room.nomor_kamar}).",
-                        jenis="deposit"))
+                notify_pengelola(b.room.kos_id,
+                    f"Kembalikan deposit Rp{b.deposit:,.0f} ke {b.client.nama_lengkap} (kamar {b.room.nomor_kamar}).", "deposit")
             count_selesai += 1
         else:
             b.status = "menunggu_checkout"
-            for u in User.query.filter(User.role.in_(("admin", "management"))).all():
-                db.session.add(Notification(user_id=u.id,
-                    pesan=f"Kamar {b.room.nomor_kamar} ({b.client.nama_lengkap}) menunggu AUDIT CHECK-OUT sebelum kamar dipakai ulang.",
-                    jenis="audit"))
+            notify_pengelola(b.room.kos_id if b.room else None,
+                f"Kamar {b.room.nomor_kamar} ({b.client.nama_lengkap}) menunggu AUDIT CHECK-OUT sebelum kamar dipakai ulang.", "audit")
             count_menunggu += 1
 
     for b in Booking.query.filter(Booking.status == "aktif", Booking.tanggal_keluar >= today,
