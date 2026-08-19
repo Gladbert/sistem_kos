@@ -339,7 +339,7 @@ def remind_deposit(id):
     if phone:
         msg = f"Halo {guest.nama_lengkap}, mohon selesaikan deposit kamar {room.nomor_kamar} sebesar Rp{deposit:,.0f}. Terima kasih."
         return wa_redirect(phone, msg)
-    flash("Pengingat deposit terkirim ke penghuni.", "success")
+    flash("Pengingat deposit terkirim (notifikasi; nomor WhatsApp tamu tidak tersedia).", "success")
     return redirect(url_for("rooms.detail", id=id))
 
 

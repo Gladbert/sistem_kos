@@ -263,7 +263,13 @@ def auto_proses():
         has_co = RoomAudit.query.filter_by(booking_id=b.id, tipe="check_out").first() is not None
         if has_co:
             b.status = "selesai"
-            b.room.status = "tersedia"
+            # free the room only if no other active booking occupies it (protects legacy double-booking data)
+            if b.room and b.room.status == "terisi":
+                other = Booking.query.filter(
+                    Booking.room_id == b.room_id, Booking.status == "aktif",
+                    Booking.id != b.id).first()
+                if not other:
+                    b.room.status = "tersedia"
             db.session.add(Notification(user_id=b.user_id,
                 pesan=f"Masa sewa kamar {b.room.nomor_kamar} telah berakhir per {b.tanggal_keluar.strftime('%d/%m/%Y')}.",
                 jenis="umum"))
