@@ -197,6 +197,16 @@ def edit(id):
                 # end current stay (history preserved), open new booking for target
                 booking.status = "selesai"
                 booking.tanggal_keluar = date.today()
+                # notify the outgoing resident + remind pengelola to return their deposit
+                if booking.client:
+                    db.session.add(Notification(user_id=booking.client.id,
+                        pesan=f"Kamar {room.nomor_kamar} telah dialihkan ke penghuni lain. Masa sewa Anda berakhir {date.today().strftime('%d/%m/%Y')}.",
+                        jenis="umum"))
+                if booking.deposit and booking.deposit > 0 and booking.client:
+                    for u in User.query.filter(User.role.in_(("admin", "management"))).all():
+                        db.session.add(Notification(user_id=u.id,
+                            pesan=f"Kembalikan deposit Rp{booking.deposit:,.0f} ke {booking.client.nama_lengkap} (kamar {room.nomor_kamar}).",
+                            jenis="deposit"))
                 db.session.add(Booking(
                     user_id=new_client.id, room_id=room.id, tanggal_masuk=date.today(),
                     tanggal_keluar=room.kos.default_keluar_date(date.today()) if room.kos else None,

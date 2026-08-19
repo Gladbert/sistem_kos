@@ -145,9 +145,12 @@ def admin():
     komplain_baru = komplain_baru_q.count()
 
     # Bookings awaiting check-out audit before the room can be reused
-    pending_checkout = Booking.query.options(
-        joinedload(Booking.room), joinedload(Booking.client)
-    ).filter_by(status="menunggu_checkout").all()
+    pending_checkout = [
+        b for b in Booking.query.options(
+            joinedload(Booking.room), joinedload(Booking.client)
+        ).filter_by(status="menunggu_checkout").all()
+        if b.room and b.client
+    ]
     if room_ids:
         pending_checkout = [b for b in pending_checkout if b.room_id in room_ids]
 
@@ -264,6 +267,11 @@ def auto_proses():
             db.session.add(Notification(user_id=b.user_id,
                 pesan=f"Masa sewa kamar {b.room.nomor_kamar} telah berakhir per {b.tanggal_keluar.strftime('%d/%m/%Y')}.",
                 jenis="umum"))
+            if b.deposit and b.deposit > 0 and b.client and b.room:
+                for u in User.query.filter(User.role.in_(("admin", "management"))).all():
+                    db.session.add(Notification(user_id=u.id,
+                        pesan=f"Kembalikan deposit Rp{b.deposit:,.0f} ke {b.client.nama_lengkap} (kamar {b.room.nomor_kamar}).",
+                        jenis="deposit"))
             count_selesai += 1
         else:
             b.status = "menunggu_checkout"
