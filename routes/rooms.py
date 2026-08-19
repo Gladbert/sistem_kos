@@ -328,6 +328,9 @@ def remind_deposit(id):
     if not booking or not booking.client:
         flash("Tidak ada penghuni aktif.", "warning")
         return redirect(url_for("rooms.detail", id=id))
+    if booking.status == "menunggu_checkout":
+        flash("Penghuni sedang dalam proses check-out; pengingat pengembalian deposit berlaku, bukan pembayaran.", "info")
+        return redirect(url_for("rooms.detail", id=id))
     guest = booking.client
     deposit = booking.deposit or 0
     if deposit <= 0:

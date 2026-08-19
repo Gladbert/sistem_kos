@@ -260,6 +260,8 @@ def auto_proses():
     # Lease ended: only finalize if a check-out audit exists (audit-before-reuse).
     # Otherwise hold the room until the audit is done so condition is recorded.
     for b in Booking.query.filter(Booking.status == "aktif", Booking.tanggal_keluar < today).all():
+        if not (b.room and b.client):
+            continue  # skip orphaned bookings (deleted room/client)
         has_co = RoomAudit.query.filter_by(booking_id=b.id, tipe="check_out").first() is not None
         if has_co:
             b.status = "selesai"
